@@ -1,11 +1,9 @@
-# Ignore data files (store on RIS)
-*.csv
+# Ignore data files
 *.tsv
 *.html
 *.json
 
-# Ignore genetic data (store on RIS)
-data/*
+# Ignore genetic data
 *.fasta
 *.fastq*
 *.vcf
@@ -16,10 +14,10 @@ data/*
 *.gtf
 *.fa
 
-# Ignore jupyter notebooks (Store on RIS or Lab Archives. Can be exported to .py to be stored in the repository.)
+# Ignore jupyter notebooks
 #*.ipynb
 
-# Ignore log files (store in LTS)
+# Ignore log files
 *.out
 *.log
 
@@ -59,3 +57,6 @@ __pycache__/
 # Ignore figures
 figures/*
 *.png
+
+# Ignore notes
+.obsidian/*
