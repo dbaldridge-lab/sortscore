@@ -1,12 +1,12 @@
 """
-Configuration and constants for oPool DMS activity score analysis.
+Configuration and constants for Sort-seq variant analysis.
 
-This module contains configuration variables and data structures for different oPool submissions.
+This module contains configuration variables and data structures for different experiment submissions.
 
 Examples
 --------
 >>> from sortscore.analysis.config import get_submission_config
->>> config = get_submission_config('030325_oPool5b_GTAC')
+>>> config = get_submission_config('example_submission')
 """
 import logging
 from typing import Dict, Any, Optional
@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 # Example structure for submission-specific configuration
 def get_submission_config(submission: str) -> Optional[Dict[str, Any]]:
     """
-    Retrieve configuration for a given oPool submission.
+    Retrieve configuration for a given experiment submission.
 
     Parameters
     ----------
     submission : str
-        The submission identifier (e.g., '030325_oPool5b_GTAC').
+        The submission identifier (e.g., 'example_submission').
 
     Returns
     -------
@@ -30,12 +30,12 @@ def get_submission_config(submission: str) -> Optional[Dict[str, Any]]:
 
     Examples
     --------
-    >>> config = get_submission_config('030325_oPool5b_GTAC')
+    >>> config = get_submission_config('example_submission')
     >>> config['gfp_rep1_bin1']
     125
     """
     configs = {
-        '030325_oPool5b_GTAC': {
+        'example_submission': {
             'gfp_rep1_bin1': 125,
             'gfp_rep1_bin2': 242,
             'gfp_rep1_bin3': 953,
@@ -52,7 +52,7 @@ def get_submission_config(submission: str) -> Optional[Dict[str, Any]]:
                            93094462 + 39259132, 64549755 + 30382114, 89303873 + 34775693, 100813592 + 43668775,
                            79373783 + 34415035, 93444866 + 37572151, 66659708 + 32502674, 86346094 + 36977168,
                            85468879 + 33582490, 76316244 + 33633147],
-            'project_dir': '/scratch/dblab/opool/data/results/oPool5/030325_oPool5b_GTAC_allowlist-match',
+            'project_dir': '/path/to/project/results/example_submission',
             'tsv_file': [
                 f'S{i}_matched_allowlist_substring_unique_counts.tsv.gz' for i in range(14)
             ],

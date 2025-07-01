@@ -1,5 +1,5 @@
 """
-Analysis subpackage for oPool DMS activity score workflows.
+Analysis subpackage for Sort-seq variant analysis workflows.
 
 This subpackage contains modules for configuration, parameters, I/O, and utilities.
 """

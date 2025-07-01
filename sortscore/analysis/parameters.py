@@ -1,5 +1,5 @@
 """
-Parameter definitions for oPool DMS activity score analysis.
+Parameter definitions for Sort-seq variant analysis.
 
 This module contains default parameters and utility functions for analysis workflows.
 

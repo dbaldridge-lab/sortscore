@@ -1,5 +1,5 @@
 """
-I/O utilities for oPool DMS activity score analysis.
+I/O utilities for Sort-seq variant analysis.
 
 This module provides functions for exporting data and statistics.
 
