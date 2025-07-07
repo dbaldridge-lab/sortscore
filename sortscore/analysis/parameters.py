@@ -26,8 +26,8 @@ def get_default_parameters() -> Dict[str, Any]:
     3
     """
     return {
-        'b': 3,  # Number of bins required
-        'r': 3,  # Number of replicates required
+        'b': 1,  # Number of bins required
+        'r': 1,  # Number of replicates required
         'avg_method': 'rep-weighted',  # Averaging method
         'minread_threshold': 0,  # Minimum reads per million
     }

@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 from typing import Optional, List, Any
-from sortscore.visualization.utils.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
+from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
 
 
 def plot_activity_score_distribution(

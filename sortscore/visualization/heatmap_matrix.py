@@ -6,7 +6,7 @@ This module provides functions to create and fill DMS matrices for heatmap plott
 import pandas as pd
 import numpy as np
 from typing import List, Optional
-from sortscore.notebook.sequence_parsing import translate_dna
+from sortscore.sequence_parsing import translate_dna
 
 def extract_position(sequence_diff: str):
     parts = sequence_diff.split('.')
