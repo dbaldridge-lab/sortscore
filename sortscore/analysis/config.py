@@ -8,8 +8,10 @@ Examples
 >>> from sortscore.analysis.config import get_submission_config
 >>> config = get_submission_config('example_submission')
 """
+import json
 import logging
-from typing import Dict, Any, Optional
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +65,44 @@ def get_submission_config(submission: str) -> Optional[Dict[str, Any]]:
     if config is None:
         logger.warning(f"No configuration found for submission: {submission}")
     return config
+
+@dataclass
+class ExperimentConfig:
+    submission: str
+    experiment_setup_file: str
+    wt_seq: str
+    mutant_type: str
+    num_aa: int
+    min_pos: int
+    median_gfp: Optional[float] = None
+    output_dir: Optional[str] = None
+    other_params: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def from_json(json_path: str) -> 'ExperimentConfig':
+        """
+        Load experiment configuration from a JSON file.
+
+        Parameters
+        ----------
+        json_path : str
+            Path to the JSON config file.
+
+        Returns
+        -------
+        config : ExperimentConfig
+            Loaded experiment configuration.
+        """
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        # Extract known fields, pass the rest to other_params
+        known_fields = {k: data[k] for k in ['submission', 'experiment_setup_file', 'wt_seq', 'mutant_type', 'num_aa', 'min_pos'] if k in data}
+        median_gfp = data.get('median_gfp')
+        output_dir = data.get('output_dir')
+        other_params = {k: v for k, v in data.items() if k not in known_fields and k not in ['median_gfp', 'output_dir']}
+        return ExperimentConfig(
+            **known_fields,
+            median_gfp=median_gfp,
+            output_dir=output_dir,
+            other_params=other_params if other_params else None
+        )

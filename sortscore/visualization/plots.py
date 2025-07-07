@@ -14,6 +14,7 @@ import numpy as np
 import seaborn as sns
 from typing import Optional, List, Any
 from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
+from sortscore.analysis.config import ExperimentConfig
 
 
 def plot_activity_score_distribution(
@@ -161,10 +162,7 @@ def plot_histogram(
 def plot_heatmap(
     data: pd.DataFrame,
     score_col: str,
-    num_aa: int,
-    wt_seq: str,
-    min_pos: int = 1,
-    mutant_type: str = 'aa',
+    experiment: ExperimentConfig,
     wt_score: float = 1.0,
     fig_size: str = 'small',
     export: bool = False,
@@ -184,14 +182,8 @@ def plot_heatmap(
         DataFrame containing the data.
     score_col : str
         Column name for the activity score.
-    num_aa : int
-        Number of amino acids (columns) in the matrix.
-    wt_seq : str
-        Wild-type sequence (AA or DNA).
-    min_pos : int, default 1
-        Starting position for the matrix columns.
-    mutant_type : str, default 'aa'
-        Type of mutant ('aa' or 'dna').
+    experiment : ExperimentConfig
+        Experiment configuration dataclass instance.
     wt_score : float, default 1.0
         Score to assign to WT positions.
     fig_size : str, default 'small'
@@ -212,7 +204,14 @@ def plot_heatmap(
         Plot title.
     """
     logger = logging.getLogger(__name__)
-    dms_matrix = make_dms_matrix(data, score_col, num_aa, wt_seq, min_pos, mutant_type)
+    dms_matrix = make_dms_matrix(
+        data,
+        score_col,
+        experiment.num_aa,
+        experiment.wt_seq,
+        experiment.min_pos,
+        experiment.mutant_type
+    )
     dropout_num, dropout_percent = get_dropout(dms_matrix)
     heatmap_df = fill_wt(dms_matrix, wt_score)
     col_avg_df = make_col_avg_df(heatmap_df)
@@ -259,7 +258,6 @@ def plot_heatmap(
     wt_indices = np.where(wt_mask)
     ax2.scatter(wt_indices[1] + 0.5, wt_indices[0] + 0.5, color='white', s=30, alpha=0.5)
     if motif_indices:
-        # Transparency logic can be added here if needed
         pass
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
@@ -268,7 +266,7 @@ def plot_heatmap(
         cbar.ax.set_yticklabels(tick_labels, fontsize=18)
     else:
         cbar = plt.colorbar(sm, cax=cax)
-    x_labels = [str(i) for i in range(min_pos, min_pos+num_aa)]
+    x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos+experiment.num_aa)]
     ax.set_xticks([i + 0.5 for i in range(0, len(x_labels), tick_freq)])
     ax.set_xticklabels([x_labels[i] for i in range(0, len(x_labels), tick_freq)], rotation=0)
     plot_title = title or f'DMS Heatmap - Dropout {dropout_num} variant ({dropout_percent}%)'
