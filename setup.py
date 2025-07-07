@@ -9,4 +9,9 @@ setup(
     install_requires=[
     ],
     python_requires='>=3.11',
+    entry_points={
+        'console_scripts': [
+            'sortscore=sortscore.run_analysis:main',
+        ],
+    },
 )

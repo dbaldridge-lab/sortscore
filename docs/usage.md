@@ -30,6 +30,26 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 - All count files listed in your experiment setup CSV must have barcodes already mapped to their correct sequences. The Sort-seq pipeline does not perform barcode-to-sequence mapping; it assumes all input files are pre-processed in this way.
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration and file manifest examples.
 
----
+## Experiment Configuration JSON Reference
 
+The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
+
+| Key                   | Type    | Description                                                                                 |
+|-----------------------|---------|---------------------------------------------------------------------------------------------|
+| submission            | str     | Name/ID of the experiment or submission.                                                    |
+| bins_required         | int     | Minimum number of bins per replicate a variant must appear in to be scored.                               |
+| reps_required         | int     | Minimum number of replicates a variant must appear in to be scored.                         |
+| avg_method            | str     | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg', 'codon-weighted').         |
+| minread_threshold     | int     | Minimum reads per bin for a variant to be scored.                                |
+| read_count            | list    | List of demultiplexed read counts for each sample/bin.                                      |
+| output_dir            | str     | Directory where all results and figures will be saved. Default value is the current directory.                                       |
+| experiment_setup_file | str     | Path to the experiment setup CSV file (see below).                                          |
+| wt_seq                | str     | Wild-type sequence (DNA) for the region analyzed.                                     |
+| mutant_type           | str     | Type of mutant ('aa' for amino acid, 'dna' for nucleotide/codon).                           |
+| num_aa                | int     | Number of amino acids or positions in the region analyzed.                                  |
+| min_pos               | int     | Starting amino acid sequence position for the region analyzed (used for plot labels).            |
+
+See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
+
+---
 For more details, see the docstrings in each module and the example configuration files in the `config/` directory.
