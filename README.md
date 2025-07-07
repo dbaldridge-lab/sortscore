@@ -63,8 +63,13 @@
 - See module docstrings and examples for details.
 
 ## System Requirements
-- Python 3.8+
+- Python 3.11+
 - See `requirements.txt` for dependencies.
 
 ## License
 MIT
+
+## Input Requirements
+
+- All count files listed in your experiment setup CSV must have barcodes already mapped to their correct sequences. The Sort-seq pipeline does not perform barcode-to-sequence mapping; it assumes all input files are pre-processed in this way.
+- See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration and file manifest examples.

@@ -1,0 +1,2 @@
+# This project requires Python 3.11 or higher.
+# Specify package dependencies below.
