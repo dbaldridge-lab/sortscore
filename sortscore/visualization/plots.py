@@ -14,7 +14,7 @@ import numpy as np
 import seaborn as sns
 from typing import Optional, List, Any
 from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
-from sortscore.analysis.config import ExperimentConfig
+from sortscore.analysis.load_experiment import ExperimentConfig
 
 
 def plot_activity_score_distribution(
