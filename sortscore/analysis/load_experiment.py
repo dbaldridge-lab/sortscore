@@ -91,3 +91,48 @@ class ExperimentConfig:
             median_gfp.setdefault(rep, {})[bin_] = gfp
         self.counts = counts
         self.median_gfp = median_gfp
+
+    def annotate_counts(self, wt_ref_seq: str) -> None:
+        """
+        Annotate all counts DataFrames with DNA sequence differences and difference counts if mutant_type is 'dna'.
+
+        Parameters
+        ----------
+        wt_ref_seq : str
+            Wild-type DNA sequence to compare against.
+        """
+        from sortscore.sequence_parsing import compare_to_reference
+        if self.mutant_type != 'dna' or not self.counts:
+            return
+        for rep_dict in self.counts.values():
+            for df in rep_dict.values():
+                df['dna_seq_diff'] = df['seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
+                df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
+                df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+
+    def annotate_variants(self, df, wt_ref_seq: str, wt_aa_seq: str, mutant_type: str) -> None:
+        """
+        Annotate a variant count DataFrame with sequence difference columns based on mutant type.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            DataFrame to annotate (will be modified in place).
+        wt_ref_seq : str
+            Wild-type DNA sequence.
+        wt_aa_seq : str
+            Wild-type amino acid sequence.
+        mutant_type : str
+            'aa' for amino acid, 'dna' for nucleotide/codon. If 'dna', all annotations are added.
+        """
+        from sortscore.sequence_parsing import compare_to_reference, translate_dna
+        # AA annotation (always added for aa or dna)
+        df['aa_seq'] = df['variant_seq'].apply(translate_dna)
+        df['aa_seq_diff'] = df['aa_seq'].apply(lambda x: compare_to_reference(wt_aa_seq, x))
+        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
+        df['aa_diff_count'] = df['aa_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+        if mutant_type == 'dna':
+            # DNA annotation
+            df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
+            df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
+            df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)

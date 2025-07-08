@@ -51,5 +51,28 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 
 See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
 
+## Experiment Setup CSV Reference
+
+The experiment setup CSV must contain the following columns:
+- `Replicate`: Replicate number (integer)
+- `Bin`: Bin number (integer)
+- `Read Counts (CSV)`: Path to the variant count file for this replicate/bin
+- `Median GFP`: Median GFP value for this replicate/bin
+
+### Input Variant Count File Format
+Each input variant count file must:
+- Have the first column named `seq` containing the variant sequences.
+- Have the second column containing the unique counts for each variant (column name can be anything, but must be the second column).
+
+Example (TSV):
+```
+seq	count
+ATGCGT...	123
+GCTTAA...	45
+...
+```
+
+The pipeline assumes all input files are pre-processed and formatted as above.
+
 ---
 For more details, see the docstrings in each module and the example configuration files in the `config/` directory.
