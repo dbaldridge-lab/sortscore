@@ -28,10 +28,10 @@ class ExperimentConfig:
     mutant_type: str
     num_aa: int
     min_pos: int
-    median_gfp: Optional[float] = None
     output_dir: Optional[str] = None
     other_params: Optional[Dict[str, Any]] = None
     counts: Optional[Dict[int, Dict[int, 'pd.DataFrame']]] = None
+    median_gfp: Optional[Dict[int, Dict[int, float]]] = None
 
     @staticmethod
     def from_json(json_path: str) -> 'ExperimentConfig':
@@ -51,12 +51,10 @@ class ExperimentConfig:
         with open(json_path, 'r') as f:
             data = json.load(f)
         known_fields = {k: data[k] for k in ['submission', 'experiment_setup_file', 'wt_seq', 'mutant_type', 'num_aa', 'min_pos'] if k in data}
-        median_gfp = data.get('median_gfp')
         output_dir = data.get('output_dir')
-        other_params = {k: v for k, v in data.items() if k not in known_fields and k not in ['median_gfp', 'output_dir']}
+        other_params = {k: v for k, v in data.items() if k not in known_fields and k != 'output_dir'}
         return ExperimentConfig(
             **known_fields,
-            median_gfp=median_gfp,
             output_dir=output_dir,
             other_params=other_params if other_params else None
         )
@@ -66,6 +64,7 @@ class ExperimentConfig:
         Load count DataFrames for all replicates and bins as specified in the experiment setup file.
 
         This populates the `counts` attribute as a nested dictionary: counts[rep][bin] = DataFrame.
+        Also populates the `median_gfp` attribute as a nested dictionary: median_gfp[rep][bin] = float.
 
         Returns
         -------
@@ -77,14 +76,18 @@ class ExperimentConfig:
         except Exception as e:
             raise RuntimeError(f"Failed to load experiment setup file: {e}")
         counts = {}
+        median_gfp = {}
         for _, row in setup_df.iterrows():
-            rep = int(row['replicate'])
-            bin_ = int(row['bin'])
-            count_file = row['count_file']
+            rep = int(row['Replicate'])
+            bin_ = int(row['Bin'])
+            count_file = row['Read Counts (CSV)']
+            gfp = float(row['Median GFP'])
             try:
                 df = pd.read_csv(count_file, sep=None, engine='python')
             except Exception as e:
                 logging.error(f"Failed to load count file {count_file}: {e}")
                 continue
             counts.setdefault(rep, {})[bin_] = df
+            median_gfp.setdefault(rep, {})[bin_] = gfp
         self.counts = counts
+        self.median_gfp = median_gfp

@@ -39,27 +39,14 @@ def main():
         sys.exit(1)
     logging.info(f"Output directories ensured in {output_dir}")
 
-    # Load experiment setup CSV (flexible for replicates and bins)
+    # Load all counts using the dataclass method
     try:
-        setup_df = pd.read_csv(experiment.experiment_setup_file)
+        experiment.load_counts()
     except Exception as e:
-        logging.error(f"Failed to load experiment setup file: {e}")
+        logging.error(f"Failed to load counts: {e}")
         sys.exit(1)
-
-    # Group by replicate and bin, import counts flexibly
-    counts = {}
-    for _, row in setup_df.iterrows():
-        rep = int(row['replicate'])
-        bin_ = int(row['bin'])
-        count_file = row['count_file']
-        try:
-            df = pd.read_csv(count_file, sep=None, engine='python')
-        except Exception as e:
-            logging.error(f"Failed to load count file {count_file}: {e}")
-            continue
-        counts.setdefault(rep, {})[bin_] = df
-    logging.info(f"Loaded counts for {len(counts)} replicates.")
-    # counts[rep][bin] gives the DataFrame for each replicate/bin
+    logging.info(f"Loaded counts for {len(experiment.counts)} replicates.")
+    # experiment.counts[rep][bin] gives the DataFrame for each replicate/bin
 
     print("Sort-seq analysis setup complete. Counts loaded for all replicates and bins.")
 
