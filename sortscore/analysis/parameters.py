@@ -1,7 +1,7 @@
 """
 Parameter definitions for Sort-seq variant analysis.
 
-This module contains default parameters and utility functions for analysis workflows.
+This module contains default parameters for analysis workflows.
 
 Examples
 --------

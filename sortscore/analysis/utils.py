@@ -1,33 +1,14 @@
 """
 Utility functions for activity score analysis.
 
-This module provides general-purpose utilities such as date formatting and suffix generation.
+This module provides general-purpose utilities such as suffix generation and output directory creation.
 
 Examples
 --------
->>> from sortscore.analysis.utils import get_current_date, make_export_suffix
->>> get_current_date()
-'20250701'
+>>> from sortscore.analysis.utils import make_export_suffix
 """
-import datetime
 import os
 from typing import Any
-
-def get_current_date() -> str:
-    """
-    Get the current date as a string in YYYYMMDD format.
-
-    Returns
-    -------
-    date_str : str
-        Current date in YYYYMMDD format.
-
-    Examples
-    --------
-    >>> get_current_date()
-    '20250701'
-    """
-    return datetime.datetime.now().strftime("%Y%m%d")
 
 def make_export_suffix(submission: str, b: int, minread_threshold: int, date_str: str) -> str:
     """
