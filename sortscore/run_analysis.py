@@ -19,6 +19,9 @@ from sortscore.visualization.plots import plot_heatmap
 
 
 def main():
+    # Configure logging
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
+    
     parser = argparse.ArgumentParser(description="Run Sort-seq variant analysis.")
     parser.add_argument('-c', '--config', type=str, required=True, help='Path to experiment config JSON file')
     args = parser.parse_args()
@@ -65,6 +68,7 @@ def main():
             avg_method=experiment.avg_method
         )
         logging.info(f"Calculated scores for {len(scores_df)} variants.")
+        logging.info(f"Score columns: {list(scores_df.columns)}")
     except Exception as e:
         logging.error(f"Failed to calculate activity scores: {e}")
         sys.exit(1)
@@ -73,6 +77,15 @@ def main():
     try:
         experiment.annotate_counts(experiment.wt_seq)
         logging.info("Added sequence annotations.")
+        
+        # Add codon_diff to scores DataFrame for DNA variant types
+        if experiment.variant_type == 'dna' and experiment.counts:
+            from sortscore.sequence_parsing import compare_codon_lists
+            scores_df['codon_diff'] = scores_df['variant_seq'].apply(
+                lambda x: compare_codon_lists(experiment.wt_seq, x)
+            )
+            scores_df['codon_diff'] = scores_df['codon_diff'].fillna('')
+            logging.info("Added codon_diff column to scores DataFrame.")
     except Exception as e:
         logging.warning(f"Failed to add annotations: {e}")
     
@@ -96,18 +109,22 @@ def main():
     try:
         logging.info("Generating visualizations...")
         
+        # Convert avg_method to column name format (replace hyphens with underscores)
+        score_col_suffix = experiment.avg_method.replace('-', '_')
+        score_col = f'avgscore_{score_col_suffix}'
+        
         # AA heatmap
         if 'aa_seq_diff' in scores_df.columns:
             aa_heatmap_file = os.path.join(output_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
-            plot_heatmap(scores_df, f'avgscore_{experiment.avg_method}', experiment, 
-                        output_file=aa_heatmap_file, mutant_type='aa')
+            plot_heatmap(scores_df, score_col, experiment, 
+                        export=True, output=aa_heatmap_file)
             logging.info(f"Saved AA heatmap to {aa_heatmap_file}")
         
         # Codon heatmap  
-        if experiment.mutant_type == 'dna':
+        if experiment.variant_type == 'dna':
             codon_heatmap_file = os.path.join(output_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
-            plot_heatmap(scores_df, f'avgscore_{experiment.avg_method}', experiment,
-                        output_file=codon_heatmap_file, mutant_type='dna')
+            plot_heatmap(scores_df, score_col, experiment,
+                        export=True, output=codon_heatmap_file)
             logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
             
     except Exception as e:
@@ -117,7 +134,8 @@ def main():
     # Save summary statistics
     try:
         stats = {}
-        score_col = f'avgscore_{experiment.avg_method}'
+        score_col_suffix = experiment.avg_method.replace('-', '_')
+        score_col = f'avgscore_{score_col_suffix}'
         if score_col in scores_df.columns:
             stats['all_avg'] = float(scores_df[score_col].mean())
             stats['all_min'] = float(scores_df[score_col].min())
