@@ -60,3 +60,13 @@ figures/*
 
 # Ignore notes
 .obsidian/*
+
+# Ignore test data folders
+tests/oPool5b_GTAC/
+tests/OTX2/
+
+# Ignore virtual environment
+venv/
+
+# Ignore Python package distribution files
+*.egg-info/
