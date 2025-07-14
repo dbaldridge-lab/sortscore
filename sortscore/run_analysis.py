@@ -10,9 +10,12 @@ import argparse
 import json
 import logging
 import sys
+import os
 import pandas as pd
 from sortscore.analysis.load_experiment import ExperimentConfig
 from sortscore.analysis.utils import ensure_output_subdirs
+from sortscore.analysis.score import calculate_full_activity_scores
+from sortscore.visualization.plots import plot_heatmap
 
 
 def main():
@@ -49,6 +52,95 @@ def main():
     # experiment.counts[rep][bin] gives the DataFrame for each replicate/bin
 
     print("Sort-seq analysis setup complete. Counts loaded for all replicates and bins.")
+    
+    # Calculate activity scores using dataclass parameters
+    try:
+        logging.info("Calculating activity scores...")
+        scores_df = calculate_full_activity_scores(
+            counts=experiment.counts,
+            median_gfp=experiment.median_gfp,
+            min_bins=experiment.bins_required,
+            min_reps=experiment.reps_required,
+            minread_threshold=experiment.minread_threshold,
+            avg_method=experiment.avg_method
+        )
+        logging.info(f"Calculated scores for {len(scores_df)} variants.")
+    except Exception as e:
+        logging.error(f"Failed to calculate activity scores: {e}")
+        sys.exit(1)
+    
+    # Annotate sequences if needed
+    try:
+        experiment.annotate_counts(experiment.wt_seq)
+        logging.info("Added sequence annotations.")
+    except Exception as e:
+        logging.warning(f"Failed to add annotations: {e}")
+    
+    # Save results
+    timestamp = pd.Timestamp.now().strftime('%Y%m%d')
+    
+    # Save DNA scores (full data)
+    dna_scores_file = os.path.join(output_dir, f"dna-scores_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+    scores_df.to_csv(dna_scores_file, index=False)
+    logging.info(f"Saved DNA scores to {dna_scores_file}")
+    
+    # Save AA scores (simplified) if available
+    if 'aa_seq_diff' in scores_df.columns:
+        aa_cols = ['aa_seq_diff', 'annotate_aa'] + [col for col in scores_df.columns if 'score' in col.lower()]
+        aa_scores = scores_df[aa_cols].copy()
+        aa_scores_file = os.path.join(output_dir, f"aa-scores_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+        aa_scores.to_csv(aa_scores_file, index=False)
+        logging.info(f"Saved AA scores to {aa_scores_file}")
+    
+    # Generate visualizations
+    try:
+        logging.info("Generating visualizations...")
+        
+        # AA heatmap
+        if 'aa_seq_diff' in scores_df.columns:
+            aa_heatmap_file = os.path.join(output_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
+            plot_heatmap(scores_df, f'avgscore_{experiment.avg_method}', experiment, 
+                        output_file=aa_heatmap_file, mutant_type='aa')
+            logging.info(f"Saved AA heatmap to {aa_heatmap_file}")
+        
+        # Codon heatmap  
+        if experiment.mutant_type == 'dna':
+            codon_heatmap_file = os.path.join(output_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
+            plot_heatmap(scores_df, f'avgscore_{experiment.avg_method}', experiment,
+                        output_file=codon_heatmap_file, mutant_type='dna')
+            logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
+            
+    except Exception as e:
+        logging.error(f"Failed to generate visualizations: {e}")
+        sys.exit(1)
+    
+    # Save summary statistics
+    try:
+        stats = {}
+        score_col = f'avgscore_{experiment.avg_method}'
+        if score_col in scores_df.columns:
+            stats['all_avg'] = float(scores_df[score_col].mean())
+            stats['all_min'] = float(scores_df[score_col].min())
+            stats['all_max'] = float(scores_df[score_col].max())
+            
+            # Add annotation-based stats if available
+            if 'annotate_aa' in scores_df.columns:
+                for annot in ['synonymous', 'nonsense', 'missense_aa']:
+                    subset = scores_df[scores_df['annotate_aa'] == annot]
+                    if len(subset) > 0:
+                        stats[f'{annot.replace("_aa", "")}_avg'] = float(subset[score_col].mean())
+                        stats[f'{annot.replace("_aa", "")}_min'] = float(subset[score_col].min())
+                        stats[f'{annot.replace("_aa", "")}_max'] = float(subset[score_col].max())
+        
+        stats_file = os.path.join(output_dir, f"stats_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.json")
+        with open(stats_file, 'w') as f:
+            json.dump(stats, f, indent=2)
+        logging.info(f"Saved statistics to {stats_file}")
+        
+    except Exception as e:
+        logging.warning(f"Failed to save statistics: {e}")
+    
+    print(f"Analysis complete! Results saved to {output_dir}")
 
 if __name__ == "__main__":
     main()
