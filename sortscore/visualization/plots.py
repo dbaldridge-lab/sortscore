@@ -210,7 +210,7 @@ def plot_heatmap(
         experiment.num_aa,
         experiment.wt_seq,
         experiment.min_pos,
-        experiment.mutant_type
+        experiment.variant_type
     )
     dropout_num, dropout_percent = get_dropout(dms_matrix)
     heatmap_df = fill_wt(dms_matrix, wt_score)
@@ -279,10 +279,10 @@ def plot_heatmap(
     ax1.set_xticks([])
     ax1.set_yticks([])
     ax2.set_xlabel('Residue Sequence Number', fontsize=24)
-    ax2.set_ylabel('Mutant Amino Acid', fontsize=24)
+    ax2.set_ylabel('Variant Amino Acid', fontsize=24)
     ax2.tick_params(axis='both', which='major', labelsize=20)
     if row_avg:
-        ax3.set_ylabel('Mutant Amino Acid', fontsize=24, labelpad=8, ha='center')
+        ax3.set_ylabel('Variant Amino Acid', fontsize=24, labelpad=8, ha='center')
         ax3.set_yticks(ax2.get_yticks())
         ax3.set_yticklabels(ax2.get_yticklabels())
         ax3.tick_params(axis='y', which='major', labelsize=20)

@@ -43,7 +43,7 @@ def test_plot_heatmap(tmp_path):
         num_aa=2,
         wt_seq='AB',
         min_pos=1,
-        mutant_type='aa',
+        variant_type='aa',
         wt_score=1.0,
         fig_size='small',
         export=True,

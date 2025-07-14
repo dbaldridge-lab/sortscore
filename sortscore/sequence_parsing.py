@@ -62,3 +62,62 @@ def compare_to_reference(ref_seq: str, sequence: str) -> str:
             difference = f'{ref_seq[i]}.{i+1}.{sequence[i]}'
             differences.append(difference)
     return ', '.join(differences)
+
+def get_codons(dna_seq: str) -> List[str]:
+    """
+    Split a DNA sequence into codons (groups of 3 nucleotides).
+
+    Parameters
+    ----------
+    dna_seq : str
+        DNA sequence.
+
+    Returns
+    -------
+    codons : List[str]
+        List of codon strings.
+
+    Raises
+    ------
+    ValueError
+        If DNA sequence length is not divisible by 3.
+
+    Examples
+    --------
+    >>> get_codons('ATGGCC')
+    ['ATG', 'GCC']
+    """
+    if len(dna_seq) % 3 != 0:
+        raise ValueError("The length of the DNA sequence must be divisible by 3 to label codons.")
+    return [dna_seq[i:i+3] for i in range(0, len(dna_seq), 3)]
+
+def compare_codon_lists(wt_seq: str, variant_seq: str) -> str:
+    """
+    Compare codon sequences between wild-type and variant DNA sequences.
+
+    Parameters
+    ----------
+    wt_seq : str
+        Wild-type DNA sequence.
+    variant_seq : str
+        Variant DNA sequence.
+
+    Returns
+    -------
+    differences : str
+        Period-separated string of codon differences in format 'wtAA(wtCodon).position.varAA(varCodon)'.
+
+    Examples
+    --------
+    >>> compare_codon_lists('ATGGCC', 'ATGTCC')
+    'A(GCC).2.S(TCC)'
+    """
+    wt_codons = get_codons(wt_seq)
+    variant_codons = get_codons(variant_seq)
+    differences = []
+    for i, (wt_codon, var_codon) in enumerate(zip(wt_codons, variant_codons)):
+        if wt_codon != var_codon:
+            wt_aa = translate_dna(wt_codon)
+            var_aa = translate_dna(var_codon)
+            differences.append(f"{wt_aa}({wt_codon}).{i+1}.{var_aa}({var_codon})")
+    return '.'.join(differences)

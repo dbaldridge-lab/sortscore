@@ -22,11 +22,11 @@ def extract_value(cell: str):
     else:
         return np.nan
 
-def dms_matrix_template(num_aa: int, min_pos: int = 1, mutant_type: str = 'aa') -> pd.DataFrame:
+def dms_matrix_template(num_aa: int, min_pos: int = 1, variant_type: str = 'aa') -> pd.DataFrame:
     column_values = list(range(min_pos, min_pos + num_aa))
-    if mutant_type == 'aa':
+    if variant_type == 'aa':
         row_labels = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
-    elif mutant_type == 'dna':
+    elif variant_type == 'dna':
         row_labels = [
             'W(TGG)', 'F(TTT)', 'F(TTC)', 'Y(TAT)', 'Y(TAC)', 'P(CCT)', 'P(CCC)', 'P(CCA)', 'P(CCG)', 'M(ATG)',
             'I(ATT)', 'I(ATC)', 'I(ATA)', 'L(TTA)', 'L(TTG)', 'L(CTT)', 'L(CTC)', 'L(CTA)', 'L(CTG)',
@@ -44,20 +44,20 @@ def make_dms_matrix(
     num_aa: int,
     wt_seq: str,
     min_pos: int = 1,
-    mutant_type: str = 'aa'
+    variant_type: str = 'aa'
 ) -> pd.DataFrame:
     data = data.dropna(subset=[score_col])
-    matrix = dms_matrix_template(num_aa, min_pos, mutant_type)
-    diff_col = 'aa_seq_diff' if mutant_type == 'aa' else 'codon_diff'
+    matrix = dms_matrix_template(num_aa, min_pos, variant_type)
+    diff_col = 'aa_seq_diff' if variant_type == 'aa' else 'codon_diff'
     for _, row in data.iterrows():
         char, col = extract_position(row[diff_col])
         if char in matrix.index and col in matrix.columns:
             matrix.at[char, col] = row[score_col]
-    if mutant_type == 'aa':
+    if variant_type == 'aa':
         for index, amino_acid in enumerate(wt_seq, start=min_pos):
             if amino_acid in matrix.index and index in matrix.columns:
                 matrix.at[amino_acid, index] = 'WT'
-    if mutant_type == 'dna':
+    if variant_type == 'dna':
         codon_enumeration = [((i // 3)+1, wt_seq[i:i+3]) for i in range(0, len(wt_seq), 3)]
         for index, codon in codon_enumeration:
             aa = translate_dna(codon)
