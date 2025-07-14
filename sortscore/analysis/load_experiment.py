@@ -12,6 +12,7 @@ Examples
 """
 import json
 import logging
+import pandas as pd
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 
@@ -30,8 +31,14 @@ class ExperimentConfig:
     min_pos: int
     output_dir: Optional[str] = None
     other_params: Optional[Dict[str, Any]] = None
-    counts: Optional[Dict[int, Dict[int, 'pd.DataFrame']]] = None
+    counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
     median_gfp: Optional[Dict[int, Dict[int, float]]] = None
+    
+    # Analysis parameters with defaults
+    bins_required: int = 1
+    reps_required: int = 1  
+    avg_method: str = 'simple-avg'
+    minread_threshold: int = 0
 
     @staticmethod
     def from_json(json_path: str) -> 'ExperimentConfig':
