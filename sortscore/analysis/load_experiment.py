@@ -14,7 +14,7 @@ import json
 import logging
 import pandas as pd
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
