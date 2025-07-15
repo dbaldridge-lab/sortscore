@@ -167,14 +167,17 @@ def plot_heatmap(
     fig_size: str = 'small',
     export: bool = False,
     output: Optional[str] = None,
+    format: str = 'png',
+    dpi: int = 300,
     tick_values: Optional[List[float]] = None,
     tick_labels: Optional[List[str]] = None,
     motif_indices: Optional[List[int]] = None,
     row_avg: bool = False,
-    title: Optional[str] = None
+    title: Optional[str] = None,
+    export_matrix: bool = False
 ) -> None:
     """
-    Plot a DMS heatmap using a matrix of activity scores.
+    Plot a MAVE heatmap using a matrix of activity scores.
 
     Parameters
     ----------
@@ -192,6 +195,10 @@ def plot_heatmap(
         If True, save the plot to file.
     output : str, optional
         Output file path if export is True.
+    format : str, default 'png'
+        Output format ('png' or 'svg').
+    dpi : int, default 300
+        Resolution for saved plot.
     tick_values : list of float, optional
         Tick values for the colorbar.
     tick_labels : list of str, optional
@@ -202,6 +209,8 @@ def plot_heatmap(
         If True, plot row averages.
     title : str, optional
         Plot title.
+    export_matrix : bool, default False
+        If True, export the heatmap matrix data to CSV.
     """
     logger = logging.getLogger(__name__)
     dms_matrix = make_dms_matrix(
@@ -209,12 +218,24 @@ def plot_heatmap(
         score_col,
         experiment.num_aa,
         experiment.wt_seq,
-        experiment.min_pos,
         experiment.variant_type
     )
     dropout_num, dropout_percent = get_dropout(dms_matrix)
     heatmap_df = fill_wt(dms_matrix, wt_score)
     col_avg_df = make_col_avg_df(heatmap_df)
+    
+    # Export matrix data if requested
+    if export_matrix and export and output:
+        # Create matrix with proper column headers (using experiment.min_pos)
+        matrix_for_export = heatmap_df.copy()
+        # Update column names to reflect true residue positions
+        new_columns = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
+        matrix_for_export.columns = new_columns
+        
+        # Generate matrix output filename from plot output
+        matrix_output = output.replace('.png', '_matrix.csv').replace('.svg', '_matrix.csv')
+        matrix_for_export.to_csv(matrix_output)
+        logger.info(f"Heatmap matrix saved to {matrix_output}")
     import matplotlib.pyplot as plt
     import seaborn as sns
     from matplotlib.gridspec import GridSpec
@@ -267,22 +288,30 @@ def plot_heatmap(
     else:
         cbar = plt.colorbar(sm, cax=cax)
     x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos+experiment.num_aa)]
-    ax.set_xticks([i + 0.5 for i in range(0, len(x_labels), tick_freq)])
-    ax.set_xticklabels([x_labels[i] for i in range(0, len(x_labels), tick_freq)], rotation=0)
-    plot_title = title or f'DMS Heatmap - Dropout {dropout_num} variant ({dropout_percent}%)'
+    # Create tick positions and ensure min_pos is always shown
+    tick_indices = list(range(0, len(x_labels), tick_freq))
+    if 0 not in tick_indices:
+        tick_indices = [0] + tick_indices
+    
+    ax.set_xticks([i + 0.5 for i in tick_indices])
+    ax.set_xticklabels([x_labels[i] for i in tick_indices], rotation=0)
+    if dropout_num > 0:
+        plot_title = title or f'MAVE Heatmap - Dropout {dropout_num} variant ({round(dropout_percent)}%)'
+    else:
+        plot_title = title or 'MAVE Heatmap'
     if fig_size == 'small':
-        fig.suptitle(plot_title, fontsize=28, y=0.89)
+        fig.suptitle(plot_title, fontsize=32, y=0.89)
     elif fig_size == 'large':
-        fig.suptitle(plot_title, fontsize=30, y=0.91)
+        fig.suptitle(plot_title, fontsize=34, y=0.91)
     fig.subplots_adjust(top=0.85, bottom=0.15)
     ax1.set_ylabel('Avg', fontsize=20, labelpad=8, ha='center')
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax2.set_xlabel('Residue Sequence Number', fontsize=24)
-    ax2.set_ylabel('Variant Amino Acid', fontsize=24)
+    ax2.set_xlabel('Residue Sequence Number', fontsize=28)
+    ax2.set_ylabel('Variant Amino Acid', fontsize=28)
     ax2.tick_params(axis='both', which='major', labelsize=20)
     if row_avg:
-        ax3.set_ylabel('Variant Amino Acid', fontsize=24, labelpad=8, ha='center')
+        ax3.set_ylabel('Variant Amino Acid', fontsize=28, labelpad=8, ha='center')
         ax3.set_yticks(ax2.get_yticks())
         ax3.set_yticklabels(ax2.get_yticklabels())
         ax3.tick_params(axis='y', which='major', labelsize=20)
@@ -290,7 +319,7 @@ def plot_heatmap(
         ax2.set_yticks([])
         ax3.set_xticks([])
     if export and output:
-        plt.savefig(output, dpi=300, format='png', transparent=True)
+        plt.savefig(output, dpi=dpi, format=format, transparent=True)
         logger.info(f"Heatmap plot saved to {output}")
     else:
         plt.show()

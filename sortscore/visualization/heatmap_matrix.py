@@ -1,7 +1,7 @@
 """
-Matrix and heatmap utilities for DMS visualization.
+Matrix and heatmap utilities for MAVE visualization.
 
-This module provides functions to create and fill DMS matrices for heatmap plotting, using sequence parsing and stats utilities.
+This module provides functions to create and fill MAVE matrices for heatmap plotting, using sequence parsing and stats utilities.
 """
 import pandas as pd
 import numpy as np
@@ -22,8 +22,9 @@ def extract_value(cell: str):
     else:
         return np.nan
 
-def dms_matrix_template(num_aa: int, min_pos: int = 1, variant_type: str = 'aa') -> pd.DataFrame:
-    column_values = list(range(min_pos, min_pos + num_aa))
+def dms_matrix_template(num_aa: int, variant_type: str = 'aa') -> pd.DataFrame:
+    # Always use 1-based indexing internally for matrix columns
+    column_values = list(range(1, num_aa + 1))
     if variant_type == 'aa':
         row_labels = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
     elif variant_type == 'dna':
@@ -43,18 +44,17 @@ def make_dms_matrix(
     score_col: str,
     num_aa: int,
     wt_seq: str,
-    min_pos: int = 1,
     variant_type: str = 'aa'
 ) -> pd.DataFrame:
     data = data.dropna(subset=[score_col])
-    matrix = dms_matrix_template(num_aa, min_pos, variant_type)
+    matrix = dms_matrix_template(num_aa, variant_type)
     diff_col = 'aa_seq_diff' if variant_type == 'aa' else 'codon_diff'
     for _, row in data.iterrows():
         char, col = extract_position(row[diff_col])
         if char in matrix.index and col in matrix.columns:
             matrix.at[char, col] = row[score_col]
     if variant_type == 'aa':
-        for index, amino_acid in enumerate(wt_seq, start=min_pos):
+        for index, amino_acid in enumerate(wt_seq, start=1):
             if amino_acid in matrix.index and index in matrix.columns:
                 matrix.at[amino_acid, index] = 'WT'
     if variant_type == 'dna':
@@ -67,6 +67,7 @@ def make_dms_matrix(
     return matrix
 
 def fill_wt(dms_matrix: pd.DataFrame, wt_dna_score: float) -> pd.DataFrame:
+    pd.set_option('future.no_silent_downcasting', True)
     heatmap_df = dms_matrix.map(extract_value)
     heatmap_df = heatmap_df.replace('WT', wt_dna_score).astype(float)
     return heatmap_df
@@ -78,12 +79,12 @@ def make_col_avg_df(heatmap_df: pd.DataFrame) -> pd.DataFrame:
 
 def get_dropout(df: pd.DataFrame):
     """
-    Calculate the number and percent of missing (dropout) variants in a DMS matrix.
+    Calculate the number and percent of missing (dropout) variants in a MAVE matrix.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        DMS matrix DataFrame.
+        MAVE matrix DataFrame.
 
     Returns
     -------
