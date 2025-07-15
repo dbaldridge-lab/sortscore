@@ -68,7 +68,8 @@ def main():
             min_bins=experiment.bins_required,
             min_reps=experiment.reps_required,
             minread_threshold=experiment.minread_threshold,
-            avg_method=experiment.avg_method
+            avg_method=experiment.avg_method,
+            total_reads=experiment.total_reads
         )
         logging.info(f"Calculated scores for {len(scores_df)} variants.")
         logging.info(f"Score columns: {list(scores_df.columns)}")
@@ -95,12 +96,17 @@ def main():
     
     # Save AA scores (aggregates synonymous variants)
     if 'aa_seq_diff' in scores_df.columns:
+        # Filter out rows with NaN values first
+        score_col_suffix = experiment.avg_method.replace('-', '_')
+        score_col = f'avgscore_{score_col_suffix}'
+        scores_df_drop_nan = scores_df.dropna(subset=[score_col])
+        
         # Aggregate synonymous variants
-        aa_scores = aggregate_synonymous_variants(scores_df)
-        aa_cols = ['aa_seq_diff', 'annotate_aa'] + [col for col in aa_scores.columns if 'score' in col.lower()]
-        aa_scores_subset = aa_scores[aa_cols].copy()
+        columns_to_average = ['avgscore', 'avgscore_rep_weighted', 'avgscore_codon_weighted', 'Rep1.score', 'Rep2.score', 'Rep3.score']
+        aa_scores = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[columns_to_average].mean().reset_index()
+        
         aa_scores_file = os.path.join(scores_dir, f"aa-scores_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
-        aa_scores_subset.to_csv(aa_scores_file, index=False)
+        aa_scores.to_csv(aa_scores_file, index=False)
         logging.info(f"Saved aggregated AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
     
     # Generate visualizations

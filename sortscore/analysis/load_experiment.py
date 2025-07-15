@@ -33,6 +33,7 @@ class ExperimentConfig:
     other_params: Optional[Dict[str, Any]] = None
     counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
     median_gfp: Optional[Dict[int, Dict[int, float]]] = None
+    total_reads: Optional[Dict[int, Dict[int, int]]] = None
     
     # Analysis parameters with defaults
     bins_required: int = 1
@@ -97,11 +98,22 @@ class ExperimentConfig:
             raise RuntimeError(f"Failed to load experiment setup file: {e}")
         counts = {}
         median_gfp = {}
+        total_reads = {}
+        
         for _, row in setup_df.iterrows():
             rep = int(row['Replicate'])
             bin_ = int(row['Bin'])
-            count_file = str(row['Read Counts (CSV)']).strip()
+            count_file = str(row['Path']).strip()
+            if 'Read Counts (CSV)' in row:
+                count_file = str(row['Read Counts (CSV)']).strip()
+                
             gfp = float(row['Median GFP'])
+            
+            # Load total reads if available (for sample read depth normalization)
+            if 'Read Count' in row:
+                total_read_count = int(row['Read Count'])
+                total_reads.setdefault(rep, {})[bin_] = total_read_count
+            
             try:
                 df = pd.read_csv(count_file, sep=None, engine='python')
                 # Standardize column names: first column is variant sequence, second is count
@@ -115,8 +127,26 @@ class ExperimentConfig:
                 continue
             counts.setdefault(rep, {})[bin_] = df
             median_gfp.setdefault(rep, {})[bin_] = gfp
+            
         self.counts = counts
         self.median_gfp = median_gfp
+        
+        # Set total_reads if we loaded any
+        if total_reads:
+            self.total_reads = total_reads
+            logging.info(f"Loaded total read counts for proper normalization: {len(total_reads)} replicates")
+    
+    def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
+        """
+        Set total sequencing reads for proper normalization (controlling for sequencing depth).
+        
+        Parameters
+        ----------
+        total_reads : dict
+            Nested dict of total sequencing reads: total_reads[rep][bin] = int.
+            These should be the total reads from sequencing before any filtering.
+        """
+        self.total_reads = total_reads
 
     def annotate_counts(self, wt_ref_seq: str) -> None:
         """

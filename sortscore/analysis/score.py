@@ -111,6 +111,7 @@ def calculate_full_activity_scores(
     minread_threshold: float = 0.0,
     avg_method: str = 'rep-weighted',
     groupby_cols: Optional[list] = None,
+    total_reads: Optional[Dict[int, Dict[int, int]]] = None,
 ) -> pd.DataFrame:
     """
     Calculate activity scores for all variants using full Sort-seq logic (per-bin/rep normalization, bin proportions, replicate/codon/rep-weighted averaging).
@@ -131,6 +132,9 @@ def calculate_full_activity_scores(
         Averaging method: 'simple-avg', 'rep-weighted', or 'codon-weighted'.
     groupby_cols : list, optional
         Columns to group by for codon/synonymous averaging (e.g., ['annotate_aa', 'aa_seq_diff']).
+    total_reads : dict, optional
+        Nested dict of total sequencing reads for normalization: total_reads[rep][bin] = int.
+        If not provided, uses sum of variant counts in each bin.
 
     Returns
     -------
@@ -160,9 +164,13 @@ def calculate_full_activity_scores(
     for rep in counts:
         for bin_ in counts[rep]:
             col = f'count.r{rep}b{bin_}'
-            total_reads = counts[rep][bin_]['count'].sum()
+            # Use external total reads (prior to filtering) if provided, otherwise sum of variant counts
+            if total_reads is not None and rep in total_reads and bin_ in total_reads[rep]:
+                total_reads_for_norm = total_reads[rep][bin_]
+            else:
+                total_reads_for_norm = counts[rep][bin_]['count'].sum()
             norm_col = f'norm.{col}'
-            df[norm_col] = df[col] / total_reads * 1e6
+            df[norm_col] = df[col] / total_reads_for_norm * 1e6
             # Apply minread threshold
             if minread_threshold > 0:
                 df[norm_col] = df[norm_col].where(df[norm_col] >= minread_threshold, np.nan)
