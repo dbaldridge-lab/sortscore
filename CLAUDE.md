@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`sortscore` is a modular Python package for Sort-seq variant analysis that calculates activity scores from sequencing count data. The package has been refactored from project-specific "oPool" and "DMS activity analysis" to generalized Sort-seq analysis. It processes variant count files across multiple replicates and bins, normalizes the data, and computes weighted activity scores using different averaging methods.
+`sortscore` is a modular Python package for Sort-seq variant analysis that calculates activity scores from sequencing count data. The package has been refactored from project-specific "oPool" and "MAVE activity analysis" to generalized Sort-seq analysis. It processes variant count files across multiple replicates and bins, normalizes the data, and computes weighted activity scores using different averaging methods.
 
 **Key Design Principles:**
 - Modular architecture with logical separation (analysis, visualization, utilities)
@@ -16,7 +16,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Running Analysis
 ```bash
-# Main analysis command
+# For testing pipeline, activate venv and use console script
+source venv/bin/activate
+sortscore --config path/to/config.json
+
+# Alternative: Main analysis command
 python -m sortscore.run_analysis --config path/to/config.json
 
 # Run tests
@@ -52,7 +56,7 @@ sortscore --config config.json
 
 **Visualization** (`sortscore/visualization/plots.py`):
 - Plotting functions for activity score distributions, heatmaps, and beeswarms
-- Integrates with `heatmap_matrix.py` for DMS matrix visualization
+- Integrates with `heatmap_matrix.py` for MAVE matrix visualization
 
 ### Data Flow
 
