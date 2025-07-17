@@ -242,14 +242,23 @@ def plot_heatmap(
     nan_mask = dms_matrix.isnull()
     wt_mask = dms_matrix == 'WT'
     if fig_size == 'small':
-        fig = plt.figure(figsize=(16.5, 12))
-        tick_freq = 2
+        # Calculate width based on number of amino acids (minimum 16.5, scale with AA count)
+        width = max(16.5, experiment.num_aa * 0.15)  # ~0.15 inches per AA position
+        fig = plt.figure(figsize=(width, 12), facecolor='white')
+        # With dynamic width, we can show more ticks - aim for ~40-50 ticks
+        tick_freq = max(1, experiment.num_aa // 40)
     elif fig_size == 'large':
-        fig = plt.figure(figsize=(30, 10))
-        tick_freq = 5
+        # For large figures, use more width per AA
+        width = max(30, experiment.num_aa * 0.25)  # ~0.25 inches per AA position
+        fig = plt.figure(figsize=(width, 10), facecolor='white')
+        # With even more width, show more ticks - aim for ~50-60 ticks
+        tick_freq = max(1, experiment.num_aa // 50)
     elif fig_size == 'long':
-        fig = plt.figure(figsize=(30, 25))
-        tick_freq = 5
+        # For long figures, use even more width per AA
+        width = max(30, experiment.num_aa * 0.3)  # ~0.3 inches per AA position
+        fig = plt.figure(figsize=(width, 25), facecolor='white')
+        # With the most width, show the most ticks - aim for ~60 ticks
+        tick_freq = max(1, experiment.num_aa // 60)
     if row_avg:
         row_avg_df = pd.DataFrame(heatmap_df.mean(axis=1), columns=['Avg'])
         gs = GridSpec(2,3, width_ratios=[1, 35, 1], height_ratios=[1, 45], hspace=0.03, wspace=0.03)
@@ -296,7 +305,7 @@ def plot_heatmap(
     ax.set_xticks([i + 0.5 for i in tick_indices])
     ax.set_xticklabels([x_labels[i] for i in tick_indices], rotation=0)
     if dropout_num > 0:
-        plot_title = title or f'MAVE Heatmap - Dropout {dropout_num} variant ({round(dropout_percent)}%)'
+        plot_title = title or f'MAVE Heatmap - Dropout {dropout_num} variants ({round(dropout_percent)}%)'
     else:
         plot_title = title or 'MAVE Heatmap'
     if fig_size == 'small':
@@ -319,7 +328,7 @@ def plot_heatmap(
         ax2.set_yticks([])
         ax3.set_xticks([])
     if export and output:
-        plt.savefig(output, dpi=dpi, format=format, transparent=True)
+        plt.savefig(output, dpi=dpi, format=format, facecolor='white', edgecolor='none')
         logger.info(f"Heatmap plot saved to {output}")
     else:
         plt.show()

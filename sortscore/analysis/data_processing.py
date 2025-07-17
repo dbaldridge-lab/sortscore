@@ -37,9 +37,10 @@ def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
         raise ValueError("scores_df must contain 'aa_seq_diff' column for AA aggregation")
     
     # Group by aa_seq_diff and aggregate scores
-    aa_data = scores_df.groupby('aa_seq_diff').agg({
-        score_col: 'mean',
-        'variant_seq': 'first'  # Keep one example sequence for reference
-    }).reset_index()
+    agg_cols = {score_col: 'mean'}
+    if 'annotate_aa' in scores_df.columns:
+        agg_cols['annotate_aa'] = 'first'
+    
+    aa_data = scores_df.groupby('aa_seq_diff').agg(agg_cols).reset_index()
     
     return aa_data

@@ -106,6 +106,7 @@ def calculate_activity_scores(
 def calculate_full_activity_scores(
     counts: Dict[int, Dict[int, pd.DataFrame]],
     median_gfp: Dict[int, Dict[int, float]],
+    merged_df: pd.DataFrame,
     min_bins: int = 3,
     min_reps: int = 3,
     minread_threshold: float = 0.0,
@@ -145,20 +146,8 @@ def calculate_full_activity_scores(
     --------
     >>> scores = calculate_full_activity_scores(counts, median_gfp)
     """
-    # 1. Merge all counts into a single DataFrame (wide format)
-    all_variants = set()
-    for rep in counts:
-        for bin_ in counts[rep]:
-            all_variants.update(counts[rep][bin_]['variant_seq'])
-    all_variants = sorted(all_variants)
-    df = pd.DataFrame({'variant_seq': all_variants})
-
-    # 2. Add count columns for each rep/bin
-    for rep in counts:
-        for bin_ in counts[rep]:
-            col = f'count.r{rep}b{bin_}'
-            d = counts[rep][bin_].set_index('variant_seq')['count']
-            df[col] = df['variant_seq'].map(d).fillna(0)
+    # 1. Use the provided merged DataFrame
+    df = merged_df.copy()
 
     # 3. Normalize counts per million for each rep/bin
     for rep in counts:

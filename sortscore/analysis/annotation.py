@@ -42,6 +42,9 @@ def annotate_scores_dataframe(
     """
     df = scores_df.copy()
     
+    # Check if aa_seq_diff already exists (from pre-annotated data)
+    has_pre_annotated_aa = 'aa_seq_diff' in df.columns
+    
     if variant_type == 'dna':
         # Add codon differences
         df['codon_diff'] = df['variant_seq'].apply(
@@ -49,22 +52,70 @@ def annotate_scores_dataframe(
         )
         df['codon_diff'] = df['codon_diff'].fillna('')
         
-        # Add AA sequence annotations
-        wt_aa_seq = translate_dna(wt_dna_seq)
-        df['aa_seq'] = df['variant_seq'].apply(translate_dna)
-        df['aa_seq_diff'] = df['aa_seq'].apply(
-            lambda x: compare_to_reference(wt_aa_seq, x)
-        )
-        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
-        
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
             lambda x: compare_to_reference(wt_dna_seq, x)
         )
         df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
         
-        # Add functional annotations
-        df = basic_annotate(df, wt_dna_seq)
+        # Add AA sequence annotations only if not pre-annotated
+        if not has_pre_annotated_aa:
+            wt_aa_seq = translate_dna(wt_dna_seq)
+            df['aa_seq'] = df['variant_seq'].apply(translate_dna)
+            df['aa_seq_diff'] = df['aa_seq'].apply(
+                lambda x: compare_to_reference(wt_aa_seq, x)
+            )
+            df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
+        
+    elif variant_type == 'aa':
+        # For AA variants, add sequence differences only if not pre-annotated
+        if not has_pre_annotated_aa:
+            wt_aa_seq = translate_dna(wt_dna_seq) if len(wt_dna_seq) % 3 == 0 else wt_dna_seq
+            df['aa_seq_diff'] = df['variant_seq'].apply(
+                lambda x: compare_to_reference(wt_aa_seq, x)
+            )
+            df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
+    
+    # Add functional annotations
+    df = add_variant_categories(df)
+    
+    return df
+
+
+def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: str = 'dna') -> pd.DataFrame:
+    """
+    Add sequence difference columns to a DataFrame.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with variant sequences.
+    wt_dna_seq : str
+        Wild-type DNA sequence.
+    variant_type : str, default 'dna'
+        Type of variants ('dna' or 'aa').
+        
+    Returns
+    -------
+    df : pd.DataFrame
+        DataFrame with sequence difference columns added.
+    """
+    df = df.copy()
+    
+    if variant_type == 'dna':
+        # Add DNA sequence differences
+        df['dna_seq_diff'] = df['variant_seq'].apply(
+            lambda x: compare_to_reference(wt_dna_seq, x)
+        )
+        df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
+        
+        # Add AA sequence differences
+        wt_aa_seq = translate_dna(wt_dna_seq)
+        df['aa_seq'] = df['variant_seq'].apply(translate_dna)
+        df['aa_seq_diff'] = df['aa_seq'].apply(
+            lambda x: compare_to_reference(wt_aa_seq, x)
+        )
+        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         
     elif variant_type == 'aa':
         # For AA variants, sequences are already amino acids
@@ -73,34 +124,28 @@ def annotate_scores_dataframe(
             lambda x: compare_to_reference(wt_aa_seq, x)
         )
         df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
-        
-        # Add functional annotations for AA variants
-        df = basic_annotate(df, wt_dna_seq)
     
     return df
 
 
-def basic_annotate(df: pd.DataFrame, wt_dna_seq: str) -> pd.DataFrame:
+def add_variant_categories(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add basic functional annotation categories.
+    Add variant category annotations based on existing sequence difference columns.
     
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame with sequence difference columns.
-    wt_dna_seq : str
-        Wild-type DNA sequence.
+        DataFrame with sequence difference columns (aa_seq_diff, dna_seq_diff).
         
     Returns
     -------
-    annotated_df : pd.DataFrame
-        DataFrame with functional annotation columns.
+    df : pd.DataFrame
+        DataFrame with variant category columns added.
     """
     df = df.copy()
     
-    # Basic annotation logic
+    # Classify variants based on AA changes
     if 'aa_seq_diff' in df.columns:
-        # Classify variants based on AA changes
         def classify_aa_variant(aa_diff, dna_diff=None):
             if not aa_diff or aa_diff == '':
                 # Check if this is true WT (no DNA changes) or synonymous (DNA changes but same AA)
@@ -118,8 +163,8 @@ def basic_annotate(df: pd.DataFrame, wt_dna_seq: str) -> pd.DataFrame:
         else:
             df['annotate_aa'] = df['aa_seq_diff'].apply(classify_aa_variant)
     
+    # Classify DNA variants 
     if 'dna_seq_diff' in df.columns:
-        # Classify DNA variants 
         def classify_dna_variant(dna_diff, aa_diff):
             if not dna_diff or dna_diff == '':
                 return 'wt_dna'
@@ -197,28 +242,3 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
         aggregated_df = aggregated_df.merge(first_others, on=['aa_seq_diff', 'annotate_aa'])
     
     return aggregated_df
-
-
-def add_functional_annotations(
-    df: pd.DataFrame, 
-    wt_dna_seq: str, 
-    spike_in_seq: Optional[str] = None
-) -> pd.DataFrame:
-    """
-    Add functional annotation categories (synonymous, missense, nonsense, etc.).
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with sequence difference columns.
-    wt_dna_seq : str
-        Wild-type DNA sequence.
-    spike_in_seq : str, optional
-        Spike-in sequence for identification.
-        
-    Returns
-    -------
-    annotated_df : pd.DataFrame
-        DataFrame with functional annotation columns.
-    """
-    return basic_annotate(df, wt_dna_seq)

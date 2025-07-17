@@ -73,6 +73,69 @@ sortscore --config config.json
 
 **Count Files**: TSV/CSV with columns `seq` (variant sequence) and count column (any name, must be second column)
 
+#### Count File Formats
+
+The package supports multiple formats for variant sequences in count files:
+
+1. **Full Sequences**: Complete DNA or amino acid sequences (original format)
+   - DNA: Full nucleotide sequences for `variant_type: "dna"`
+   - AA: Full amino acid sequences for `variant_type: "aa"`
+
+2. **Pre-annotated Amino Acid Changes** (Auto-detected): Individual amino acid changes in various formats
+   - **Single-letter codes**: `M1M`, `R98C`, `P171X`
+   - **Three-letter codes**: `Met1Met`, `Arg98Cys`, `Pro171Ter`
+   - **HGVS p. notation**: `p.M1M`, `p.Arg98Cys`, `p.Pro171Ter`
+   - **With separators**: `M.1.M`, `R-98-C`, `P_171_X`
+
+**Auto-detection Features**:
+- **Headers**: System automatically detects if files have headers by checking when the second column becomes numeric
+- **Variant format**: Automatically detects pre-annotated amino acid changes vs full sequences
+- **No configuration needed**: Just use `variant_type: "aa"` in your config file for amino acid data
+
+#### Example Count Files
+
+**Full sequence format** (traditional):
+```
+seq,count
+MGKLIVTAGHLYSLMNDQTDKEVNAKLRGFMCDVIVEVDQFQGVSGFDGMVDTLQDVTLVGAGDGVHQFVLKDGDLVLHFSGHVLSGSTYHLPLSRNVLPNVSVMGRKVVVLMGRNSDKGTLGDLPVHPFPFHGKGVMVTGFNGRDGAAILANLLSRMKGK,1523
+MGKLIVTAGHLYSLMNDQTDKEVNAKLRGFMCDVIVEVDQFQGVSGFDGMVDTLQDVTLVGAGDGVHQFVLKDGDLVLHFSGHVLSGSTYHLPLSRNVLPNVSVMGRKVVVLMGRNSDKGTLGDLPVHPFPFHGKGVMVTGFNGRDGAAILANLLSRMKGK,892
+```
+
+**Pre-annotated format with headers** (auto-detected):
+```
+seq,count
+M1M,1365835
+R98C,137270
+P171X,125092
+W93Q,124464
+```
+
+**Pre-annotated format without headers** (auto-detected):
+```
+M1M,1365835
+R98C,137270
+P171X,125092
+W93Q,124464
+```
+
+**Three-letter format** (auto-detected):
+```
+seq,count
+Met1Met,1365835
+Arg98Cys,137270
+Pro171Ter,125092
+Trp93Gln,124464
+```
+
+**HGVS format** (auto-detected):
+```
+seq,count
+p.M1M,1365835
+p.Arg98Cys,137270
+p.Pro171Ter,125092
+p.Trp93Gln,124464
+```
+
 ### Key Conventions
 
 - Count data stored as nested dictionaries: `counts[replicate][bin] = DataFrame`

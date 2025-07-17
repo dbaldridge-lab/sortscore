@@ -64,6 +64,10 @@ def main():
     # Calculate activity scores using dataclass parameters
     try:
         logging.info("Calculating activity scores...")
+        
+        # Get merged counts DataFrame
+        merged_df = experiment.get_merged_counts()
+        
         scores_df = calculate_full_activity_scores(
             counts=experiment.counts,
             median_gfp=experiment.median_gfp,
@@ -71,7 +75,8 @@ def main():
             min_reps=experiment.reps_required,
             minread_threshold=experiment.minread_threshold,
             avg_method=experiment.avg_method,
-            total_reads=experiment.total_reads
+            total_reads=experiment.total_reads,
+            merged_df=merged_df
         )
         logging.info(f"Calculated scores for {len(scores_df)} variants.")
         logging.info(f"Score columns: {list(scores_df.columns)}")
@@ -121,9 +126,11 @@ def main():
         if scores_df_rounded[col].dtype in ['float64', 'float32']:
             scores_df_rounded[col] = scores_df_rounded[col].round().astype('Int64')
     
-    dna_scores_file = os.path.join(scores_dir, f"dna-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
-    scores_df_rounded.to_csv(dna_scores_file, index=False)
-    logging.info(f"Saved DNA scores to {dna_scores_file}")
+    # Save DNA scores for DNA variant type, skip for AA variant type
+    if experiment.variant_type == 'dna':
+        dna_scores_file = os.path.join(scores_dir, f"dna-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+        scores_df_rounded.to_csv(dna_scores_file, index=False)
+        logging.info(f"Saved DNA scores to {dna_scores_file}")
     
     # Save AA scores 
     if 'aa_seq_diff' in scores_df.columns:
@@ -243,16 +250,31 @@ def main():
         
         # AA heatmap
         if 'aa_seq_diff' in scores_df.columns:
-            # Aggregate data to AA level
-            aa_data = aggregate_aa_data(scores_df, score_col)
+            # Use AA data directly for AA-only experiments, or aggregate for DNA experiments
+            if experiment.variant_type == 'aa':
+                # For AA-only data, use the data directly
+                aa_data = scores_df[['aa_seq_diff', 'annotate_aa', score_col]].copy()
+            else:
+                # For DNA data, aggregate to AA level
+                aa_data = aggregate_aa_data(scores_df, score_col)
             
-            # Get WT score from the data
+            # Get WT score from the aggregated AA data for AA heatmap
             wt_score = pd.NA  # default
-            if 'annotate_aa' in scores_df.columns:
-                wt_subset = scores_df[scores_df['annotate_aa'] == 'wt_dna']
-                if len(wt_subset) > 0 and score_col in wt_subset.columns:
-                    wt_score = float(wt_subset[score_col].iloc[0])
-                    logging.info(f"Found WT score: {wt_score}")
+            if 'annotate_aa' in aa_data.columns:
+                if experiment.variant_type == 'dna':
+                    # For DNA mode: average all wt_dna entries
+                    wt_subset = aa_data[aa_data['annotate_aa'] == 'wt_dna']
+                    if len(wt_subset) > 0 and score_col in wt_subset.columns:
+                        score_val = wt_subset[score_col].mean()
+                        wt_score = float(score_val) if pd.notna(score_val) else pd.NA
+                        logging.info(f"Found WT score from DNA->AA data (averaged from {len(wt_subset)} wt_dna): {wt_score}")
+                else:
+                    # For AA mode: average all synonymous variants
+                    wt_subset = aa_data[aa_data['annotate_aa'] == 'synonymous']
+                    if len(wt_subset) > 0 and score_col in wt_subset.columns:
+                        score_val = wt_subset[score_col].mean()
+                        wt_score = float(score_val) if pd.notna(score_val) else pd.NA
+                        logging.info(f"Found WT score from AA data (averaged from {len(wt_subset)} synonymous variants): {wt_score}")
             
             # Create a simple config object for AA heatmap
             from types import SimpleNamespace
@@ -270,9 +292,10 @@ def main():
                 # Get min/max values from data for colorbar range
                 data_min = aa_data[score_col].min()
                 data_max = aa_data[score_col].max()
-                # Add WT score to tick marks
-                tick_values = [data_min, wt_score, data_max]
-                tick_labels = [f'{data_min:.0f}', f'WT={wt_score:.0f}', f'{data_max:.0f}']
+                # Add WT score to tick marks if min/max are not NaN
+                if pd.notna(data_min) and pd.notna(data_max):
+                    tick_values = [data_min, wt_score, data_max]
+                    tick_labels = [f'{data_min:.0f}', f'WT={wt_score:.0f}', f'{data_max:.0f}']
             
             aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
             plot_heatmap(aa_data, score_col, aa_config, wt_score=wt_score,
@@ -287,7 +310,10 @@ def main():
             if 'annotate_dna' in scores_df.columns:
                 wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
                 if len(wt_subset) > 0 and score_col in wt_subset.columns:
-                    wt_score_codon = float(wt_subset[score_col].iloc[0])
+                    # Average all wt_dna entries for codon heatmap
+                    score_val = wt_subset[score_col].mean()
+                    wt_score_codon = float(score_val) if pd.notna(score_val) else pd.NA
+                    logging.info(f"Found WT score for codon heatmap (averaged from {len(wt_subset)} wt_dna): {wt_score_codon}")
             
             # Set up colorbar with WT score if available
             tick_values_codon = None
@@ -296,9 +322,10 @@ def main():
                 # Get min/max values from data for colorbar range
                 data_min = scores_df[score_col].min()
                 data_max = scores_df[score_col].max()
-                # Add WT score to tick marks
-                tick_values_codon = [data_min, wt_score_codon, data_max]
-                tick_labels_codon = [f'{data_min:.0f}', f'WT={wt_score_codon:.0f}', f'{data_max:.0f}']
+                # Add WT score to tick marks if min/max are not NaN
+                if pd.notna(data_min) and pd.notna(data_max):
+                    tick_values_codon = [data_min, wt_score_codon, data_max]
+                    tick_labels_codon = [f'{data_min:.0f}', f'WT={wt_score_codon:.0f}', f'{data_max:.0f}']
             
             codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
             plot_heatmap(scores_df, score_col, experiment, wt_score=wt_score_codon,
@@ -316,9 +343,12 @@ def main():
         score_col_suffix = experiment.avg_method.replace('-', '_')
         score_col = f'avgscore_{score_col_suffix}'
         if score_col in scores_df.columns:
-            stats['all_avg'] = round(float(scores_df[score_col].mean()))
-            stats['all_min'] = round(float(scores_df[score_col].min()))
-            stats['all_max'] = round(float(scores_df[score_col].max()))
+            mean_val = scores_df[score_col].mean()
+            min_val = scores_df[score_col].min()
+            max_val = scores_df[score_col].max()
+            stats['all_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
+            stats['all_min'] = round(float(min_val)) if pd.notna(min_val) else None
+            stats['all_max'] = round(float(max_val)) if pd.notna(max_val) else None
             
             # Add annotation-based stats
             if 'annotate_dna' in scores_df.columns:
@@ -327,19 +357,26 @@ def main():
                 if len(wt_subset) > 0:
                     if experiment.barcoded:
                         # For barcoded experiments, include avg, min, max
-                        stats['wt_dna_avg'] = round(float(wt_subset[score_col].mean()))
-                        stats['wt_dna_min'] = round(float(wt_subset[score_col].min()))
-                        stats['wt_dna_max'] = round(float(wt_subset[score_col].max()))
+                        mean_val = wt_subset[score_col].mean()
+                        min_val = wt_subset[score_col].min()
+                        max_val = wt_subset[score_col].max()
+                        stats['wt_dna_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
+                        stats['wt_dna_min'] = round(float(min_val)) if pd.notna(min_val) else None
+                        stats['wt_dna_max'] = round(float(max_val)) if pd.notna(max_val) else None
                     else:
                         # For non-barcoded experiments, include only avg
-                        stats['wt_dna'] = round(float(wt_subset[score_col].mean()))
+                        mean_val = wt_subset[score_col].mean()
+                        stats['wt_dna'] = round(float(mean_val)) if pd.notna(mean_val) else None
                 
                 # Synonymous (WT) stats from DNA level
                 syn_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']
                 if len(syn_subset) > 0:
-                    stats['synonymous_wt_avg'] = round(float(syn_subset[score_col].mean()))
-                    stats['synonymous_wt_min'] = round(float(syn_subset[score_col].min()))
-                    stats['synonymous_wt_max'] = round(float(syn_subset[score_col].max()))
+                    mean_val = syn_subset[score_col].mean()
+                    min_val = syn_subset[score_col].min()
+                    max_val = syn_subset[score_col].max()
+                    stats['synonymous_wt_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
+                    stats['synonymous_wt_min'] = round(float(min_val)) if pd.notna(min_val) else None
+                    stats['synonymous_wt_max'] = round(float(max_val)) if pd.notna(max_val) else None
             
             # Missense and nonsense: use AA-aggregated scores with annotate_aa
             if 'aa_seq_diff' in scores_df.columns:
@@ -348,16 +385,22 @@ def main():
                     # Nonsense stats from AA level
                     nonsense_subset = aa_scores[aa_scores['annotate_aa'] == 'nonsense']
                     if len(nonsense_subset) > 0:
-                        stats['nonsense_avg'] = round(float(nonsense_subset[score_col].mean()))
-                        stats['nonsense_min'] = round(float(nonsense_subset[score_col].min()))
-                        stats['nonsense_max'] = round(float(nonsense_subset[score_col].max()))
+                        mean_val = nonsense_subset[score_col].mean()
+                        min_val = nonsense_subset[score_col].min()
+                        max_val = nonsense_subset[score_col].max()
+                        stats['nonsense_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
+                        stats['nonsense_min'] = round(float(min_val)) if pd.notna(min_val) else None
+                        stats['nonsense_max'] = round(float(max_val)) if pd.notna(max_val) else None
                     
                     # Missense stats from AA level
                     missense_subset = aa_scores[aa_scores['annotate_aa'] == 'missense_aa']
                     if len(missense_subset) > 0:
-                        stats['missense_avg'] = round(float(missense_subset[score_col].mean()))
-                        stats['missense_min'] = round(float(missense_subset[score_col].min()))
-                        stats['missense_max'] = round(float(missense_subset[score_col].max()))
+                        mean_val = missense_subset[score_col].mean()
+                        min_val = missense_subset[score_col].min()
+                        max_val = missense_subset[score_col].max()
+                        stats['missense_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
+                        stats['missense_min'] = round(float(min_val)) if pd.notna(min_val) else None
+                        stats['missense_max'] = round(float(max_val)) if pd.notna(max_val) else None
         
         stats_file = os.path.join(scores_dir, f"stats_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.json")
         with open(stats_file, 'w') as f:

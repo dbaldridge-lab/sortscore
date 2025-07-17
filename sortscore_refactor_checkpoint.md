@@ -71,6 +71,33 @@ sortscore/
 - **Enhanced setup.py**: Added metadata, classifiers, proper dependency reading
 - **CLAUDE.md updates**: Added checkpoint management, git workflow, data handling guidelines
 
+## Recent Updates (July 2025)
+
+### Auto-Detection for Pre-Annotated Amino Acid Changes
+- **Auto-detection system**: Automatically recognizes pre-annotated amino acid changes vs full sequences
+- **Multiple format support**:
+  - Single-letter codes: "M1M", "R98C", "P171X"
+  - Three-letter codes: "Met1Met", "Arg98Cys", "Pro171Ter"
+  - HGVS p. notation: "p.M1M", "p.Arg98Cys", "p.Pro171Ter"
+  - With separators: "M.1.M", "R-98-C", "P_171_X"
+- **Seamless integration**: No configuration changes needed - system automatically detects and converts to internal format
+- **Annotation pipeline**: Converts to `ref.position.alt` format and generates proper functional annotations
+
+### Critical Bug Fixes
+- **CSV header handling**: Fixed `header=None` to `header=0` in count file loading to properly read column headers
+- **NaN handling in visualization**: Fixed float() conversion errors with pandas NA values in statistics and heatmap generation
+- **Type safety**: Added proper NaN checking before numeric conversions in visualization pipeline
+
+### Enhanced Documentation
+- **Count file format examples**: Added comprehensive examples in CLAUDE.md showing all supported formats
+- **Module documentation**: Updated load_experiment.py docstring with usage examples and format specifications
+- **User guidance**: Clear instructions for using pre-annotated formats with existing configurations
+
+### Validation Testing
+- **OTX2 dataset**: Successfully processed pre-annotated amino acid changes from OTX2 test dataset
+- **End-to-end pipeline**: Confirmed complete workflow from data loading through visualization works with new formats
+- **Score generation**: Verified correct annotation generation and activity score calculation with converted data
+
 ## Data Flow & Usage
 
 ### Standard Workflow
@@ -87,6 +114,8 @@ sortscore/
 
 ### File Format Expectations
 - **Count Files**: TSV/CSV with 'seq' column and count column (any name, must be second column)
+  - **Full sequences**: Complete DNA or amino acid sequences (traditional format)
+  - **Pre-annotated AA changes**: Auto-detected support for "M1M", "R98C", "Met1Met", "p.M1M" formats
 - **Experiment Setup**: CSV with columns: Replicate, Bin, Read Counts (CSV), Median GFP
 - **Configuration**: JSON with required fields: submission, experiment_setup_file, wt_seq, mutant_type, num_aa, min_pos
 
@@ -125,4 +154,4 @@ python -m sortscore.run_analysis --config path/to/config.json
 ```
 
 ## Reference
-This checkpoint captures the complete state of the `sortscore` package as of July 13, 2025. The package is fully functional, installable, and ready for production use with Sort-seq experimental data. All major refactoring is complete, and the focus has shifted to testing and validation with real datasets.
+This checkpoint captures the complete state of the `sortscore` package as of July 17, 2025. The package is fully functional, installable, and ready for production use with Sort-seq experimental data. All major refactoring is complete, and the package now includes robust auto-detection capabilities for multiple variant annotation formats. The focus has shifted to testing and validation with real datasets.
