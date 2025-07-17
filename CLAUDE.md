@@ -67,7 +67,7 @@ sortscore --config config.json
 
 ### Configuration Files
 
-**Experiment JSON**: Contains parameters like `submission`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `mutant_type`, `num_aa`, `min_pos`, `output_dir`, `experiment_setup_file`
+**Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `variant_type`, `min_pos`, `max_pos`, `output_dir`, `experiment_setup_file`
 
 **Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Read Counts (CSV)`, `Median GFP`
 
@@ -79,7 +79,7 @@ sortscore --config config.json
 - Median GFP values: `median_gfp[replicate][bin] = float`
 - Activity scores calculated per replicate, then averaged across replicates
 - Filtering requires minimum bins per replicate and minimum replicates per variant
-- Sequence parsing supports both DNA ('dna') and amino acid ('aa') mutant types
+- Sequence parsing supports both DNA ('dna') and amino acid ('aa') variant types
 
 ### Testing
 
@@ -176,3 +176,7 @@ When working on extended tasks or making multiple related changes, Claude should
 - Test data in `tests/` directory should remain unchanged unless explicitly requested
 - Compressed count files (e.g., `.tsv.gz`) should stay compressed
 - Use pandas or other tools that can read compressed files directly: `pd.read_csv('file.tsv.gz', sep='\t')`
+
+## Memory Notes
+
+- Don't unzip files, use zcat to read them as needed

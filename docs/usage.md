@@ -18,8 +18,8 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 ## 3. Python API Usage
 - You can also import and use the package directly in your own scripts or notebooks:
   ```python
-  from sortscore.analysis.config import get_submission_config
-  config = get_submission_config('your_submission_name')
+  from sortscore.analysis.load_experiment import ExperimentConfig
+  config = ExperimentConfig.from_json('config.json')
   # ...proceed with analysis using the loaded config...
   ```
 
@@ -36,7 +36,7 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 
 | Key                   | Type    | Description                                                                                 |
 |-----------------------|---------|---------------------------------------------------------------------------------------------|
-| submission            | str     | Name/ID of the experiment or submission.                                                    |
+| experiment_name       | str     | Name/ID of the experiment or submission.                                                    |
 | bins_required         | int     | Minimum number of bins per replicate a variant must appear in to be scored.                               |
 | reps_required         | int     | Minimum number of replicates a variant must appear in to be scored.                         |
 | avg_method            | str     | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg', 'codon-weighted').         |
@@ -45,9 +45,9 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 | output_dir            | str     | Directory where all results and figures will be saved. Default value is the current directory.                                       |
 | experiment_setup_file | str     | Path to the experiment setup CSV file (see below).                                          |
 | wt_seq                | str     | Wild-type sequence (DNA) for the region analyzed.                                     |
-| mutant_type           | str     | Type of mutant ('aa' for amino acid, 'dna' for nucleotide/codon).                           |
-| num_aa                | int     | Number of amino acids or positions in the region analyzed.                                  |
+| variant_type          | str     | Type of variant ('aa' for amino acid, 'dna' for nucleotide/codon).                           |
 | min_pos               | int     | Starting amino acid sequence position for the region analyzed (used for plot labels).            |
+| max_pos               | int     | Ending amino acid sequence position for the region analyzed (used for plot labels).              |
 
 See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
 
