@@ -12,6 +12,8 @@ import logging
 import sys
 import os
 import pandas as pd
+import numpy as np
+from scipy import stats as scipy_stats
 from sortscore.analysis.load_experiment import ExperimentConfig
 from sortscore.analysis.utils import ensure_output_subdirs
 from sortscore.analysis.score import calculate_full_activity_scores
@@ -89,25 +91,145 @@ def main():
     timestamp = pd.Timestamp.now().strftime('%Y%m%d')
     scores_dir = os.path.join(output_dir, 'scores')
     
-    # Save DNA scores (full data)
-    dna_scores_file = os.path.join(scores_dir, f"dna-scores_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
-    scores_df.to_csv(dna_scores_file, index=False)
+    # Save DNA scores
+    scores_df_rounded = scores_df.copy()
+    
+    # Calculate standard deviation, coefficient of variation, and 95% CI of replicate scores
+    rep_score_columns = [col for col in scores_df_rounded.columns if col.startswith('Rep') and col.endswith('.score')]
+    if len(rep_score_columns) >= 2:
+        rep_mean = scores_df_rounded[rep_score_columns].mean(axis=1)
+        rep_std = scores_df_rounded[rep_score_columns].std(axis=1, ddof=1)
+        
+        # Calculate n_measurements dynamically based on non-empty replicate values
+        # Each DNA row represents 1 codon, so n_measurements = number of non-empty replicates
+        n_measurements = scores_df_rounded[rep_score_columns].notna().sum(axis=1)
+        
+        # Calculate 95% CI using t-distribution with actual degrees of freedom
+        df_actual = n_measurements - 1
+        t_critical = scipy_stats.t.ppf(0.975, df_actual)
+        margin_of_error = t_critical * (rep_std / np.sqrt(n_measurements))
+        
+        scores_df_rounded['SD_rep'] = rep_std.round().astype('Int64')
+        scores_df_rounded['CV%'] = (rep_std / rep_mean * 100).round().astype('Int64')
+        scores_df_rounded['n_measurements'] = n_measurements.astype('Int64')
+        scores_df_rounded['CI_lower'] = (rep_mean - margin_of_error).round().astype('Int64')
+        scores_df_rounded['CI_upper'] = (rep_mean + margin_of_error).round().astype('Int64')
+    
+    # Round other score columns to integers
+    score_columns = [col for col in scores_df_rounded.columns if 'score' in col.lower()]
+    for col in score_columns:
+        if scores_df_rounded[col].dtype in ['float64', 'float32']:
+            scores_df_rounded[col] = scores_df_rounded[col].round().astype('Int64')
+    
+    dna_scores_file = os.path.join(scores_dir, f"dna-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+    scores_df_rounded.to_csv(dna_scores_file, index=False)
     logging.info(f"Saved DNA scores to {dna_scores_file}")
     
-    # Save AA scores (aggregates synonymous variants)
+    # Save AA scores 
     if 'aa_seq_diff' in scores_df.columns:
         # Filter out rows with NaN values first
         score_col_suffix = experiment.avg_method.replace('-', '_')
         score_col = f'avgscore_{score_col_suffix}'
         scores_df_drop_nan = scores_df.dropna(subset=[score_col])
         
-        # Aggregate synonymous variants
-        columns_to_average = ['avgscore', 'avgscore_rep_weighted', 'avgscore_codon_weighted', 'Rep1.score', 'Rep2.score', 'Rep3.score']
-        aa_scores = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[columns_to_average].mean().reset_index()
+        # Find replicate score columns
+        rep_score_columns = [col for col in scores_df_drop_nan.columns if col.startswith('Rep') and col.endswith('.score')]
         
-        aa_scores_file = os.path.join(scores_dir, f"aa-scores_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+        # Determine if we need to aggregate DNA->AA variants or if we have AA-only variants
+        # Check if there are multiple codons per AA variant (DNA->AA case)
+        aa_variant_counts = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa']).size()
+        needs_aggregation = (aa_variant_counts > 1).any()
+        
+        if needs_aggregation:
+            # DNA->AA aggregation case: aggregate synonymous variants
+            columns_to_average = ['avgscore', 'avgscore_rep_weighted', 'avgscore_codon_weighted'] + rep_score_columns
+            
+            # Calculate standard deviation and count of codon-level scores before AA aggregation
+            aa_scores_std = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[score_col].agg(['std', 'count']).reset_index()
+            aa_scores_std.columns = ['aa_seq_diff', 'annotate_aa', 'SD_codon', 'n_codons']
+            
+            # Calculate mean scores for aggregation
+            aa_scores = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[columns_to_average].mean().reset_index()
+            
+            # Merge the standard deviation and count of codon scores
+            aa_scores = aa_scores.merge(aa_scores_std, on=['aa_seq_diff', 'annotate_aa'], how='left')
+            
+            # Calculate statistics with codon and replicate variance decomposition
+            if len(rep_score_columns) >= 2:
+                aa_rep_mean = aa_scores[rep_score_columns].mean(axis=1)
+                aa_rep_std = aa_scores[rep_score_columns].std(axis=1, ddof=1)
+                
+                # Calculate variances
+                var_codon = aa_scores['SD_codon'] ** 2
+                var_rep = aa_rep_std ** 2
+                
+                # Calculate total variance (sum of codon and replicate variances)
+                var_total = var_codon.fillna(0) + var_rep
+                
+                # Calculate n_measurements dynamically
+                n_measurements = aa_scores['n_codons'] * aa_scores[rep_score_columns].notna().sum(axis=1)
+                
+                # Calculate SEM considering total sample size
+                sem = np.sqrt(var_total / n_measurements)
+                
+                # Calculate 95% CI using t-distribution
+                df_total = n_measurements - 1
+                t_critical = scipy_stats.t.ppf(0.975, df_total)
+                aa_margin_of_error = t_critical * sem
+                
+                aa_scores['SD_rep'] = aa_rep_std.round().astype('Int64')
+                aa_scores['CV%_rep'] = (aa_rep_std / aa_rep_mean * 100).round().astype('Int64')
+                aa_scores['CV%_codon'] = (aa_scores['SD_codon'] / aa_rep_mean * 100).round().astype('Int64')
+                aa_scores['n_measurements'] = n_measurements.astype('Int64')
+                aa_scores['SEM'] = sem.round().astype('Int64')
+                aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
+                aa_scores['CI_upper'] = (aa_rep_mean + aa_margin_of_error).round().astype('Int64')
+            
+            # Round SD_codon column to integers
+            if 'SD_codon' in aa_scores.columns:
+                aa_scores['SD_codon'] = aa_scores['SD_codon'].round().astype('Int64')
+                
+        else:
+            # AA-only case: no aggregation needed, just copy the data
+            columns_to_include = ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted'] + rep_score_columns
+            # Only include avgscore_codon_weighted if it exists (it won't for AA-only)
+            if 'avgscore_codon_weighted' in scores_df_drop_nan.columns:
+                columns_to_include.append('avgscore_codon_weighted')
+            
+            aa_scores = scores_df_drop_nan[columns_to_include].copy()
+            
+            # Calculate simple replicate statistics (no codon variance)
+            if len(rep_score_columns) >= 2:
+                aa_rep_mean = aa_scores[rep_score_columns].mean(axis=1)
+                aa_rep_std = aa_scores[rep_score_columns].std(axis=1, ddof=1)
+                
+                # Calculate n_measurements (just number of non-empty replicates)
+                n_measurements = aa_scores[rep_score_columns].notna().sum(axis=1)
+                
+                # Calculate SEM using only replicate variance
+                sem = aa_rep_std / np.sqrt(n_measurements)
+                
+                # Calculate 95% CI using t-distribution
+                df_actual = n_measurements - 1
+                t_critical = scipy_stats.t.ppf(0.975, df_actual)
+                aa_margin_of_error = t_critical * sem
+                
+                aa_scores['SD_rep'] = aa_rep_std.round().astype('Int64')
+                aa_scores['CV%_rep'] = (aa_rep_std / aa_rep_mean * 100).round().astype('Int64')
+                aa_scores['n_measurements'] = n_measurements.astype('Int64')
+                aa_scores['SEM'] = sem.round().astype('Int64')
+                aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
+                aa_scores['CI_upper'] = (aa_rep_mean + aa_margin_of_error).round().astype('Int64')
+        
+        # Round score columns to integers
+        score_columns = [col for col in aa_scores.columns if 'score' in col.lower()]
+        for col in score_columns:
+            if aa_scores[col].dtype in ['float64', 'float32']:
+                aa_scores[col] = aa_scores[col].round().astype('Int64')
+        
+        aa_scores_file = os.path.join(scores_dir, f"aa-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
         aa_scores.to_csv(aa_scores_file, index=False)
-        logging.info(f"Saved aggregated AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
+        logging.info(f"Saved AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
     
     # Generate visualizations
     try:
@@ -152,7 +274,7 @@ def main():
                 tick_values = [data_min, wt_score, data_max]
                 tick_labels = [f'{data_min:.0f}', f'WT={wt_score:.0f}', f'{data_max:.0f}']
             
-            aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
+            aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
             plot_heatmap(aa_data, score_col, aa_config, wt_score=wt_score,
                         tick_values=tick_values, tick_labels=tick_labels,
                         export=True, output=aa_heatmap_file, format='png', export_matrix=True)
@@ -160,8 +282,27 @@ def main():
         
         # Codon heatmap  
         if experiment.variant_type == 'dna':
-            codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
-            plot_heatmap(scores_df, score_col, experiment,
+            # Get WT score for codon heatmap tick marks
+            wt_score_codon = pd.NA  # default
+            if 'annotate_dna' in scores_df.columns:
+                wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
+                if len(wt_subset) > 0 and score_col in wt_subset.columns:
+                    wt_score_codon = float(wt_subset[score_col].iloc[0])
+            
+            # Set up colorbar with WT score if available
+            tick_values_codon = None
+            tick_labels_codon = None
+            if not pd.isna(wt_score_codon):
+                # Get min/max values from data for colorbar range
+                data_min = scores_df[score_col].min()
+                data_max = scores_df[score_col].max()
+                # Add WT score to tick marks
+                tick_values_codon = [data_min, wt_score_codon, data_max]
+                tick_labels_codon = [f'{data_min:.0f}', f'WT={wt_score_codon:.0f}', f'{data_max:.0f}']
+            
+            codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
+            plot_heatmap(scores_df, score_col, experiment, wt_score=wt_score_codon,
+                        tick_values=tick_values_codon, tick_labels=tick_labels_codon,
                         export=True, output=codon_heatmap_file, format='png', export_matrix=True)
             logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
             
@@ -184,16 +325,21 @@ def main():
                 # WT stats from DNA level
                 wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
                 if len(wt_subset) > 0:
-                    stats['wt_avg'] = round(float(wt_subset[score_col].mean()))
-                    stats['wt_min'] = round(float(wt_subset[score_col].min()))
-                    stats['wt_max'] = round(float(wt_subset[score_col].max()))
+                    if experiment.barcoded:
+                        # For barcoded experiments, include avg, min, max
+                        stats['wt_dna_avg'] = round(float(wt_subset[score_col].mean()))
+                        stats['wt_dna_min'] = round(float(wt_subset[score_col].min()))
+                        stats['wt_dna_max'] = round(float(wt_subset[score_col].max()))
+                    else:
+                        # For non-barcoded experiments, include only avg
+                        stats['wt_dna'] = round(float(wt_subset[score_col].mean()))
                 
                 # Synonymous (WT) stats from DNA level
                 syn_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']
                 if len(syn_subset) > 0:
-                    stats['synonymous_avg'] = round(float(syn_subset[score_col].mean()))
-                    stats['synonymous_min'] = round(float(syn_subset[score_col].min()))
-                    stats['synonymous_max'] = round(float(syn_subset[score_col].max()))
+                    stats['synonymous_wt_avg'] = round(float(syn_subset[score_col].mean()))
+                    stats['synonymous_wt_min'] = round(float(syn_subset[score_col].min()))
+                    stats['synonymous_wt_max'] = round(float(syn_subset[score_col].max()))
             
             # Missense and nonsense: use AA-aggregated scores with annotate_aa
             if 'aa_seq_diff' in scores_df.columns:
@@ -213,7 +359,7 @@ def main():
                         stats['missense_min'] = round(float(missense_subset[score_col].min()))
                         stats['missense_max'] = round(float(missense_subset[score_col].max()))
         
-        stats_file = os.path.join(output_dir, f"stats_{experiment.avg_method}_{experiment.submission}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.json")
+        stats_file = os.path.join(scores_dir, f"stats_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.json")
         with open(stats_file, 'w') as f:
             json.dump(stats, f, indent=2)
         logging.info(f"Saved statistics to {stats_file}")
