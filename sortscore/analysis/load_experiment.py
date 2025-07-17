@@ -23,11 +23,11 @@ class ExperimentConfig:
     """
     Dataclass for experiment configuration and data loading.
     """
-    submission: str
+    experiment_name: str
     experiment_setup_file: str
     wt_seq: str
     variant_type: str
-    num_aa: int
+    max_pos: int
     min_pos: int
     output_dir: Optional[str] = None
     other_params: Optional[Dict[str, Any]] = None
@@ -40,6 +40,12 @@ class ExperimentConfig:
     reps_required: int = 1  
     avg_method: str = 'rep-weighted'
     minread_threshold: int = 0
+    barcoded: bool = False
+    
+    @property
+    def num_aa(self) -> int:
+        """Calculate number of amino acids from min_pos and max_pos."""
+        return self.max_pos - self.min_pos + 1
 
     @staticmethod
     def from_json(json_path: str) -> 'ExperimentConfig':
@@ -62,18 +68,18 @@ class ExperimentConfig:
         args = {}
         
         # Required fields
-        for field in ['submission', 'experiment_setup_file', 'wt_seq', 'variant_type', 'num_aa', 'min_pos']:
+        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos']:
             if field in data:
                 args[field] = data[field]
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold']:
+        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded']:
             if field in data:
                 args[field] = data[field]
         
         # Other parameters
-        handled_keys = {'submission', 'experiment_setup_file', 'wt_seq', 'variant_type', 'num_aa', 'min_pos',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold'}
+        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos',
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -115,7 +121,7 @@ class ExperimentConfig:
                 total_reads.setdefault(rep, {})[bin_] = total_read_count
             
             try:
-                df = pd.read_csv(count_file, sep=None, engine='python')
+                df = pd.read_csv(count_file, sep=None, engine='python', header=None)
                 # Standardize column names: first column is variant sequence, second is count
                 if len(df.columns) >= 2:
                     df.columns = ['variant_seq', 'count'] + list(df.columns[2:])

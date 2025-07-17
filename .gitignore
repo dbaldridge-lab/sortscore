@@ -13,6 +13,7 @@
 *.gff
 *.gtf
 *.fa
+*.tsv*
 
 # Ignore jupyter notebooks
 #*.ipynb
@@ -64,6 +65,7 @@ figures/*
 # Ignore test data folders
 tests/oPool5b_GTAC/
 tests/OTX2/
+tests/GLI2_DBD_B/
 
 # Ignore virtual environment
 venv/

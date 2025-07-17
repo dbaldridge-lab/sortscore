@@ -10,14 +10,14 @@ Examples
 import os
 from typing import Any
 
-def make_export_suffix(submission: str, b: int, minread_threshold: int, date_str: str) -> str:
+def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str) -> str:
     """
     Generate a suffix for export filenames.
 
     Parameters
     ----------
-    submission : str
-        Submission identifier.
+    experiment_name : str
+        Experiment name identifier.
     b : int
         Number of bins.
     minread_threshold : int
@@ -35,7 +35,7 @@ def make_export_suffix(submission: str, b: int, minread_threshold: int, date_str
     >>> make_export_suffix('test', 3, 0, '20250701')
     'test_3-bins_0-minreads_20250701'
     """
-    return f'{submission}_{b}-bins_{minread_threshold}-minreads_{date_str}'
+    return f'{experiment_name}_{b}-bins_{minread_threshold}-minreads_{date_str}'
 
 def ensure_output_subdirs(output_dir: str, subdirs: list[str] = ["scores", "figures"]) -> None:
     """
