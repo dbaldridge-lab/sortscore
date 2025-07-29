@@ -32,7 +32,7 @@ import json
 import logging
 import pandas as pd
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -196,14 +196,28 @@ class ExperimentConfig:
     bins_required: int = 1
     reps_required: int = 1  
     avg_method: str = 'rep-weighted'
+    max_cv: Optional[float] = None
     minread_threshold: int = 0
     barcoded: bool = False
     aa_pre_annotated: bool = False
+    transcript_id: Optional[str] = None
+    mutagenesis_variants: Optional[list] = None
+    position_type: str = 'aa'  # 'aa' for amino acid positions, 'dna' for DNA positions
     
     @property
     def num_aa(self) -> int:
         """Calculate number of amino acids from min_pos and max_pos."""
         return self.max_pos - self.min_pos + 1
+    
+    @property 
+    def num_positions(self) -> int:
+        """Calculate number of positions based on position_type."""
+        if self.position_type == 'dna':
+            # For DNA positions, use the full DNA sequence length
+            return len(self.wt_seq)
+        else:
+            # For AA positions, use the AA range
+            return self.max_pos - self.min_pos + 1
 
     @staticmethod
     def from_json(json_path: str) -> 'ExperimentConfig':
@@ -231,13 +245,13 @@ class ExperimentConfig:
                 args[field] = data[field]
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded']:
+        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type']:
             if field in data:
                 args[field] = data[field]
         
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded'}
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -279,16 +293,20 @@ class ExperimentConfig:
                 total_reads.setdefault(rep, {})[bin_] = total_read_count
             
             try:
-                # Auto-detect header by checking if second column can be converted to numeric
-                header_row = self._detect_header_row(count_file)
-                df = pd.read_csv(count_file, sep=None, engine='python', header=header_row)
-                
-                # Standardize column names: first column is variant sequence, second is count
-                if len(df.columns) >= 2:
-                    df.columns = ['variant_seq', 'count'] + list(df.columns[2:])
+                # Check if file is parquet format
+                if count_file.endswith('.parquet'):
+                    df = self._load_parquet_as_counts(count_file)
                 else:
-                    logging.error(f"Count file {count_file} does not have at least 2 columns")
-                    continue
+                    # Auto-detect header by checking if second column can be converted to numeric
+                    header_row = self._detect_header_row(count_file)
+                    df = pd.read_csv(count_file, sep=None, engine='python', header=header_row)
+                    
+                    # Standardize column names: first column is variant sequence, second is count
+                    if len(df.columns) >= 2:
+                        df.columns = ['variant_seq', 'count'] + list(df.columns[2:])
+                    else:
+                        logging.error(f"Count file {count_file} does not have at least 2 columns")
+                        continue
             except Exception as e:
                 logging.error(f"Failed to load count file {count_file}: {e}")
                 continue
@@ -308,7 +326,6 @@ class ExperimentConfig:
         # Set total_reads if we loaded any
         if total_reads:
             self.total_reads = total_reads
-            logging.info(f"Loaded total read counts for proper normalization: {len(total_reads)} replicates")
     
     def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
         """
@@ -368,6 +385,49 @@ class ExperimentConfig:
                 df[col] = df['variant_seq'].map(d).fillna(0)
         
         return df
+
+    def _load_parquet_as_counts(self, parquet_file: str) -> pd.DataFrame:
+        """
+        Load parquet file and convert to variant counts format.
+        
+        Expected parquet format:
+        - Contains columns: var_ref, var_pos, var_alt, read_count
+        - Creates variant identifiers like "A36T" from ref/pos/alt
+        - Aggregates read counts by variant
+        
+        Parameters
+        ----------
+        parquet_file : str
+            Path to parquet file
+            
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with columns ['variant_seq', 'count']
+        """
+        # Read parquet file
+        df = pd.read_parquet(parquet_file)
+        
+        # Filter to only mapped variants (non-null var_pos)
+        mapped_df = df[df['var_pos'].notna()].copy()
+        
+        # Create variant identifier (e.g., "A36T", "G252M")
+        mapped_df['variant'] = (mapped_df['var_ref'].astype(str) + 
+                               mapped_df['var_pos'].astype(int).astype(str) + 
+                               mapped_df['var_alt'].astype(str))
+        
+        # Aggregate read counts by variant
+        variant_counts = mapped_df.groupby('variant')['read_count'].sum().reset_index()
+        
+        # Rename columns for sortscore compatibility
+        variant_counts.columns = ['variant_seq', 'count']
+        
+        # Sort by count (descending)
+        variant_counts = variant_counts.sort_values('count', ascending=False)
+        
+        logging.info(f"Loaded parquet file {parquet_file}: {len(variant_counts)} variants, {variant_counts['count'].sum():,} total reads")
+        
+        return variant_counts
 
     def _detect_header_row(self, count_file: str) -> int:
         """

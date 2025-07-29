@@ -66,6 +66,7 @@ figures/*
 tests/oPool5b_GTAC/
 tests/OTX2/
 tests/GLI2_DBD_B/
+tests/crx_cohen/
 
 # Ignore virtual environment
 venv/

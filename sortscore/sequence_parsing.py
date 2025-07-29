@@ -37,6 +37,8 @@ def translate_dna(dna_sequence: str) -> str:
 def compare_to_reference(ref_seq: str, sequence: str) -> str:
     """
     Compare a protein sequence to a reference and report differences.
+    
+    Stop codons are represented as '*'.
 
     Parameters
     ----------
@@ -49,17 +51,23 @@ def compare_to_reference(ref_seq: str, sequence: str) -> str:
     -------
     differences : str
         Comma-separated string of differences in the format 'ref.position.alt'.
+        Stop codons are shown as '*' (e.g., 'Q.10.*' for a stop-gained variant).
 
     Examples
     --------
     >>> compare_to_reference('MA', 'MT')
     'A.2.T'
+    >>> compare_to_reference('MQ', 'MX')  # X (stop codon) becomes *
+    'Q.2.*'
     """
     differences = []
     min_length = min(len(ref_seq), len(sequence))
     for i in range(min_length):
         if ref_seq[i] != sequence[i]:
-            difference = f'{ref_seq[i]}.{i+1}.{sequence[i]}'
+            # Map X (stop codon) to * for standard notation
+            ref_aa = '*' if ref_seq[i] == 'X' else ref_seq[i]
+            var_aa = '*' if sequence[i] == 'X' else sequence[i]
+            difference = f'{ref_aa}.{i+1}.{var_aa}'
             differences.append(difference)
     return ', '.join(differences)
 

@@ -1,4 +1,5 @@
-# CLAUDE.md
+
+0;276;0c# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -67,7 +68,7 @@ sortscore --config config.json
 
 ### Configuration Files
 
-**Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `variant_type`, `min_pos`, `max_pos`, `output_dir`, `experiment_setup_file`
+**Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `variant_type`, `min_pos`, `max_pos`, `output_dir`, `experiment_setup_file`, `mutagenesis_variants`, `position_type`
 
 **Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Read Counts (CSV)`, `Median GFP`
 
@@ -82,10 +83,12 @@ The package supports multiple formats for variant sequences in count files:
    - AA: Full amino acid sequences for `variant_type: "aa"`
 
 2. **Pre-annotated Amino Acid Changes** (Auto-detected): Individual amino acid changes in various formats
-   - **Single-letter codes**: `M1M`, `R98C`, `P171X`
+   - **Single-letter codes**: `M1M`, `R98C`, `P171*`
    - **Three-letter codes**: `Met1Met`, `Arg98Cys`, `Pro171Ter`
-   - **HGVS p. notation**: `p.M1M`, `p.Arg98Cys`, `p.Pro171Ter`
-   - **With separators**: `M.1.M`, `R-98-C`, `P_171_X`
+   - **HGVS p. notation**: `p.M1M`, `p.Arg98Cys`, `p.Pro171*`
+   - **With separators**: `M.1.M`, `R-98-C`, `P_171_*`
+
+**Stop Codon Notation**: Nonsense/stop-gained variants are represented with `*` (asterisk) in the output, regardless of input format (`X`, `Ter`, or `*`). For example, `P171X` becomes `P.171.*` in the `aa_seq_diff` column.
 
 **Auto-detection Features**:
 - **Headers**: System automatically detects if files have headers by checking when the second column becomes numeric
@@ -136,6 +139,83 @@ p.Pro171Ter,125092
 p.Trp93Gln,124464
 ```
 
+## Heatmap Customization
+
+The package supports flexible heatmap generation with customizable axes for different experimental designs.
+
+### X-Axis (Positions)
+
+Controlled by the `position_type` parameter:
+
+- **`"aa"`** (default): Amino acid positions using `min_pos` to `max_pos` range
+- **`"dna"`**: DNA nucleotide positions (1 to length of `wt_seq`)
+
+### Y-Axis (Variants)
+
+Controlled by the `mutagenesis_variants` parameter:
+
+- **Default**: All 20 amino acids + stop codon `['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']`
+- **Custom list**: Any subset or reordering of variants
+
+### Experimental Designs
+
+#### Standard Deep Mutational Scanning
+```json
+{
+  "position_type": "aa",
+  "variant_type": "aa",
+  "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
+}
+```
+- **X-axis**: Amino acid positions (e.g., 1, 2, 3... up to protein length)
+- **Y-axis**: All 20 amino acids + stop codon
+- **Matrix size**: ~21 × (max_pos - min_pos + 1)
+
+#### GCTA (Single Nucleotide Scanning)
+```json
+{
+  "position_type": "dna",
+  "variant_type": "dna", 
+  "mutagenesis_variants": ["G", "C", "T", "A"]
+}
+```
+- **X-axis**: DNA positions (1, 2, 3... up to DNA sequence length)
+- **Y-axis**: Four DNA bases
+- **Matrix size**: 4 × DNA sequence length
+
+#### Hydrophobic Amino Acid Screen
+```json
+{
+  "position_type": "aa",
+  "variant_type": "aa",
+  "mutagenesis_variants": ["M", "I", "L", "V", "F", "W", "Y", "A"]
+}
+```
+- **X-axis**: Amino acid positions
+- **Y-axis**: Only hydrophobic amino acids
+- **Matrix size**: 8 × (max_pos - min_pos + 1)
+
+#### Custom DNA Base Subset
+```json
+{
+  "position_type": "dna",
+  "variant_type": "dna",
+  "mutagenesis_variants": ["G", "A"]
+}
+```
+- **X-axis**: DNA positions  
+- **Y-axis**: Only G and A bases
+- **Matrix size**: 2 × DNA sequence length
+
+### Impact on Analysis
+
+**Dropout Calculation**: Automatically adjusts based on the actual variants studied:
+- Standard DMS: (positions × 21 variants) total possible
+- GCTA: (DNA length × 4 bases) total possible  
+- Custom: (positions × length of mutagenesis_variants) total possible
+
+**Heatmap Size**: Matrix dimensions scale with your experiment design, improving visualization clarity for focused studies.
+
 ### Key Conventions
 
 - Count data stored as nested dictionaries: `counts[replicate][bin] = DataFrame`
@@ -143,6 +223,7 @@ p.Trp93Gln,124464
 - Activity scores calculated per replicate, then averaged across replicates
 - Filtering requires minimum bins per replicate and minimum replicates per variant
 - Sequence parsing supports both DNA ('dna') and amino acid ('aa') variant types
+- Heatmap axes automatically adjust to experiment design via `position_type` and `mutagenesis_variants`
 
 ### Testing
 

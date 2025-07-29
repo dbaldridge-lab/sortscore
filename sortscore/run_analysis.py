@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats as scipy_stats
 from sortscore.analysis.load_experiment import ExperimentConfig
-from sortscore.analysis.utils import ensure_output_subdirs
+from sortscore.analysis.utils import ensure_output_subdirs, make_export_suffix
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.data_processing import aggregate_aa_data
 from sortscore.analysis.annotation import annotate_scores_dataframe, aggregate_synonymous_variants
@@ -29,6 +29,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Run Sort-seq variant analysis.")
     parser.add_argument('-c', '--config', type=str, required=True, help='Path to experiment config JSON file')
+    parser.add_argument('-s', '--suffix', type=str, help='Custom suffix for output files (default: auto-generated from config)')
     args = parser.parse_args()
 
     # Load experiment config using dataclass
@@ -48,7 +49,6 @@ def main():
     except Exception as e:
         logging.error(f"Failed to create output directories in '{output_dir}': {e}")
         sys.exit(1)
-    logging.info(f"Output directories ensured in {output_dir}")
 
     # Load all counts using the dataclass method
     try:
@@ -76,10 +76,10 @@ def main():
             minread_threshold=experiment.minread_threshold,
             avg_method=experiment.avg_method,
             total_reads=experiment.total_reads,
-            merged_df=merged_df
+            merged_df=merged_df,
+            max_cv=experiment.max_cv
         )
         logging.info(f"Calculated scores for {len(scores_df)} variants.")
-        logging.info(f"Score columns: {list(scores_df.columns)}")
     except Exception as e:
         logging.error(f"Failed to calculate activity scores: {e}")
         sys.exit(1)
@@ -87,14 +87,21 @@ def main():
     # Annotate sequences
     try:
         # Annotate the scores DataFrame with sequence information
-        scores_df = annotate_scores_dataframe(scores_df, experiment.wt_seq, experiment.variant_type)
-        logging.info("Added sequence annotations to scores DataFrame.")
+        scores_df = annotate_scores_dataframe(scores_df, experiment.wt_seq, experiment.variant_type, experiment.transcript_id)
     except Exception as e:
         logging.warning(f"Failed to add annotations: {e}")
     
     # Save results
     timestamp = pd.Timestamp.now().strftime('%Y%m%d')
     scores_dir = os.path.join(output_dir, 'scores')
+    
+    # Generate common suffix for all output files
+    if args.suffix:
+        suffix = args.suffix
+        logging.info(f"Using custom suffix: {suffix}")
+    else:
+        suffix = make_export_suffix(experiment.experiment_name, experiment.bins_required, int(experiment.minread_threshold), timestamp, experiment.max_cv)
+        logging.info(f"Using auto-generated suffix: {suffix}")
     
     # Save DNA scores
     scores_df_rounded = scores_df.copy()
@@ -115,7 +122,7 @@ def main():
         margin_of_error = t_critical * (rep_std / np.sqrt(n_measurements))
         
         scores_df_rounded['SD_rep'] = rep_std.round().astype('Int64')
-        scores_df_rounded['CV%'] = (rep_std / rep_mean * 100).round().astype('Int64')
+        scores_df_rounded['CV_rep'] = (rep_std / rep_mean).round(3)
         scores_df_rounded['n_measurements'] = n_measurements.astype('Int64')
         scores_df_rounded['CI_lower'] = (rep_mean - margin_of_error).round().astype('Int64')
         scores_df_rounded['CI_upper'] = (rep_mean + margin_of_error).round().astype('Int64')
@@ -128,7 +135,7 @@ def main():
     
     # Save DNA scores for DNA variant type, skip for AA variant type
     if experiment.variant_type == 'dna':
-        dna_scores_file = os.path.join(scores_dir, f"dna-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+        dna_scores_file = os.path.join(scores_dir, f"dna-scores_{suffix}.csv")
         scores_df_rounded.to_csv(dna_scores_file, index=False)
         logging.info(f"Saved DNA scores to {dna_scores_file}")
     
@@ -185,8 +192,8 @@ def main():
                 aa_margin_of_error = t_critical * sem
                 
                 aa_scores['SD_rep'] = aa_rep_std.round().astype('Int64')
-                aa_scores['CV%_rep'] = (aa_rep_std / aa_rep_mean * 100).round().astype('Int64')
-                aa_scores['CV%_codon'] = (aa_scores['SD_codon'] / aa_rep_mean * 100).round().astype('Int64')
+                aa_scores['CV_rep'] = (aa_rep_std / aa_rep_mean).round(3)
+                aa_scores['CV_codon'] = (aa_scores['SD_codon'] / aa_rep_mean).round(3)
                 aa_scores['n_measurements'] = n_measurements.astype('Int64')
                 aa_scores['SEM'] = sem.round().astype('Int64')
                 aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
@@ -222,7 +229,7 @@ def main():
                 aa_margin_of_error = t_critical * sem
                 
                 aa_scores['SD_rep'] = aa_rep_std.round().astype('Int64')
-                aa_scores['CV%_rep'] = (aa_rep_std / aa_rep_mean * 100).round().astype('Int64')
+                aa_scores['CV_rep'] = (aa_rep_std / aa_rep_mean).round(3)
                 aa_scores['n_measurements'] = n_measurements.astype('Int64')
                 aa_scores['SEM'] = sem.round().astype('Int64')
                 aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
@@ -234,7 +241,7 @@ def main():
             if aa_scores[col].dtype in ['float64', 'float32']:
                 aa_scores[col] = aa_scores[col].round().astype('Int64')
         
-        aa_scores_file = os.path.join(scores_dir, f"aa-scores_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.csv")
+        aa_scores_file = os.path.join(scores_dir, f"aa-scores_{suffix}.csv")
         aa_scores.to_csv(aa_scores_file, index=False)
         logging.info(f"Saved AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
     
@@ -276,13 +283,16 @@ def main():
                         wt_score = float(score_val) if pd.notna(score_val) else pd.NA
                         logging.info(f"Found WT score from AA data (averaged from {len(wt_subset)} synonymous variants): {wt_score}")
             
-            # Create a simple config object for AA heatmap
+            # Create a config object for AA heatmap with proper fields
             from types import SimpleNamespace
             aa_config = SimpleNamespace(
                 num_aa=experiment.num_aa,
+                num_positions=experiment.num_positions,
                 min_pos=experiment.min_pos,
                 wt_seq=translate_dna(experiment.wt_seq),
-                variant_type='aa'
+                variant_type='aa',
+                mutagenesis_variants=experiment.mutagenesis_variants,
+                position_type=experiment.position_type
             )
             
             # Set up colorbar with WT score if available
@@ -297,10 +307,16 @@ def main():
                     tick_values = [data_min, wt_score, data_max]
                     tick_labels = [f'{data_min:.0f}', f'WT={wt_score:.0f}', f'{data_max:.0f}']
             
-            aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
-            plot_heatmap(aa_data, score_col, aa_config, wt_score=wt_score,
-                        tick_values=tick_values, tick_labels=tick_labels,
-                        export=True, output=aa_heatmap_file, format='png', export_matrix=True)
+            aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{suffix}.png")
+            # Only pass wt_score if it's a valid number
+            if pd.notna(wt_score):
+                plot_heatmap(aa_data, score_col, aa_config, wt_score=float(wt_score),
+                            tick_values=tick_values, tick_labels=tick_labels,
+                            export=True, output=aa_heatmap_file, format='png', export_matrix=True)
+            else:
+                plot_heatmap(aa_data, score_col, aa_config,
+                            tick_values=tick_values, tick_labels=tick_labels,
+                            export=True, output=aa_heatmap_file, format='png', export_matrix=True)
             logging.info(f"Saved AA heatmap to {aa_heatmap_file}")
         
         # Codon heatmap  
@@ -327,10 +343,16 @@ def main():
                     tick_values_codon = [data_min, wt_score_codon, data_max]
                     tick_labels_codon = [f'{data_min:.0f}', f'WT={wt_score_codon:.0f}', f'{data_max:.0f}']
             
-            codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.png")
-            plot_heatmap(scores_df, score_col, experiment, wt_score=wt_score_codon,
-                        tick_values=tick_values_codon, tick_labels=tick_labels_codon,
-                        export=True, output=codon_heatmap_file, format='png', export_matrix=True)
+            codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{suffix}.png")
+            # Only pass wt_score if it's a valid number
+            if pd.notna(wt_score_codon):
+                plot_heatmap(scores_df, score_col, experiment, wt_score=float(wt_score_codon),
+                            tick_values=tick_values_codon, tick_labels=tick_labels_codon,
+                            export=True, output=codon_heatmap_file, format='png', export_matrix=True)
+            else:
+                plot_heatmap(scores_df, score_col, experiment,
+                            tick_values=tick_values_codon, tick_labels=tick_labels_codon,
+                            export=True, output=codon_heatmap_file, format='png', export_matrix=True)
             logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
             
     except Exception as e:
@@ -402,7 +424,7 @@ def main():
                         stats['missense_min'] = round(float(min_val)) if pd.notna(min_val) else None
                         stats['missense_max'] = round(float(max_val)) if pd.notna(max_val) else None
         
-        stats_file = os.path.join(scores_dir, f"stats_{experiment.avg_method}_{experiment.experiment_name}_{experiment.bins_required}-bins_{int(experiment.minread_threshold)}-minreads_{timestamp}.json")
+        stats_file = os.path.join(scores_dir, f"stats_{experiment.avg_method}_{suffix}.json")
         with open(stats_file, 'w') as f:
             json.dump(stats, f, indent=2)
         logging.info(f"Saved statistics to {stats_file}")

@@ -5,7 +5,7 @@ query: >+
 
 references:
   - "File: /eln/diagram.md"
-generationTime: 2025-07-17T21:31:08.396Z
+generationTime: 2025-07-22T19:24:06.011Z
 ---
 %%{init: { 'themeVariables': { 'subgraphTitleFontSize': '28px' } }}%%
 flowchart TB
@@ -33,7 +33,6 @@ flowchart TB
     %% Visualization
     subgraph "Visualization" 
         direction TB
-        VD["Histogram plot_activity_score_distribution()"]:::viz
         VH["Heatmap generate_heatmap_matrix()"]:::viz
     end
 
@@ -50,9 +49,8 @@ flowchart TB
     NM -->|"annotate_sequences"| AN
     AN --> SC
     SC -->|"calculate_full_activity_scores"| EX
-    EX -->|"export_results"| VD
     EX -->|"export_results"| VH
-    VD -->|"plot_activity_score_distribution"| OF
+  
     VH -->|"generate_heatmap_matrix"| OF
     EX -->|"export_results"| OT
 
