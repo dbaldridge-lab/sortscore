@@ -13,6 +13,28 @@ import pandas as pd
 from typing import Any, Dict, List, Optional
 from sortscore.analysis.filtering import filter_variants
 
+def filter_by_cv(df: pd.DataFrame, score_cols: List[str], max_cv: float) -> pd.Series:
+    """
+    Filter variants by coefficient of variation across replicates.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing replicate scores
+    score_cols : list of str
+        Column names containing replicate scores
+    max_cv : float
+        Maximum CV threshold as decimal (0.5 = 50% CV)
+        Variants with CV > max_cv will be filtered out (quality filter)
+        
+    Returns
+    -------
+    pd.Series
+        Boolean mask for variants that pass CV filter
+    """
+    cv = df[score_cols].std(axis=1) / df[score_cols].mean(axis=1)
+    return (cv <= max_cv) | cv.isna()
+
 def simple_average(merged: pd.DataFrame) -> pd.Series:
     """
     Calculate the simple average across all count columns.
@@ -113,6 +135,7 @@ def calculate_full_activity_scores(
     avg_method: str = 'rep-weighted',
     groupby_cols: Optional[list] = None,
     total_reads: Optional[Dict[int, Dict[int, int]]] = None,
+    max_cv: Optional[float] = None,
 ) -> pd.DataFrame:
     """
     Calculate activity scores for all variants using full Sort-seq logic (per-bin/rep normalization, bin proportions, replicate/codon/rep-weighted averaging).
@@ -205,6 +228,12 @@ def calculate_full_activity_scores(
     rep_score_cw_cols = [f'Rep{rep}.score.cw' for rep in counts]
     # Only keep rows with at least min_reps non-NaN replicate scores
     valid = df[rep_score_cols].notna().sum(axis=1) >= min_reps
+    
+    # Apply CV filtering if specified
+    if max_cv is not None:
+        cv_valid = filter_by_cv(df, rep_score_cols, max_cv)
+        valid = valid & cv_valid
+    
     df_valid = df[valid].copy()
     # Simple average
     df_valid['avgscore'] = df_valid[rep_score_cols].mean(axis=1)

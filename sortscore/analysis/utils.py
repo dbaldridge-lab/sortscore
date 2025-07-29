@@ -8,9 +8,9 @@ Examples
 >>> from sortscore.analysis.utils import make_export_suffix
 """
 import os
-from typing import Any
+from typing import Any, Optional
 
-def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str) -> str:
+def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str, max_cv: Optional[float] = None) -> str:
     """
     Generate a suffix for export filenames.
 
@@ -24,6 +24,8 @@ def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, dat
         Minimum reads per million.
     date_str : str
         Date string (YYYYMMDD).
+    max_cv : float, optional
+        Maximum coefficient of variation filter.
 
     Returns
     -------
@@ -34,8 +36,13 @@ def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, dat
     --------
     >>> make_export_suffix('test', 3, 0, '20250701')
     'test_3-bins_0-minreads_20250701'
+    >>> make_export_suffix('test', 3, 0, '20250701', 0.5)
+    'test_3-bins_0-minreads_0.5-cv_20250701'
     """
-    return f'{experiment_name}_{b}-bins_{minread_threshold}-minreads_{date_str}'
+    base_suffix = f'{experiment_name}_{b}-bins_{minread_threshold}-minreads'
+    if max_cv is not None:
+        base_suffix += f'_{max_cv}-cv'
+    return f'{base_suffix}_{date_str}'
 
 def ensure_output_subdirs(output_dir: str, subdirs: list[str] = ["scores", "figures"]) -> None:
     """
