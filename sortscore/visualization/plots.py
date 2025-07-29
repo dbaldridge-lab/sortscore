@@ -216,11 +216,13 @@ def plot_heatmap(
     dms_matrix = make_dms_matrix(
         data,
         score_col,
-        experiment.num_aa,
+        experiment.num_positions,
         experiment.wt_seq,
-        experiment.variant_type
+        experiment.variant_type,
+        experiment.mutagenesis_variants,
+        experiment.position_type
     )
-    dropout_num, dropout_percent = get_dropout(dms_matrix)
+    dropout_num, dropout_percent = get_dropout(dms_matrix, experiment.mutagenesis_variants)
     heatmap_df = fill_wt(dms_matrix, wt_score)
     col_avg_df = make_col_avg_df(heatmap_df)
     
@@ -296,7 +298,11 @@ def plot_heatmap(
         cbar.ax.set_yticklabels(tick_labels, fontsize=18)
     else:
         cbar = plt.colorbar(sm, cax=cax)
-    x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos+experiment.num_aa)]
+    # X-axis labels depend on position_type
+    if experiment.position_type == 'dna':
+        x_labels = [str(i) for i in range(1, experiment.num_positions + 1)]
+    else:
+        x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
     # Create tick positions and ensure min_pos is always shown
     tick_indices = list(range(0, len(x_labels), tick_freq))
     if 0 not in tick_indices:
@@ -316,7 +322,11 @@ def plot_heatmap(
     ax1.set_ylabel('Avg', fontsize=20, labelpad=8, ha='center')
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax2.set_xlabel('Residue Sequence Number', fontsize=28)
+    # X-axis label depends on position_type
+    if experiment.position_type == 'dna':
+        ax2.set_xlabel('DNA Position', fontsize=28)
+    else:
+        ax2.set_xlabel('Residue Sequence Number', fontsize=28)
     ax2.set_ylabel('Variant Amino Acid', fontsize=28)
     ax2.tick_params(axis='both', which='major', labelsize=20)
     if row_avg:
