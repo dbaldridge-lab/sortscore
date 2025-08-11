@@ -20,7 +20,7 @@ from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.data_processing import aggregate_aa_data
 from sortscore.analysis.annotation import annotate_scores_dataframe, aggregate_synonymous_variants
 from sortscore.sequence_parsing import translate_dna
-from sortscore.visualization.plots import plot_heatmap
+from sortscore.visualization.heatmaps import plot_heatmap
 
 
 def main():
