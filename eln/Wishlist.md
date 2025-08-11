@@ -1,0 +1,8 @@
+- [ ] **.parquet files** are a columnar storage file format commonly used for efficient storage and retrieval of large tabular datasets
+- [ ] polars supports parsing .parquet files - known for speed, low memory usage, and efficiency
+	- can also read csv, json, ipc/feather, avro
+- [ ] see where dms_tools published [Examples — dms\_tools2 2.6.6 documentation](https://jbloomlab.github.io/dms_tools2/examples.html)
+	- [ ] they also have nice documentation of their python package
+- [ ] output as svg or png
+- [ ] standard deviation of scores
+- [ ] option to query the user to build the json through prompts
