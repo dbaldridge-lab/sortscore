@@ -9,12 +9,136 @@ Examples
 """
 import logging
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import pandas as pd
 import numpy as np
 import seaborn as sns
 from typing import Optional, List, Any
 from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
 from sortscore.analysis.load_experiment import ExperimentConfig
+
+def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries):
+    """Add biophysical properties panel for amino acid groups in codon heatmaps."""
+    
+    # Amino acid properties with numeric encoding for heatmap
+    aa_properties = {
+        'W': {'type': 4, 'charge': 0},  # Aromatic, Neutral
+        'F': {'type': 4, 'charge': 0},  # Aromatic, Neutral
+        'Y': {'type': 4, 'charge': 0},  # Aromatic, Neutral
+        'P': {'type': 5, 'charge': 0},  # Special, Neutral
+        'M': {'type': 3, 'charge': 0},  # Sulfur, Neutral
+        'I': {'type': 2, 'charge': 0},  # Branched, Neutral
+        'L': {'type': 2, 'charge': 0},  # Branched, Neutral
+        'V': {'type': 2, 'charge': 0},  # Branched, Neutral
+        'A': {'type': 0, 'charge': 0},  # Small, Neutral
+        'G': {'type': 0, 'charge': 0},  # Small, Neutral
+        'C': {'type': 3, 'charge': 0},  # Sulfur, Neutral
+        'S': {'type': 1, 'charge': 0},  # Polar, Neutral
+        'T': {'type': 1, 'charge': 0},  # Polar, Neutral
+        'Q': {'type': 1, 'charge': 0},  # Polar, Neutral
+        'N': {'type': 1, 'charge': 0},  # Polar, Neutral
+        'D': {'type': 6, 'charge': -1}, # Acidic, Negative
+        'E': {'type': 6, 'charge': -1}, # Acidic, Negative
+        'H': {'type': 7, 'charge': 1},  # Basic, Positive
+        'R': {'type': 7, 'charge': 1},  # Basic, Positive
+        'K': {'type': 7, 'charge': 1},  # Basic, Positive
+        '*': {'type': 8, 'charge': 0}   # Stop, Neutral
+    }
+
+
+    charge_colors = ['#B3D9FF', '#F0F0F0', '#FFB3BA']
+    charge_labels = {0: '—', 1: '', 2: '+'}
+    type_colors = ['#F5F5F5', '#C8E6C8', '#FFD4B3', '#FFF2CC', 
+                   '#E6D4FF', '#FFCCCC', '#CCE0FF', '#F4CCCC', '#D3D3D3']
+    type_labels = {0: 'Small', 1: 'Polar', 2: 'Branched', 3: 'Sulfur', 
+                   4: 'Aromatic', 5: 'Special', 6: 'Acidic', 7: 'Basic', 8: 'Stop'}
+    
+    # Create property array across all rows
+    charge_array = np.zeros((len(row_labels), 1))
+    type_array = np.zeros((len(row_labels), 1))
+    
+    for i, label in enumerate(row_labels):
+        # Extract amino acid from label like "W(TGG)" -> "W"
+        aa = label.split('(')[0]
+        if aa in aa_properties:
+            charge_array[i, 0] = aa_properties[aa]['charge'] + 1  # Convert -1,0,1 to 0,1,2 indexing
+            type_array[i, 0] = aa_properties[aa]['type']
+    
+    # Create custom colormaps
+    charge_cmap = ListedColormap(charge_colors)
+    type_cmap = ListedColormap(type_colors)
+    
+    # Create 2-column data array
+    props_array = np.column_stack([charge_array.flatten(), type_array.flatten()])
+    
+    # Plot charge and type columns
+    for i in range(len(row_labels)):
+        charge_val = int(charge_array[i, 0])
+        type_val = int(type_array[i, 0])
+        
+        # Add charge rectangle
+        ax.add_patch(plt.Rectangle((0, i), 1, 1, facecolor=charge_colors[charge_val], 
+                                  edgecolor=charge_colors[charge_val], linewidth=0))
+        
+        # Add type rectangle  
+        ax.add_patch(plt.Rectangle((1, i), 1, 1, facecolor=type_colors[type_val],
+                                  edgecolor=type_colors[type_val], linewidth=0))
+    
+    # Add single rotated labels for each property group spanning multiple rows
+    # Find continuous blocks of same properties
+    charge_blocks = []
+    type_blocks = []
+    
+    # Process charge blocks
+    current_charge = charge_array[0, 0]
+    start_idx = 0
+    for i in range(1, len(row_labels)):
+        if charge_array[i, 0] != current_charge:
+            if charge_labels[int(current_charge)]:  # Only add label if not empty (neutral)
+                charge_blocks.append((int(current_charge), start_idx, i-1))
+            current_charge = charge_array[i, 0]
+            start_idx = i
+    # Add final block
+    if charge_labels[int(current_charge)]:
+        charge_blocks.append((int(current_charge), start_idx, len(row_labels)-1))
+    
+    # Process type blocks
+    current_type = type_array[0, 0]
+    start_idx = 0
+    for i in range(1, len(row_labels)):
+        if type_array[i, 0] != current_type:
+            type_blocks.append((int(current_type), start_idx, i-1))
+            current_type = type_array[i, 0]
+            start_idx = i
+    # Add final block
+    type_blocks.append((int(current_type), start_idx, len(row_labels)-1))
+    
+    # Add text labels for charge blocks
+    for charge_val, start, end in charge_blocks:
+        center_y = (start + end + 1) / 2
+        ax.text(0.5, center_y, charge_labels[charge_val], ha='center', va='center',
+               fontsize=18, fontweight='bold', color='black', rotation=0)
+    
+    # Add rotated text labels for type blocks
+    for type_val, start, end in type_blocks:
+        center_y = (start + end + 1) / 2
+        ax.text(1.5, center_y, type_labels[type_val], ha='center', va='center',
+               fontsize=18, fontweight='bold', color='black', rotation=90)
+    
+    
+    
+    # Set up the axis
+    ax.set_xlim(0, 2)
+    ax.set_ylim(0, len(row_labels))
+    ax.invert_yaxis()
+    
+    
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
 
 def plot_activity_score_distribution(
@@ -243,36 +367,72 @@ def plot_heatmap(
     from matplotlib.gridspec import GridSpec
     nan_mask = dms_matrix.isnull()
     wt_mask = dms_matrix == 'WT'
+    # Adjust height based on whether this is a codon heatmap (DNA variant type) or AA heatmap
+    num_rows = len(dms_matrix.index)  # Number of variants (rows) in the matrix
+    is_codon_heatmap = num_rows > 21  # Heuristic: >21 rows likely means codon heatmap (64 codons vs 21 AAs)
+    
+    # Scale width based on number of rows
     if fig_size == 'small':
-        # Calculate width based on number of amino acids (minimum 16.5, scale with AA count)
-        width = max(16.5, experiment.num_aa * 0.15)  # ~0.15 inches per AA position
-        fig = plt.figure(figsize=(width, 12), facecolor='white')
-        # With dynamic width, we can show more ticks - aim for ~40-50 ticks
-        tick_freq = max(1, experiment.num_aa // 40)
+        width = max(16.5, experiment.num_aa * 0.15)
+        height = 30 if is_codon_heatmap else 12
+        fig = plt.figure(figsize=(width, height), facecolor='white')
+        tick_freq = max(1, experiment.num_aa // 15)
     elif fig_size == 'large':
-        # For large figures, use more width per AA
-        width = max(30, experiment.num_aa * 0.25)  # ~0.25 inches per AA position
-        fig = plt.figure(figsize=(width, 10), facecolor='white')
-        # With even more width, show more ticks - aim for ~50-60 ticks
-        tick_freq = max(1, experiment.num_aa // 50)
+        width = max(30, experiment.num_aa * 0.25)
+        height = 35 if is_codon_heatmap else 10
+        fig = plt.figure(figsize=(width, height), facecolor='white')
+        tick_freq = max(1, experiment.num_aa // 25)
     elif fig_size == 'long':
-        # For long figures, use even more width per AA
-        width = max(30, experiment.num_aa * 0.3)  # ~0.3 inches per AA position
-        fig = plt.figure(figsize=(width, 25), facecolor='white')
-        # With the most width, show the most ticks - aim for ~60 ticks
-        tick_freq = max(1, experiment.num_aa // 60)
+        width = max(30, experiment.num_aa * 0.3)
+        height = 45 if is_codon_heatmap else 25
+        fig = plt.figure(figsize=(width, height), facecolor='white')
+        tick_freq = max(1, experiment.num_aa // 40)
+
     if row_avg:
         row_avg_df = pd.DataFrame(heatmap_df.mean(axis=1), columns=['Avg'])
-        gs = GridSpec(2,3, width_ratios=[1, 35, 1], height_ratios=[1, 45], hspace=0.03, wspace=0.03)
-        ax1 = fig.add_subplot(gs[0, 1])
-        ax2 = fig.add_subplot(gs[1, 1])
-        cax = fig.add_subplot(gs[1, 2])
-        ax3 = fig.add_subplot(gs[1, 0])
+        if is_codon_heatmap:
+            avg_height_ratio = 0.75 
+            main_height_ratio = 60
+        else:
+            avg_height_ratio = 1
+            main_height_ratio = 45
+        if is_codon_heatmap:
+            # Add space for biophysical properties panel
+            gs = GridSpec(2,5, width_ratios=[1, 35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
+            ax1 = fig.add_subplot(gs[0, 1])
+            ax2 = fig.add_subplot(gs[1, 1])
+            ax_props = fig.add_subplot(gs[1, 2])  # Biophysical properties panel
+            cax = fig.add_subplot(gs[1, 3])
+            ax3 = fig.add_subplot(gs[1, 0])
+        else:
+            gs = GridSpec(2,3, width_ratios=[1, 35, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.03)
+            ax1 = fig.add_subplot(gs[0, 1])
+            ax2 = fig.add_subplot(gs[1, 1])
+            cax = fig.add_subplot(gs[1, 2])
+            ax3 = fig.add_subplot(gs[1, 0])
+            ax_props = None
     else:
-        gs = GridSpec(2, 2, width_ratios=[35, 1], height_ratios=[1, 20], hspace=0.03, wspace=0.03)
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[1, 0])
-        cax = fig.add_subplot(gs[1, 1])
+        # Adjust the main heatmap height ratio for codon heatmaps, but keep Avg subplot the same
+        if is_codon_heatmap:
+            avg_height_ratio = 0.75  # Keep avg row smaller for codon heatmaps
+            main_height_ratio = 35
+        else:
+            avg_height_ratio = 1
+            main_height_ratio = 20
+        if is_codon_heatmap:
+            # Add space for biophysical properties panel left of colorbar
+            gs = GridSpec(2, 4, width_ratios=[35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax2 = fig.add_subplot(gs[1, 0])
+            ax_props = fig.add_subplot(gs[1, 1])  # Biophysical properties panel
+            cax = fig.add_subplot(gs[1, 2])
+        else:
+            gs = GridSpec(2, 2, width_ratios=[35, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.03)
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax2 = fig.add_subplot(gs[1, 0])
+            cax = fig.add_subplot(gs[1, 1])
+            ax_props = None
+            
     min_val = heatmap_df.min().min()
     max_val = heatmap_df.max().max()
     norm = plt.Normalize(vmin=min_val, vmax=max_val)
@@ -283,6 +443,37 @@ def plot_heatmap(
         sns.heatmap(nan_mask, annot=False, cmap=cmap, cbar=False, mask=~nan_mask, ax=ax2)
     if row_avg:
         sns.heatmap(row_avg_df, cmap=cmap, cbar=False, ax=ax3, norm=norm)
+        
+    # Add white lines between different amino acid groups for codon heatmaps
+    if is_codon_heatmap:
+        row_labels = list(heatmap_df.index)
+        aa_boundaries = []
+        current_aa = None
+        
+        for i, label in enumerate(row_labels):
+            # Extract amino acid from label like "W(TGG)" -> "W"
+            aa = label.split('(')[0]
+            if current_aa is not None and aa != current_aa:
+                aa_boundaries.append(i)
+            current_aa = aa
+            
+        # Add horizontal white lines at amino acid boundaries
+        for boundary in aa_boundaries:
+            ax2.axhline(y=boundary, color='white', linewidth=1)
+            if row_avg:
+                ax3.axhline(y=boundary, color='white', linewidth=1)
+                
+        # Add thick white dotted line below M(ATG) to separate M from C within sulfur group
+        for i, label in enumerate(row_labels):
+            aa = label.split('(')[0]
+            if aa == 'M':  # Found M(ATG) row
+                ax2.axhline(y=i+1, color='white', linewidth=3, linestyle=(0, (5, 2)))
+                if row_avg:
+                    ax3.axhline(y=i+1, color='white', linewidth=3, linestyle=(0, (5, 2)))
+                
+        # Add biophysical properties panel for codon heatmaps
+        if ax_props is not None:
+            _add_biophysical_properties_panel(ax_props, row_labels, aa_boundaries)
     for i in range(len(nan_mask)):
         for j in range(len(nan_mask.columns)):
             if nan_mask.iloc[i, j]:
@@ -296,6 +487,8 @@ def plot_heatmap(
     if tick_values is not None and tick_labels is not None:
         cbar = plt.colorbar(sm, cax=cax, ticks=tick_values)
         cbar.ax.set_yticklabels(tick_labels, fontsize=18)
+        # Ensure only our specified ticks are shown
+        cbar.ax.set_yticks(tick_values)
     else:
         cbar = plt.colorbar(sm, cax=cax)
     # X-axis labels depend on position_type
@@ -319,7 +512,10 @@ def plot_heatmap(
     elif fig_size == 'large':
         fig.suptitle(plot_title, fontsize=34, y=0.91)
     fig.subplots_adjust(top=0.85, bottom=0.15)
-    ax1.set_ylabel('Avg', fontsize=20, labelpad=8, ha='center')
+    ax1.set_ylabel('Avg', fontsize=20, labelpad=20, ha='center', rotation=0)
+    # Position the Avg label vertically centered (only adjust y-coordinate, keep default x)
+    label = ax1.yaxis.get_label()
+    label.set_verticalalignment('center')
     ax1.set_xticks([])
     ax1.set_yticks([])
     # X-axis label depends on position_type
@@ -329,11 +525,16 @@ def plot_heatmap(
         ax2.set_xlabel('Residue Sequence Number', fontsize=28)
     ax2.set_ylabel('Variant Amino Acid', fontsize=28)
     ax2.tick_params(axis='both', which='major', labelsize=20)
+    # Keep y-axis labels horizontal and left-aligned (but in their default position)
+    plt.setp(ax2.get_yticklabels(), rotation=0, ha='right')
+    
     if row_avg:
         ax3.set_ylabel('Variant Amino Acid', fontsize=28, labelpad=8, ha='center')
         ax3.set_yticks(ax2.get_yticks())
         ax3.set_yticklabels(ax2.get_yticklabels())
         ax3.tick_params(axis='y', which='major', labelsize=20)
+        # Keep y-axis labels horizontal and left-aligned in the average subplot
+        plt.setp(ax3.get_yticklabels(), rotation=0, ha='right')
         ax2.set_ylabel('')
         ax2.set_yticks([])
         ax3.set_xticks([])
@@ -343,6 +544,3 @@ def plot_heatmap(
     else:
         plt.show()
     plt.close()
-
-# Note: Heatmap and matrix utilities are complex and depend on sequence parsing and stats modules.
-# For a full refactor, these should be moved to a separate module and depend on the new package structure.
