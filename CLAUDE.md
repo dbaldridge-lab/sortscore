@@ -1,4 +1,3 @@
-
 0;276;0c# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -70,9 +69,37 @@ sortscore --config config.json
 
 **Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `variant_type`, `min_pos`, `max_pos`, `output_dir`, `experiment_setup_file`, `mutagenesis_variants`, `position_type`
 
-**Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Read Counts (CSV)`, `Median GFP`
+**Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Path` (or `Read Counts (CSV)`), `Median GFP`, and optionally `Read Count` and `Proportion of Cells`
 
 **Count Files**: TSV/CSV with columns `seq` (variant sequence) and count column (any name, must be second column)
+
+#### Normalization Options
+
+The package supports comprehensive normalization to account for technical variability:
+
+**Base normalization**: All counts are normalized to reads per million to account for sequencing depth differences between samples.
+
+**Optional cell proportion normalization**: If the `Proportion of Cells` column is provided in the experiment setup CSV, the package applies additional normalization to account for different numbers of cells sorted into each quantile gate:
+
+- **Formula**: `normalized_reads = (variant_reads / total_reads / cell_proportion) * 1e6`
+- **Values**: Cell proportions should be decimal values representing the fraction of viable, singlet cells that fall within each quantile gate
+- **Purpose**: Corrects for cases where quantile gates capture different proportions of the sorted cell population (after dead/doublet removal)
+
+**Cell sorter data**: Use the `%Gate` values from your cell sorter output. Convert percentages to decimal values for the CSV.
+
+**Important**: The cell proportions do NOT need to add up to 100%. This is normal for Sort-seq experiments because quantile gates are exclusive and there are gaps between gates.
+
+**Example from real cell sorter data**:
+```
+Gate    %Gate     Decimal Value for CSV
+R4      25.06%    0.2506
+R5      24.66%    0.2466  
+R6      25.00%    0.2500
+R7      23.90%    0.2390
+Total:  98.62%    (Normal - doesn't need to sum to 100%)
+```
+
+This dual normalization ensures that activity scores reflect true biological differences rather than technical artifacts from sequencing depth or cell sorting variations.
 
 #### Count File Formats
 
@@ -324,3 +351,4 @@ When working on extended tasks or making multiple related changes, Claude should
 ## Memory Notes
 
 - Don't unzip files, use zcat to read them as needed
+- Don't edit config files unless asked
