@@ -58,9 +58,11 @@ __pycache__/
 # Ignore figures
 figures/*
 *.png
+*.svg
 
 # Ignore notes
 .obsidian/*
+eln/
 
 # Ignore test data folders
 tests/oPool5b_GTAC/
@@ -73,4 +75,4 @@ venv/
 
 # Ignore Python package distribution files
 *.egg-info/
-eln/Wishlist.md
+
