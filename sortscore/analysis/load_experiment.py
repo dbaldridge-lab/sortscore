@@ -204,6 +204,7 @@ class ExperimentConfig:
     transcript_id: Optional[str] = None
     mutagenesis_variants: Optional[list] = None
     position_type: str = 'aa'  # 'aa' for amino acid positions, 'dna' for DNA positions
+    biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
     
     @property
     def num_aa(self) -> int:
@@ -246,13 +247,13 @@ class ExperimentConfig:
                 args[field] = data[field]
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type']:
+        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop']:
             if field in data:
                 args[field] = data[field]
         
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type'}
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params

@@ -306,11 +306,13 @@ def main():
             if pd.notna(wt_score):
                 plot_heatmap(aa_data, score_col, aa_config, wt_score=float(wt_score),
                             tick_values=tick_values, tick_labels=tick_labels,
-                            export=True, output=aa_heatmap_file, format='png', export_matrix=True)
+                            export=True, output=aa_heatmap_file, format='png', export_matrix=True,
+                            show_biophysical_properties=experiment.biophysical_prop)
             else:
                 plot_heatmap(aa_data, score_col, aa_config,
                             tick_values=tick_values, tick_labels=tick_labels,
-                            export=True, output=aa_heatmap_file, format='png', export_matrix=True)
+                            export=True, output=aa_heatmap_file, format='png', export_matrix=True,
+                            show_biophysical_properties=experiment.biophysical_prop)
             logging.info(f"Saved AA heatmap to {aa_heatmap_file}")
         
         # Codon heatmap  
@@ -343,11 +345,13 @@ def main():
             if pd.notna(wt_score_codon):
                 plot_heatmap(scores_df, score_col, experiment, wt_score=float(wt_score_codon),
                             tick_values=tick_values_codon, tick_labels=tick_labels_codon,
-                            export=True, output=codon_heatmap_file, format='png', export_matrix=True)
+                            export=True, output=codon_heatmap_file, format='png', export_matrix=True,
+                            show_biophysical_properties=experiment.biophysical_prop)
             else:
                 plot_heatmap(scores_df, score_col, experiment,
                             tick_values=tick_values_codon, tick_labels=tick_labels_codon,
-                            export=True, output=codon_heatmap_file, format='png', export_matrix=True)
+                            export=True, output=codon_heatmap_file, format='png', export_matrix=True,
+                            show_biophysical_properties=experiment.biophysical_prop)
             logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
             
     except Exception as e:

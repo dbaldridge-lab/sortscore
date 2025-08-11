@@ -22,85 +22,61 @@ from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, mak
 from sortscore.analysis.load_experiment import ExperimentConfig
 
 
-def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries):
+def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_heatmap=False):
     """Add biophysical properties heatmap panel for amino acid groups in codon heatmaps."""
     
-    # Amino acid properties with numeric encoding for heatmap (indices match color arrays)
+    # Amino acid properties with numeric encoding for heatmap (only type, no separate charge)
     aa_properties = {
-        'W': {'type': 4, 'charge': 1},  # Aromatic, Neutral
-        'F': {'type': 4, 'charge': 1},  # Aromatic, Neutral  
-        'Y': {'type': 4, 'charge': 1},  # Aromatic, Neutral
-        'P': {'type': 5, 'charge': 1},  # Special, Neutral
-        'M': {'type': 3, 'charge': 1},  # Sulfur, Neutral
-        'I': {'type': 2, 'charge': 1},  # Branched, Neutral
-        'L': {'type': 2, 'charge': 1},  # Branched, Neutral
-        'V': {'type': 2, 'charge': 1},  # Branched, Neutral
-        'A': {'type': 0, 'charge': 1},  # Small, Neutral
-        'G': {'type': 0, 'charge': 1},  # Small, Neutral
-        'C': {'type': 3, 'charge': 1},  # Sulfur, Neutral
-        'S': {'type': 1, 'charge': 1},  # Polar, Neutral
-        'T': {'type': 1, 'charge': 1},  # Polar, Neutral
-        'Q': {'type': 1, 'charge': 1},  # Polar, Neutral
-        'N': {'type': 1, 'charge': 1},  # Polar, Neutral
-        'D': {'type': 6, 'charge': 0},  # Acidic, Negative
-        'E': {'type': 6, 'charge': 0},  # Acidic, Negative
-        'H': {'type': 7, 'charge': 2},  # Basic, Positive
-        'R': {'type': 7, 'charge': 2},  # Basic, Positive
-        'K': {'type': 7, 'charge': 2},  # Basic, Positive
-        '*': {'type': 8, 'charge': 1}   # Stop, Neutral
+        'W': {'type': 4},  # Aromatic
+        'F': {'type': 4},  # Aromatic  
+        'Y': {'type': 4},  # Aromatic
+        'P': {'type': 5},  # Special
+        'M': {'type': 3},  # Sulfur
+        'I': {'type': 2},  # Branched
+        'L': {'type': 2},  # Branched
+        'V': {'type': 2},  # Branched
+        'A': {'type': 0},  # Small
+        'G': {'type': 0},  # Small
+        'C': {'type': 3},  # Sulfur
+        'S': {'type': 1},  # Polar
+        'T': {'type': 1},  # Polar
+        'Q': {'type': 1},  # Polar
+        'N': {'type': 1},  # Polar
+        'D': {'type': 6},  # Acidic
+        'E': {'type': 6},  # Acidic
+        'H': {'type': 7},  # Basic
+        'R': {'type': 7},  # Basic
+        'K': {'type': 7},  # Basic
+        '*': {'type': 8}   # Stop
     }
 
-    # Pastel color mappings
-    charge_colors = ['#B3D9FF', '#F0F0F0', '#FFB3BA']  # Light blue, light gray, light red
-    charge_labels = {0: '—', 1: '', 2: '+'}  # Em dash, blank, plus
+    # Pastel color mappings (only for type now) - Start uses same color as Sulfur
     type_colors = ['#F5F5F5', '#C8E6C8', '#FFD4B3', '#FFF2CC', 
-                   '#E6D4FF', '#FFCCCC', '#CCE0FF', '#F4CCCC', '#D3D3D3']
+                   '#E6D4FF', '#FFCCCC', '#CCE0FF', '#F4CCCC', '#D3D3D3', '#FFF2CC']
     type_labels = {0: 'Small', 1: 'Polar', 2: 'Branched', 3: 'Sulfur', 
-                   4: 'Aromatic', 5: 'Special', 6: 'Acidic', 7: 'Basic', 8: 'Stop'}
+                   4: 'Aromatic', 5: 'Special', 6: 'Acidic (–)', 7: 'Basic (+)', 8: 'Stop', 9: 'Start'}
     
-    # Create property arrays for all rows
-    charge_array = np.zeros((len(row_labels), 1))
+    # Create property array for all rows
     type_array = np.zeros((len(row_labels), 1))
     
     for i, label in enumerate(row_labels):
-        # Extract amino acid from label like "W(TGG)" -> "W"
-        aa = label.split('(')[0]
+        # Extract amino acid from label like "W(TGG)" -> "W" or just "W"
+        aa = label.split('(')[0] if '(' in label else label
         if aa in aa_properties:
-            charge_array[i, 0] = aa_properties[aa]['charge']
             type_array[i, 0] = aa_properties[aa]['type']
     
-    # Plot charge and type columns
+    # Plot only type column (charge information is now in the labels)
     for i in range(len(row_labels)):
-        charge_val = int(charge_array[i, 0])
         type_val = int(type_array[i, 0])
         
-        # Add charge rectangle
-        ax.add_patch(plt.Rectangle((0, i), 1, 1, facecolor=charge_colors[charge_val], 
-                                  edgecolor=charge_colors[charge_val], linewidth=0))
-        
-        # Add type rectangle  
-        ax.add_patch(plt.Rectangle((1, i), 1, 1, facecolor=type_colors[type_val],
+        # Add type rectangle - double width for small heatmaps, regular width for codon heatmaps
+        width = 2 if is_small_heatmap else 1
+        ax.add_patch(plt.Rectangle((0, i), width, 1, facecolor=type_colors[type_val],
                                   edgecolor=type_colors[type_val], linewidth=0))
     
-    # Add single rotated labels for each property group spanning multiple rows
-    # Find continuous blocks of same properties
-    charge_blocks = []
+    # Add labels for type blocks
+    # Find continuous blocks of same type
     type_blocks = []
-    
-    # Process charge blocks
-    current_charge = charge_array[0, 0]
-    start_idx = 0
-    for i in range(1, len(row_labels)):
-        if charge_array[i, 0] != current_charge:
-            if charge_labels[int(current_charge)]:  # Only add label if not empty (neutral)
-                charge_blocks.append((int(current_charge), start_idx, i-1))
-            current_charge = charge_array[i, 0]
-            start_idx = i
-    # Add final block
-    if charge_labels[int(current_charge)]:
-        charge_blocks.append((int(current_charge), start_idx, len(row_labels)-1))
-    
-    # Process type blocks
     current_type = type_array[0, 0]
     start_idx = 0
     for i in range(1, len(row_labels)):
@@ -111,20 +87,21 @@ def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries):
     # Add final block
     type_blocks.append((int(current_type), start_idx, len(row_labels)-1))
     
-    # Add text labels for charge blocks
-    for charge_val, start, end in charge_blocks:
-        center_y = (start + end + 1) / 2
-        ax.text(0.5, center_y, charge_labels[charge_val], ha='center', va='center',
-               fontsize=18, fontweight='bold', color='black', rotation=0)
-    
-    # Add rotated text labels for type blocks
+    # Add text labels for type blocks
     for type_val, start, end in type_blocks:
         center_y = (start + end + 1) / 2
-        ax.text(1.5, center_y, type_labels[type_val], ha='center', va='center',
-               fontsize=18, fontweight='bold', color='black', rotation=90)
+        # Use horizontal rotation for both small and codon heatmaps
+        rotation = 0
+        # Use font size 16 for both small and codon heatmaps
+        fontsize = 16
+        # Position text in center of the (potentially wider) column
+        x_center = 1 if is_small_heatmap else 0.5
+        ax.text(x_center, center_y, type_labels[type_val], ha='center', va='center',
+               fontsize=fontsize, fontweight='bold', color='black', rotation=rotation)
     
-    # Set up the axis
-    ax.set_xlim(0, 2)
+    # Set up the axis - adjust width based on heatmap type
+    axis_width = 2 if is_small_heatmap else 1
+    ax.set_xlim(0, axis_width)
     ax.set_ylim(0, len(row_labels))
     ax.invert_yaxis()
     
@@ -151,7 +128,8 @@ def plot_heatmap(
     motif_indices: Optional[List[int]] = None,
     row_avg: bool = False,
     title: Optional[str] = None,
-    export_matrix: bool = False
+    export_matrix: bool = False,
+    show_biophysical_properties: bool = False
 ) -> None:
     """
     Plot a MAVE heatmap using a matrix of activity scores.
@@ -188,6 +166,8 @@ def plot_heatmap(
         Plot title.
     export_matrix : bool, default False
         If True, export the heatmap matrix data to CSV.
+    show_biophysical_properties : bool, default False
+        If True, show biophysical properties panel beside the heatmap.
     """
     logger = logging.getLogger(__name__)
     
@@ -222,9 +202,11 @@ def plot_heatmap(
     nan_mask = dms_matrix.isnull()
     wt_mask = dms_matrix == 'WT'
     
-    # Determine if this is a codon heatmap
+    # Determine if this is a codon heatmap and whether to show biophysical properties
     num_rows = len(dms_matrix.index)
     is_codon_heatmap = num_rows > 21  # More than 21 rows = codon heatmap
+    is_small_aa_heatmap = num_rows == 21  # Exactly 21 rows = standard AA heatmap
+    show_props = show_biophysical_properties and (is_codon_heatmap or is_small_aa_heatmap)
     
     # Configure figure size
     if fig_size == 'small':
@@ -243,7 +225,7 @@ def plot_heatmap(
         fig = plt.figure(figsize=(width, height), facecolor='white')
         tick_freq = max(1, experiment.num_aa // 40)
 
-    # Set up subplot layout based on row_avg and codon heatmap
+    # Set up subplot layout based on row_avg and biophysical properties
     if row_avg:
         row_avg_df = pd.DataFrame(heatmap_df.mean(axis=1), columns=['Avg'])
         if is_codon_heatmap:
@@ -253,7 +235,7 @@ def plot_heatmap(
             avg_height_ratio = 1
             main_height_ratio = 45
             
-        if is_codon_heatmap:
+        if show_props:
             # Add space for biophysical properties panel
             gs = GridSpec(2,5, width_ratios=[1, 35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
             ax1 = fig.add_subplot(gs[0, 1])
@@ -276,7 +258,7 @@ def plot_heatmap(
             avg_height_ratio = 1
             main_height_ratio = 20
             
-        if is_codon_heatmap:
+        if show_props:
             # Add space for biophysical properties panel
             gs = GridSpec(2, 4, width_ratios=[35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
             ax1 = fig.add_subplot(gs[0, 0])
@@ -306,36 +288,31 @@ def plot_heatmap(
     if row_avg:
         sns.heatmap(row_avg_df, cmap=cmap, cbar=False, ax=ax3, norm=norm)
         
-    # Add codon-specific features
-    if is_codon_heatmap:
+    # Add codon-specific features and biophysical properties
+    if is_codon_heatmap or show_props:
         row_labels = list(heatmap_df.index)
         aa_boundaries = []
         current_aa = None
         
+        # Find amino acid boundaries (for codon heatmaps or for grouping in small AA heatmaps)
         for i, label in enumerate(row_labels):
-            # Extract amino acid from label like "W(TGG)" -> "W"
-            aa = label.split('(')[0]
+            # Extract amino acid from label like "W(TGG)" -> "W" or just "W"
+            aa = label.split('(')[0] if '(' in label else label
             if current_aa is not None and aa != current_aa:
                 aa_boundaries.append(i)
             current_aa = aa
             
-        # Add horizontal white lines at amino acid boundaries
-        for boundary in aa_boundaries:
-            ax2.axhline(y=boundary, color='white', linewidth=1)
-            if row_avg:
-                ax3.axhline(y=boundary, color='white', linewidth=1)
-                
-        # Add thick white dotted line below M(ATG) to separate M from C within sulfur group
-        for i, label in enumerate(row_labels):
-            aa = label.split('(')[0]
-            if aa == 'M':  # Found M(ATG) row
-                ax2.axhline(y=i+1, color='white', linewidth=3, linestyle=(0, (5, 2)))
+        # Add horizontal white lines at amino acid boundaries (only for codon heatmaps)
+        if is_codon_heatmap:
+            for boundary in aa_boundaries:
+                ax2.axhline(y=boundary, color='white', linewidth=1)
                 if row_avg:
-                    ax3.axhline(y=i+1, color='white', linewidth=3, linestyle=(0, (5, 2)))
-                
-        # Add biophysical properties panel for codon heatmaps
+                    ax3.axhline(y=boundary, color='white', linewidth=1)
+
+
+        # Add biophysical properties panel when requested
         if ax_props is not None:
-            _add_biophysical_properties_panel(ax_props, row_labels, aa_boundaries)
+            _add_biophysical_properties_panel(ax_props, row_labels, aa_boundaries, is_small_aa_heatmap)
 
     # Handle NaN and WT visualization
     for i in range(len(nan_mask)):
