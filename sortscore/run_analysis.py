@@ -76,6 +76,7 @@ def main():
             minread_threshold=experiment.minread_threshold,
             avg_method=experiment.avg_method,
             total_reads=experiment.total_reads,
+            cell_prop=experiment.cell_prop,
             merged_df=merged_df,
             max_cv=experiment.max_cv
         )
@@ -266,22 +267,15 @@ def main():
                 aa_data = aggregate_aa_data(scores_df, score_col)
             
             # Get WT score from the aggregated AA data for AA heatmap
+            # For AA substitution heatmaps, average synonymous WT variants
             wt_score = pd.NA  # default
+            wt_label = "WT Avg"
             if 'annotate_aa' in aa_data.columns:
-                if experiment.variant_type == 'dna':
-                    # For DNA mode: average all wt_dna entries
-                    wt_subset = aa_data[aa_data['annotate_aa'] == 'wt_dna']
-                    if len(wt_subset) > 0 and score_col in wt_subset.columns:
-                        score_val = wt_subset[score_col].mean()
-                        wt_score = float(score_val) if pd.notna(score_val) else pd.NA
-                        logging.info(f"Found WT score from DNA->AA data (averaged from {len(wt_subset)} wt_dna): {wt_score}")
-                else:
-                    # For AA mode: average all synonymous variants
-                    wt_subset = aa_data[aa_data['annotate_aa'] == 'synonymous']
-                    if len(wt_subset) > 0 and score_col in wt_subset.columns:
-                        score_val = wt_subset[score_col].mean()
-                        wt_score = float(score_val) if pd.notna(score_val) else pd.NA
-                        logging.info(f"Found WT score from AA data (averaged from {len(wt_subset)} synonymous variants): {wt_score}")
+                wt_subset = aa_data[aa_data['annotate_aa'] == 'synonymous']
+                if len(wt_subset) > 0 and score_col in wt_subset.columns:
+                    score_val = wt_subset[score_col].mean()
+                    wt_score = float(score_val) if pd.notna(score_val) else pd.NA
+                    logging.info(f"Found WT score from AA data (averaged from {len(wt_subset)} synonymous variants): {wt_score}")
             
             # Create a config object for AA heatmap with proper fields
             from types import SimpleNamespace
@@ -305,7 +299,7 @@ def main():
                 # Add WT score to tick marks if min/max are not NaN
                 if pd.notna(data_min) and pd.notna(data_max):
                     tick_values = [data_min, wt_score, data_max]
-                    tick_labels = [f'{data_min:.0f}', f'WT={wt_score:.0f}', f'{data_max:.0f}']
+                    tick_labels = [f'{data_min:.0f}', f'{wt_label}', f'{data_max:.0f}']
             
             aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{suffix}.png")
             # Only pass wt_score if it's a valid number
@@ -321,8 +315,9 @@ def main():
         
         # Codon heatmap  
         if experiment.variant_type == 'dna':
-            # Get WT score for codon heatmap tick marks
+            # Get WT score for codon heatmap tick marks (use wt_dna for codon-level analysis)
             wt_score_codon = pd.NA  # default
+            wt_label_codon = "WT"
             if 'annotate_dna' in scores_df.columns:
                 wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
                 if len(wt_subset) > 0 and score_col in wt_subset.columns:
@@ -341,7 +336,7 @@ def main():
                 # Add WT score to tick marks if min/max are not NaN
                 if pd.notna(data_min) and pd.notna(data_max):
                     tick_values_codon = [data_min, wt_score_codon, data_max]
-                    tick_labels_codon = [f'{data_min:.0f}', f'WT={wt_score_codon:.0f}', f'{data_max:.0f}']
+                    tick_labels_codon = [f'{data_min:.0f}', f'{wt_label_codon}', f'{data_max:.0f}']
             
             codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{suffix}.png")
             # Only pass wt_score if it's a valid number
