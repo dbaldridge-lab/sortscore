@@ -44,12 +44,12 @@ def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesi
             # For GCTA-style experiments, use custom DNA bases
             row_labels = mutagenesis_variants
         else:
-            # Default DNA codon variants
+            # Default DNA codon variants - grouped by amino acid properties
             row_labels = [
-                'W(TGG)', 'F(TTT)', 'F(TTC)', 'Y(TAT)', 'Y(TAC)', 'P(CCT)', 'P(CCC)', 'P(CCA)', 'P(CCG)', 'M(ATG)',
+                'M(ATG)', 'C(TGT)', 'C(TGC)', 'W(TGG)', 'F(TTT)', 'F(TTC)', 'Y(TAT)', 'Y(TAC)', 'P(CCT)', 'P(CCC)', 'P(CCA)', 'P(CCG)', 
                 'I(ATT)', 'I(ATC)', 'I(ATA)', 'L(TTA)', 'L(TTG)', 'L(CTT)', 'L(CTC)', 'L(CTA)', 'L(CTG)',
                 'V(GTT)', 'V(GTC)', 'V(GTA)', 'V(GTG)', 'A(GCT)', 'A(GCC)', 'A(GCA)', 'A(GCG)', 'G(GGT)', 'G(GGC)',
-                'G(GGA)', 'G(GGG)', 'C(TGT)', 'C(TGC)', 'S(TCT)', 'S(TCC)', 'S(TCA)', 'S(TCG)', 'S(AGT)', 'S(AGC)',
+                'G(GGA)', 'G(GGG)', 'S(TCT)', 'S(TCC)', 'S(TCA)', 'S(TCG)', 'S(AGT)', 'S(AGC)',
                 'T(ACT)', 'T(ACC)', 'T(ACA)', 'T(ACG)', 'Q(CAA)', 'Q(CAG)', 'N(AAT)', 'N(AAC)', 'D(GAT)', 'D(GAC)',
                 'E(GAA)', 'E(GAG)', 'H(CAT)', 'H(CAC)', 'R(CGT)', 'R(CGC)', 'R(CGA)', 'R(CGG)', 'R(AGA)', 'R(AGG)',
                 'K(AAA)', 'K(AAG)', '*(TAA)', '*(TAG)', '*(TGA)'
@@ -86,7 +86,9 @@ def make_dms_matrix(
                 matrix.at[base, index] = 'WT'
     elif variant_type == 'aa':
         # For AA positions, mark WT amino acids
-        wt_aa_seq = translate_dna(wt_seq) if len(wt_seq) % 3 == 0 else wt_seq
+        # Check if wt_seq is DNA (length divisible by 3 and contains only ATCG) or already AA
+        is_dna = len(wt_seq) % 3 == 0 and all(c in 'ATCG' for c in wt_seq.upper())
+        wt_aa_seq = translate_dna(wt_seq) if is_dna else wt_seq
         for index, amino_acid in enumerate(wt_aa_seq, start=1):
             if amino_acid in matrix.index and index in matrix.columns:
                 matrix.at[amino_acid, index] = 'WT'
