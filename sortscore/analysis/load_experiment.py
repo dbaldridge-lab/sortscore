@@ -191,6 +191,7 @@ class ExperimentConfig:
     counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
     median_gfp: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
+    cell_prop: Optional[Dict[int, Dict[int, float]]] = None
     
     # Analysis parameters with defaults
     bins_required: int = 1
@@ -277,6 +278,7 @@ class ExperimentConfig:
         counts = {}
         median_gfp = {}
         total_reads = {}
+        cell_prop = {}
         
         for _, row in setup_df.iterrows():
             rep = int(row['Replicate'])
@@ -291,6 +293,11 @@ class ExperimentConfig:
             if 'Read Count' in row:
                 total_read_count = int(row['Read Count'])
                 total_reads.setdefault(rep, {})[bin_] = total_read_count
+            
+            # Load cell proportions if available (for cell distribution normalization)
+            if 'Proportion of Cells' in row:
+                cell_proportion = float(row['Proportion of Cells'])
+                cell_prop.setdefault(rep, {})[bin_] = cell_proportion
             
             try:
                 # Check if file is parquet format
@@ -326,6 +333,10 @@ class ExperimentConfig:
         # Set total_reads if we loaded any
         if total_reads:
             self.total_reads = total_reads
+            
+        # Set cell_prop if we loaded any
+        if cell_prop:
+            self.cell_prop = cell_prop
     
     def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
         """
@@ -445,8 +456,15 @@ class ExperimentConfig:
             Row number to use as header (0-based), or None if no header detected
         """
         try:
+            import gzip
+            # Handle both regular and gzipped files
+            if count_file.endswith('.gz'):
+                open_func = lambda f: gzip.open(f, 'rt')
+            else:
+                open_func = lambda f: open(f, 'r')
+                
             # Read first few lines to check for headers
-            with open(count_file, 'r') as f:
+            with open_func(count_file) as f:
                 lines = []
                 for _ in range(5):  # Read up to 5 lines
                     line = f.readline()

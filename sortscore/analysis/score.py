@@ -135,6 +135,7 @@ def calculate_full_activity_scores(
     avg_method: str = 'rep-weighted',
     groupby_cols: Optional[list] = None,
     total_reads: Optional[Dict[int, Dict[int, int]]] = None,
+    cell_prop: Optional[Dict[int, Dict[int, float]]] = None,
     max_cv: Optional[float] = None,
 ) -> pd.DataFrame:
     """
@@ -159,6 +160,11 @@ def calculate_full_activity_scores(
     total_reads : dict, optional
         Nested dict of total sequencing reads for normalization: total_reads[rep][bin] = int.
         If not provided, uses sum of variant counts in each bin.
+    cell_prop : dict, optional
+        Nested dict of cell proportions per bin for normalization: cell_prop[rep][bin] = float.
+        Values should be proportions (0.0-1.0) representing the %Gate values from cell sorter output.
+        Proportions do NOT need to sum to 1.0 across bins.
+        If provided, normalizes by both sequencing depth and cell proportions.
 
     Returns
     -------
@@ -172,17 +178,26 @@ def calculate_full_activity_scores(
     # 1. Use the provided merged DataFrame
     df = merged_df.copy()
 
-    # 3. Normalize counts per million for each rep/bin
+    # 3. Normalize counts per million for each rep/bin (accounting for sequencing depth and cell proportions)
     for rep in counts:
-        for bin_ in counts[rep]:
-            col = f'count.r{rep}b{bin_}'
+        for bin in counts[rep]:
+            col = f'count.r{rep}b{bin}'
             # Use external total reads (prior to filtering) if provided, otherwise sum of variant counts
-            if total_reads is not None and rep in total_reads and bin_ in total_reads[rep]:
-                total_reads_for_norm = total_reads[rep][bin_]
+            if total_reads is not None and rep in total_reads and bin in total_reads[rep]:
+                total_reads_for_norm = total_reads[rep][bin]
             else:
-                total_reads_for_norm = counts[rep][bin_]['count'].sum()
+                total_reads_for_norm = counts[rep][bin]['count'].sum()
+            
             norm_col = f'norm.{col}'
+            # Base normalization: reads per million
             df[norm_col] = df[col] / total_reads_for_norm * 1e6
+            
+            # Additional normalization by cell proportions if available
+            if cell_prop is not None and rep in cell_prop and bin in cell_prop[rep]:
+                cell_proportion = cell_prop[rep][bin]
+                if cell_proportion > 0:  # Avoid division by zero
+                    df[norm_col] = df[norm_col] / cell_proportion
+            
             # Apply minread threshold
             if minread_threshold > 0:
                 df[norm_col] = df[norm_col].where(df[norm_col] >= minread_threshold, np.nan)
@@ -190,29 +205,29 @@ def calculate_full_activity_scores(
     # 4. For each replicate, sum normalized counts across bins, require min_bins
     rep_sums = {}
     for rep in counts:
-        norm_cols = [f'norm.count.r{rep}b{bin_}' for bin_ in counts[rep]]
+        norm_cols = [f'norm.count.r{rep}b{bin}' for bin in counts[rep]]
         sum_col = f'Rep{rep}.sum'
         df[sum_col] = df[norm_cols].sum(axis=1, min_count=min_bins)
         rep_sums[rep] = sum_col
 
     # 5. Calculate bin proportions for each rep/bin
     for rep in counts:
-        norm_cols = [f'norm.count.r{rep}b{bin_}' for bin_ in counts[rep]]
-        for i, bin_ in enumerate(counts[rep]):
-            prop_col = f'prop.r{rep}b{bin_}'
-            df[prop_col] = df[f'norm.count.r{rep}b{bin_}'] / df[f'Rep{rep}.sum']
+        norm_cols = [f'norm.count.r{rep}b{bin}' for bin in counts[rep]]
+        for i, bin in enumerate(counts[rep]):
+            prop_col = f'prop.r{rep}b{bin}'
+            df[prop_col] = df[f'norm.count.r{rep}b{bin}'] / df[f'Rep{rep}.sum']
 
     # 6. Calculate bin activity scores (proportion * median GFP)
     for rep in counts:
-        for bin_ in counts[rep]:
-            score_col = f'score.r{rep}b{bin_}'
-            prop_col = f'prop.r{rep}b{bin_}'
-            gfp = median_gfp[rep][bin_]
+        for bin in counts[rep]:
+            score_col = f'score.r{rep}b{bin}'
+            prop_col = f'prop.r{rep}b{bin}'
+            gfp = median_gfp[rep][bin]
             df[score_col] = df[prop_col] * gfp
 
     # 7. Replicate-level activity score: sum bin scores, require min_bins
     for rep in counts:
-        score_cols = [f'score.r{rep}b{bin_}' for bin_ in counts[rep]]
+        score_cols = [f'score.r{rep}b{bin}' for bin in counts[rep]]
         rep_score_col = f'Rep{rep}.score'
         df[rep_score_col] = df[score_cols].sum(axis=1, min_count=min_bins)
 
