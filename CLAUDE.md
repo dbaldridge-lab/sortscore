@@ -23,6 +23,9 @@ sortscore --config path/to/config.json
 # Alternative: Main analysis command
 python -m sortscore.run_analysis --config path/to/config.json
 
+# With positional averages export for protein structure visualization
+sortscore --config path/to/config.json --pos-color
+
 # Run tests
 pytest sortscore/analysis/tests/
 pytest sortscore/visualization/tests/
@@ -34,11 +37,102 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
+### CLI Arguments vs Config Parameters
+
+**Parameter Organization:**
+- **JSON Config File**: Core experimental parameters that define the scientific analysis (reproducible)
+  - `experiment_name`, `wt_seq`, `avg_method`, `bins_required`, `minread_threshold`, etc.
+- **CLI Arguments**: Runtime control and output formatting (can vary between runs)
+  - `--suffix`, `--pos-color`, `--batch`
+
+**Current CLI Arguments:**
+- `-c, --config`: Path to config JSON **(required)**
+- `-s, --suffix`: Custom suffix for output files
+- `-b, --batch`: Enable batch processing mode  
+- `-p, --pos-color`: Export positional averages with colors
+- `--fig-format`: Figure output format (png, svg, pdf)
+
 ### Package Structure Commands
 ```bash
-# Entry point via console script (after pip install)
+# Entry point via console script (after pip install)  
 sortscore --config config.json
+
+# Batch processing multiple experiments
+sortscore --batch --config batch_config.json
+
+# With custom suffix
+sortscore --batch --config batch_config.json --suffix custom_name
 ```
+
+## Batch Normalization
+
+The package supports batch processing to combine and normalize multiple Sort-seq experiments, enabling cross-experiment comparisons through systematic normalization. This is particularly useful for tiled experimental designs where different experiments cover different regions of a protein.
+
+### Normalization Methods
+
+**1. Z-score scaled 2-pole normalization** (default)
+- **Step 1**: WT normalization to global reference: `norm1 = raw_score * (global_wt / experiment_wt)`
+- **Step 2**: Z-score transformation using synonymous distribution: `norm2 = (norm1 - syn_mean) / syn_std_dev`
+- **Step 3**: Pathogenic control normalization: `final = norm2 * (global_pathogenic / experiment_pathogenic)`
+
+Creates standardized scale where synonymous variants center around 0 with unit variance, making cross-experiment comparisons meaningful.
+
+**2. 2-pole normalization**
+- Formula: `(b/(a-c))*(A-C)` where:
+  - `b` = individual variant score
+  - `a` = experiment synonymous median, `c` = experiment pathogenic median
+  - `A` = global synonymous median, `C` = global pathogenic median
+
+### Batch Configuration
+
+Batch processing uses a dedicated configuration file format:
+
+```json
+{
+    "experiment_configs": [
+        "/path/to/experiment1/config.json",
+        "/path/to/experiment2/config.json",
+        "/path/to/experiment3/config.json"
+    ],
+    "batch_normalization_method": "zscore_threestep",
+    "pathogenic_control_type": "nonsense",
+    "combined_output_dir": "/path/to/combined/results",
+    "global_min_pos": 1,
+    "global_max_pos": 500,
+    "allow_position_breaks": true,
+    "cleanup_individual_files": true
+}
+```
+
+**Configuration Parameters:**
+- `experiment_configs`: List of paths to individual experiment JSON files
+- `batch_normalization_method`: "zscore_2pole" (default) or "2pole"
+- `pathogenic_control_type`: "nonsense" (default) or "custom" 
+- `pathogenic_variants`: Custom pathogenic variants (when using "custom")
+- `global_min_pos`/`global_max_pos`: Overall position range for tiled heatmaps
+- `allow_position_breaks`: Handle gaps in tiled designs
+- `cleanup_individual_files`: Remove individual experiment outputs after combination
+
+### Batch Workflow
+
+1. **Load individual experiments** with their specific configurations
+2. **Run individual analyses** to generate raw scores and statistics  
+3. **Combine raw data** from all experiments
+4. **Calculate global references** (medians, averages) across combined data
+5. **Apply normalization method** with all transformation steps
+6. **Recalculate statistics** from fully normalized data
+7. **Generate tiled heatmaps** with proper position mapping
+8. **Save combined results** and cleanup individual files
+
+### Tiled Heatmap Visualization
+
+Batch processing generates combined heatmaps that properly handle:
+- **Position mapping**: Each experiment's positions mapped to global coordinates
+- **Gap handling**: Visualization of non-contiguous experimental coverage
+- **Experiment boundaries**: Visual indicators of experiment transitions
+- **Unified scaling**: All data on the same normalized scale
+
+The tiled heatmap automatically adjusts figure size based on the global position range and includes experiment boundary markers for clarity.
 
 ## Code Architecture
 
@@ -51,7 +145,7 @@ sortscore --config config.json
 
 **Activity Score Calculation** (`sortscore/analysis/score.py`): 
 - `calculate_full_activity_scores()`: Main scoring function implementing Sort-seq logic
-- Supports three averaging methods: 'simple-avg', 'rep-weighted', 'codon-weighted'
+- Supports two averaging methods: 'simple-avg', 'rep-weighted'
 - Processes count normalization, bin proportions, and replicate aggregation
 
 **Visualization** (`sortscore/visualization/plots.py`):
@@ -352,3 +446,5 @@ When working on extended tasks or making multiple related changes, Claude should
 
 - Don't unzip files, use zcat to read them as needed
 - Don't edit config files unless asked
+- Create a new module if it is over 500 lines
+- the python package name is sortscore. Do not use pascal case, only underscores.
