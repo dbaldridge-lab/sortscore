@@ -13,12 +13,16 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+from typing import List, Optional
 from scipy import stats as scipy_stats
 from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.analysis.batch_config import BatchConfig
+from sortscore.analysis.batch_normalization import run_batch_analysis, save_batch_results, generate_batch_visualizations
 from sortscore.analysis.utils import ensure_output_subdirs, make_export_suffix
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.data_processing import aggregate_aa_data
 from sortscore.analysis.annotation import annotate_scores_dataframe, aggregate_synonymous_variants
+from sortscore.analysis.analysis_logger import AnalysisLogger, generate_date_suffix
 from sortscore.sequence_parsing import translate_dna
 from sortscore.visualization.heatmaps import plot_heatmap
 
@@ -28,9 +32,22 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
     
     parser = argparse.ArgumentParser(description="Run Sort-seq variant analysis.")
-    parser.add_argument('-c', '--config', type=str, required=True, help='Path to experiment config JSON file')
-    parser.add_argument('-s', '--suffix', type=str, help='Custom suffix for output files (default: auto-generated from config)')
+    parser.add_argument('-c', '--config', type=str, required=True, 
+                       help='Path to experiment config JSON file (or batch config with --batch)')
+    parser.add_argument('-s', '--suffix', type=str, 
+                       help='Custom suffix for output files (default: auto-generated from config)')
+    parser.add_argument('-b', '--batch', action='store_true', 
+                       help='Run batch processing mode for combining multiple experiments')
+    parser.add_argument('-p', '--pos-color', action='store_true', 
+                       help='Export positional averages with colors for protein structure visualization')
+    parser.add_argument('--fig-format', choices=['png', 'svg', 'pdf'], default='png',
+                       help='Output format for figures (default: png)')
     args = parser.parse_args()
+    
+    # Handle batch processing mode
+    if args.batch:
+        run_batch_mode(args.config, args.suffix)
+        return
 
     # Load experiment config using dataclass
     try:
@@ -61,6 +78,41 @@ def main():
 
     print("Sort-seq analysis setup complete. Counts loaded for all replicates and bins.")
     
+    # Generate common suffix for all output files
+    if args.suffix:
+        suffix = args.suffix
+        logging.info(f"Using custom suffix: {suffix}")
+    else:
+        suffix = generate_date_suffix()
+        logging.info(f"Using date-based suffix: {suffix}")
+    
+    # Initialize analysis logger early for complete audit trail
+    analysis_logger = AnalysisLogger(experiment.experiment_name, suffix, output_dir)
+    
+    # Set request parameters for logging
+    cli_args = {
+        'config': args.config,
+        'suffix': args.suffix,
+        'batch': args.batch,
+        'pos_color': args.pos_color,
+        'fig_format': args.fig_format
+    }
+    
+    analysis_params = {
+        'experiment_name': experiment.experiment_name,
+        'variant_type': experiment.variant_type,
+        'avg_method': experiment.avg_method,
+        'bins_required': experiment.bins_required,
+        'reps_required': experiment.reps_required,
+        'minread_threshold': experiment.minread_threshold,
+        'max_cv': experiment.max_cv,
+        'min_pos': experiment.min_pos,
+        'max_pos': experiment.max_pos,
+        'position_type': experiment.position_type
+    }
+    
+    analysis_logger.set_request(args.config, cli_args, analysis_params)
+    
     # Calculate activity scores using dataclass parameters
     try:
         logging.info("Calculating activity scores...")
@@ -81,7 +133,12 @@ def main():
             max_cv=experiment.max_cv
         )
         logging.info(f"Calculated scores for {len(scores_df)} variants.")
+        
+        # Log processing stats
+        analysis_logger.set_processing_stats(len(scores_df))
+        
     except Exception as e:
+        analysis_logger.add_error(f"Failed to calculate activity scores: {e}")
         logging.error(f"Failed to calculate activity scores: {e}")
         sys.exit(1)
     
@@ -90,19 +147,12 @@ def main():
         # Annotate the scores DataFrame with sequence information
         scores_df = annotate_scores_dataframe(scores_df, experiment.wt_seq, experiment.variant_type, experiment.transcript_id)
     except Exception as e:
+        analysis_logger.add_warning(f"Failed to add annotations: {e}")
         logging.warning(f"Failed to add annotations: {e}")
     
-    # Save results
+    # Save results  
     timestamp = pd.Timestamp.now().strftime('%Y%m%d')
     scores_dir = os.path.join(output_dir, 'scores')
-    
-    # Generate common suffix for all output files
-    if args.suffix:
-        suffix = args.suffix
-        logging.info(f"Using custom suffix: {suffix}")
-    else:
-        suffix = make_export_suffix(experiment.experiment_name, experiment.bins_required, int(experiment.minread_threshold), timestamp, experiment.max_cv)
-        logging.info(f"Using auto-generated suffix: {suffix}")
     
     # Save DNA scores
     scores_df_rounded = scores_df.copy()
@@ -136,15 +186,26 @@ def main():
     
     # Save DNA scores for DNA variant type, skip for AA variant type
     if experiment.variant_type == 'dna':
-        dna_scores_file = os.path.join(scores_dir, f"dna-scores_{suffix}.csv")
+        dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores_{suffix}.csv")
         scores_df_rounded.to_csv(dna_scores_file, index=False)
         logging.info(f"Saved DNA scores to {dna_scores_file}")
+        
+        # Log file output
+        analysis_logger.log_output_file(
+            'dna_scores', 
+            f"{experiment.experiment_name}_dna_scores_{suffix}.csv",
+            dna_scores_file,
+            variant_count=len(scores_df_rounded)
+        )
     
     # Save AA scores 
     if 'aa_seq_diff' in scores_df.columns:
         # Filter out rows with NaN values first
-        score_col_suffix = experiment.avg_method.replace('-', '_')
-        score_col = f'avgscore_{score_col_suffix}'
+        if experiment.avg_method == 'simple-avg':
+            score_col = 'avgscore'
+        else:
+            score_col_suffix = experiment.avg_method.replace('-', '_')
+            score_col = f'avgscore_{score_col_suffix}'
         scores_df_drop_nan = scores_df.dropna(subset=[score_col])
         
         # Find replicate score columns
@@ -157,7 +218,7 @@ def main():
         
         if needs_aggregation:
             # DNA->AA aggregation case: aggregate synonymous variants
-            columns_to_average = ['avgscore', 'avgscore_rep_weighted', 'avgscore_codon_weighted'] + rep_score_columns
+            columns_to_average = ['avgscore', 'avgscore_rep_weighted'] + rep_score_columns
             
             # Calculate standard deviation and count of codon-level scores before AA aggregation
             aa_scores_std = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[score_col].agg(['std', 'count']).reset_index()
@@ -207,9 +268,6 @@ def main():
         else:
             # AA-only case: no aggregation needed, just copy the data
             columns_to_include = ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted'] + rep_score_columns
-            # Only include avgscore_codon_weighted if it exists (it won't for AA-only)
-            if 'avgscore_codon_weighted' in scores_df_drop_nan.columns:
-                columns_to_include.append('avgscore_codon_weighted')
             
             aa_scores = scores_df_drop_nan[columns_to_include].copy()
             
@@ -242,17 +300,28 @@ def main():
             if aa_scores[col].dtype in ['float64', 'float32']:
                 aa_scores[col] = aa_scores[col].round().astype('Int64')
         
-        aa_scores_file = os.path.join(scores_dir, f"aa-scores_{suffix}.csv")
+        aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores_{suffix}.csv")
         aa_scores.to_csv(aa_scores_file, index=False)
         logging.info(f"Saved AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
+        
+        # Log file output  
+        analysis_logger.log_output_file(
+            'aa_scores',
+            f"{experiment.experiment_name}_aa_scores_{suffix}.csv", 
+            aa_scores_file,
+            variant_count=len(aa_scores)
+        )
     
     # Generate visualizations
     try:
         logging.info("Generating visualizations...")
         
         # Convert avg_method to column name format (replace hyphens with underscores)
-        score_col_suffix = experiment.avg_method.replace('-', '_')
-        score_col = f'avgscore_{score_col_suffix}'
+        if experiment.avg_method == 'simple-avg':
+            score_col = 'avgscore'
+        else:
+            score_col_suffix = experiment.avg_method.replace('-', '_')
+            score_col = f'avgscore_{score_col_suffix}'
         
         figures_dir = os.path.join(output_dir, 'figures')
         
@@ -280,6 +349,7 @@ def main():
             # Create a config object for AA heatmap with proper fields
             from types import SimpleNamespace
             aa_config = SimpleNamespace(
+                experiment_name=experiment.experiment_name,
                 num_aa=experiment.num_aa,
                 num_positions=experiment.num_positions,
                 min_pos=experiment.min_pos,
@@ -306,13 +376,17 @@ def main():
             if pd.notna(wt_score):
                 plot_heatmap(aa_data, score_col, aa_config, wt_score=float(wt_score),
                             tick_values=tick_values, tick_labels=tick_labels,
-                            export=True, output=aa_heatmap_file, format='png', export_matrix=True,
-                            show_biophysical_properties=experiment.biophysical_prop)
+                            export_heatmap=True, output=figures_dir, fig_format=args.fig_format, export_matrix=True,
+                            export_positional_averages=args.pos_color,
+                            show_biophysical_properties=experiment.biophysical_prop,
+                            suffix=suffix)
             else:
                 plot_heatmap(aa_data, score_col, aa_config,
                             tick_values=tick_values, tick_labels=tick_labels,
-                            export=True, output=aa_heatmap_file, format='png', export_matrix=True,
-                            show_biophysical_properties=experiment.biophysical_prop)
+                            export_heatmap=True, output=figures_dir, fig_format=args.fig_format, export_matrix=True,
+                            export_positional_averages=args.pos_color,
+                            show_biophysical_properties=experiment.biophysical_prop,
+                            suffix=suffix)
             logging.info(f"Saved AA heatmap to {aa_heatmap_file}")
         
         # Codon heatmap  
@@ -345,13 +419,17 @@ def main():
             if pd.notna(wt_score_codon):
                 plot_heatmap(scores_df, score_col, experiment, wt_score=float(wt_score_codon),
                             tick_values=tick_values_codon, tick_labels=tick_labels_codon,
-                            export=True, output=codon_heatmap_file, format='png', export_matrix=True,
-                            show_biophysical_properties=experiment.biophysical_prop)
+                            export_heatmap=True, output=figures_dir, fig_format=args.fig_format, export_matrix=True,
+                            export_positional_averages=args.pos_color,
+                            show_biophysical_properties=experiment.biophysical_prop,
+                            suffix=suffix)
             else:
                 plot_heatmap(scores_df, score_col, experiment,
                             tick_values=tick_values_codon, tick_labels=tick_labels_codon,
-                            export=True, output=codon_heatmap_file, format='png', export_matrix=True,
-                            show_biophysical_properties=experiment.biophysical_prop)
+                            export_heatmap=True, output=figures_dir, fig_format=args.fig_format, export_matrix=True,
+                            export_positional_averages=args.pos_color,
+                            show_biophysical_properties=experiment.biophysical_prop,
+                            suffix=suffix)
             logging.info(f"Saved codon heatmap to {codon_heatmap_file}")
             
     except Exception as e:
@@ -361,8 +439,11 @@ def main():
     # Save summary statistics
     try:
         stats = {}
-        score_col_suffix = experiment.avg_method.replace('-', '_')
-        score_col = f'avgscore_{score_col_suffix}'
+        if experiment.avg_method == 'simple-avg':
+            score_col = 'avgscore'
+        else:
+            score_col_suffix = experiment.avg_method.replace('-', '_')
+            score_col = f'avgscore_{score_col_suffix}'
         if score_col in scores_df.columns:
             mean_val = scores_df[score_col].mean()
             min_val = scores_df[score_col].min()
@@ -423,15 +504,121 @@ def main():
                         stats['missense_min'] = round(float(min_val)) if pd.notna(min_val) else None
                         stats['missense_max'] = round(float(max_val)) if pd.notna(max_val) else None
         
-        stats_file = os.path.join(scores_dir, f"stats_{experiment.avg_method}_{suffix}.json")
+        stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_stats_{suffix}.json")
         with open(stats_file, 'w') as f:
             json.dump(stats, f, indent=2)
         logging.info(f"Saved statistics to {stats_file}")
         
+        # Log file output
+        analysis_logger.log_output_file(
+            'statistics',
+            f"{experiment.experiment_name}_stats_{suffix}.json",
+            stats_file,
+            stats_summary=stats
+        )
+        
     except Exception as e:
+        analysis_logger.add_warning(f"Failed to save statistics: {e}")
         logging.warning(f"Failed to save statistics: {e}")
     
+    # Finish analysis logging and generate audit trail
+    log_file = analysis_logger.finish()
+    
     print(f"Analysis complete! Results saved to {output_dir}")
+    print(f"Analysis log saved to {log_file}")
+
+
+def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
+    """
+    Run batch processing mode for combining multiple experiments.
+    
+    Parameters
+    ----------
+    config_path : str
+        Path to batch configuration JSON file
+    suffix : Optional[str]
+        Custom suffix for output files
+    """
+    # Load batch configuration
+    try:
+        batch_config = BatchConfig.from_json(config_path)
+        batch_config.validate_config()
+        logging.info(f"Loaded batch config with {len(batch_config.experiment_configs)} experiments")
+    except Exception as e:
+        logging.error(f"Failed to load batch config: {e}")
+        sys.exit(1)
+    
+    # Run batch analysis
+    try:
+        batch_config_dict = batch_config.get_batch_config_dict()
+        results = run_batch_analysis(batch_config_dict)
+        logging.info(f"Batch analysis complete using {results['method']} normalization")
+    except Exception as e:
+        logging.error(f"Failed to run batch analysis: {e}")
+        sys.exit(1)
+    
+    # Save results
+    try:
+        save_batch_results(results, results['output_dir'], suffix)
+        logging.info(f"Batch results saved to {results['output_dir']}")
+    except Exception as e:
+        logging.error(f"Failed to save batch results: {e}")
+        sys.exit(1)
+    
+    # Generate visualizations
+    try:
+        generate_batch_visualizations(
+            results, 
+            batch_config_dict, 
+            results['output_dir'], 
+            suffix
+        )
+        logging.info("Generated batch visualizations")
+    except Exception as e:
+        logging.error(f"Failed to generate visualizations: {e}")
+        # Don't exit on visualization failure, just warn
+    
+    # Cleanup individual files if requested
+    if batch_config.cleanup_individual_files:
+        try:
+            cleanup_individual_experiment_files(batch_config.experiment_configs)
+            logging.info("Cleaned up individual experiment files")
+        except Exception as e:
+            logging.warning(f"Failed to cleanup individual files: {e}")
+    
+    print(f"Batch analysis complete! Combined results saved to {results['output_dir']}")
+
+
+def cleanup_individual_experiment_files(experiment_configs: List[str]) -> None:
+    """
+    Clean up individual experiment output files after batch processing.
+    
+    Parameters
+    ----------
+    experiment_configs : List[str]
+        List of paths to individual experiment config files
+    """
+    import shutil
+    
+    for config_path in experiment_configs:
+        try:
+            # Load experiment config to get output directory
+            experiment = ExperimentConfig.from_json(config_path)
+            if experiment.output_dir and os.path.exists(experiment.output_dir):
+                # Remove scores and figures directories
+                scores_dir = os.path.join(experiment.output_dir, 'scores')
+                figures_dir = os.path.join(experiment.output_dir, 'figures')
+                
+                if os.path.exists(scores_dir):
+                    shutil.rmtree(scores_dir)
+                    logging.debug(f"Removed {scores_dir}")
+                
+                if os.path.exists(figures_dir):
+                    shutil.rmtree(figures_dir)
+                    logging.debug(f"Removed {figures_dir}")
+        except Exception as e:
+            logging.warning(f"Failed to cleanup files for {config_path}: {e}")
+
 
 if __name__ == "__main__":
     main()
