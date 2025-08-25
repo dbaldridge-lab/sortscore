@@ -6,20 +6,15 @@ import pandas as pd
 import numpy as np
 from sortscore.visualization import plots
 
-def test_plot_activity_score_distribution(tmp_path):
-    df = pd.DataFrame({'avgscore': np.random.normal(1, 0.2, 100)})
-    save_path = tmp_path / 'dist.png'
-    plots.plot_activity_score_distribution(df, score_col='avgscore', save_path=str(save_path))
+def test_plot_replicate_correlation(tmp_path):
+    df = pd.DataFrame({
+        'Rep1_score': np.random.normal(1, 0.2, 100),
+        'Rep2_score': np.random.normal(1, 0.2, 100)
+    })
+    save_path = tmp_path / 'correlation.png'
+    plots.plot_replicate_correlation(df, 'Rep1_score', 'Rep2_score', export=True, output=str(save_path))
     assert save_path.exists()
 
-def test_plot_beeswarm(tmp_path):
-    df = pd.DataFrame({
-        'annotate_aa': ['A', 'B', 'A', 'B'],
-        'score': [1.0, 2.0, 1.5, 2.5]
-    })
-    save_path = tmp_path / 'beeswarm.png'
-    plots.plot_beeswarm(df, x='annotate_aa', y='score', export=True, output=str(save_path))
-    assert save_path.exists()
 
 def test_plot_histogram(tmp_path):
     df = pd.DataFrame({
