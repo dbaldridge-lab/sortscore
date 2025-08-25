@@ -54,18 +54,6 @@ def rep_weighted_average(merged: pd.DataFrame, read_count: Optional[List[int]]) 
         # Fallback to simple average if weights are not provided
         return merged[count_cols].mean(axis=1)
 
-def codon_weighted_average(merged: pd.DataFrame, codon_weights: Optional[List[float]] = None) -> pd.Series:
-    """
-    Calculate codon-weighted average across count columns.
-    """
-    count_cols = merged.columns[1:]
-    if codon_weights is not None and len(codon_weights) == len(count_cols):
-        weights = pd.Series(codon_weights, index=count_cols)
-        weighted = merged[count_cols].multiply(weights, axis=1)
-        return weighted.sum(axis=1) / weights.sum()
-    else:
-        # Fallback to simple average if weights are not provided
-        return merged[count_cols].mean(axis=1)
 
 def calculate_activity_scores(
     count_dfs: List[pd.DataFrame],
@@ -73,8 +61,7 @@ def calculate_activity_scores(
     min_reads: int = 0,
     bins_required: int = 3,
     reps_required: int = 3,
-    read_count: Optional[List[int]] = None,
-    codon_weights: Optional[List[float]] = None
+    read_count: Optional[List[int]] = None
 ) -> pd.DataFrame:
     """
     Calculate activity scores for variants from count data.
@@ -84,7 +71,7 @@ def calculate_activity_scores(
     count_dfs : list of pandas.DataFrame
         List of DataFrames, one per sample/replicate/bin, containing variant counts.
     method : str, default 'rep-weighted'
-        Averaging method ('simple-avg', 'rep-weighted', 'codon-weighted').
+        Averaging method ('simple-avg', 'rep-weighted').
     min_reads : int, default 0
         Minimum normalized reads per bin for a variant to be scored.
     bins_required : int, default 3
@@ -93,8 +80,6 @@ def calculate_activity_scores(
         Number of replicates a variant must appear in to be scored.
     read_count : list of int, optional
         List of total reads per sample for normalization.
-    codon_weights : list of float, optional
-        List of weights for codon-weighted averaging.
 
     Returns
     -------
@@ -116,8 +101,6 @@ def calculate_activity_scores(
         merged['avgscore'] = simple_average(merged)
     elif method == 'rep-weighted':
         merged['avgscore_rep_weighted'] = rep_weighted_average(merged, read_count)
-    elif method == 'codon-weighted':
-        merged['avgscore_codon_weighted'] = codon_weighted_average(merged, codon_weights)
     else:
         logger.error(f"Unknown averaging method: {method}")
         raise ValueError(f"Unknown averaging method: {method}")
@@ -139,7 +122,7 @@ def calculate_full_activity_scores(
     max_cv: Optional[float] = None,
 ) -> pd.DataFrame:
     """
-    Calculate activity scores for all variants using full Sort-seq logic (per-bin/rep normalization, bin proportions, replicate/codon/rep-weighted averaging).
+    Calculate activity scores for all variants using full Sort-seq logic (per-bin/rep normalization, bin proportions, replicate/rep-weighted averaging).
 
     Parameters
     ----------
@@ -154,7 +137,7 @@ def calculate_full_activity_scores(
     minread_threshold : float, default 0.0
         Minimum normalized reads per million required to keep a value.
     avg_method : str, default 'rep-weighted'
-        Averaging method: 'simple-avg', 'rep-weighted', or 'codon-weighted'.
+        Averaging method: 'simple-avg' or 'rep-weighted'.
     groupby_cols : list, optional
         Columns to group by for codon/synonymous averaging (e.g., ['annotate_aa', 'aa_seq_diff']).
     total_reads : dict, optional
@@ -231,16 +214,8 @@ def calculate_full_activity_scores(
         rep_score_col = f'Rep{rep}.score'
         df[rep_score_col] = df[score_cols].sum(axis=1, min_count=min_bins)
 
-    # 8. Replicate/codon weights for codon-weighted averaging
-    # (For now, use sum of RepX.sum as weights; can be extended for synonymous/codon groups)
-    df['total_syn'] = sum(df[f'Rep{rep}.sum'].fillna(0) for rep in counts)
-    for rep in counts:
-        df[f'Rep{rep}.cw'] = df[f'Rep{rep}.sum'] / df['total_syn']
-        df[f'Rep{rep}.score.cw'] = df[f'Rep{rep}.score'] * df[f'Rep{rep}.cw']
-
-    # 9. Average scores (simple, rep-weighted, codon-weighted)
+    # 8. Average scores (simple, rep-weighted)
     rep_score_cols = [f'Rep{rep}.score' for rep in counts]
-    rep_score_cw_cols = [f'Rep{rep}.score.cw' for rep in counts]
     # Only keep rows with at least min_reps non-NaN replicate scores
     valid = df[rep_score_cols].notna().sum(axis=1) >= min_reps
     
@@ -256,8 +231,6 @@ def calculate_full_activity_scores(
     total_weight = sum(df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
     rep_weighted_score = sum(df_valid[f'Rep{rep}.score'].fillna(0) * df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
     df_valid['avgscore_rep_weighted'] = rep_weighted_score / total_weight
-    # Codon-weighted average (sum of RepX.score.cw)
-    df_valid['avgscore_codon_weighted'] = df_valid[rep_score_cw_cols].sum(axis=1)
 
     # 10. Optionally, group by synonymous/codon group for AA-level scores
     if groupby_cols is not None:
@@ -265,7 +238,6 @@ def calculate_full_activity_scores(
         df_aa = group[[
             'avgscore',
             'avgscore_rep_weighted',
-            'avgscore_codon_weighted',
             *rep_score_cols
         ]].mean().reset_index()
         return df_valid, df_aa
