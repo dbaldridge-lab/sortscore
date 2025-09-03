@@ -82,29 +82,30 @@ class AnalysisLogger:
     reproducibility.
     """
     
-    def __init__(self, experiment_name: str, suffix: str, output_dir: str):
+    def __init__(self, experiment, args, output_suffix: str, output_dir: str):
         """
-        Initialize analysis logger.
+        Initialize analysis logger with automatic parameter extraction.
         
         Parameters
         ----------
-        experiment_name : str
-            Name of the experiment being analyzed
-        suffix : str
+        experiment : ExperimentConfig
+            Experiment configuration object
+        args : argparse.Namespace
+            Command-line arguments
+        output_suffix : str
             Suffix for output files
         output_dir : str
             Output directory for analysis files
         """
-        self.experiment_name = experiment_name
-        self.suffix = suffix
+        self.experiment_name = experiment.experiment_name
+        self.suffix = output_suffix
         self.output_dir = output_dir
         
         # Generate unique analysis ID
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.analysis_id = f"{experiment_name}_{suffix}_{timestamp}"
+        self.analysis_id = f"{experiment.experiment_name}_{output_suffix}_{timestamp}"
         
         # Initialize data structures
-        self.request: Optional[AnalysisRequest] = None
         self.execution = ExecutionInfo(
             start_time=datetime.now().isoformat()
         )
@@ -112,7 +113,35 @@ class AnalysisLogger:
         self.environment = self._capture_environment()
         
         # Log file path
-        self.log_file = os.path.join(output_dir, f"{experiment_name}_analysis_{suffix}.log.json")
+        self.log_file = os.path.join(output_dir, f"{experiment.experiment_name}_analysis_{output_suffix}.log.json")
+        
+        # Extract and set request parameters automatically
+        cli_args = {
+            'config': args.config,
+            'suffix': args.suffix,
+            'batch': args.batch,
+            'pos_color': args.pos_color,
+            'fig_format': args.fig_format
+        }
+        
+        analysis_params = {
+            'experiment_name': experiment.experiment_name,
+            'variant_type': experiment.variant_type,
+            'avg_method': experiment.avg_method,
+            'bins_required': experiment.bins_required,
+            'reps_required': experiment.reps_required,
+            'minread_threshold': experiment.minread_threshold,
+            'max_cv': experiment.max_cv,
+            'min_pos': experiment.min_pos,
+            'max_pos': experiment.max_pos,
+            'position_type': experiment.position_type
+        }
+        
+        self.request = AnalysisRequest(
+            config_file=args.config,
+            cli_args=cli_args,
+            analysis_params=analysis_params
+        )
         
         logger.info(f"Analysis logger initialized: {self.analysis_id}")
     
