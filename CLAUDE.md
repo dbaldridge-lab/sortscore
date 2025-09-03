@@ -175,6 +175,8 @@ The package supports comprehensive normalization to account for technical variab
 
 **Optional cell proportion normalization**: If the `Proportion of Cells` column is provided in the experiment setup CSV, the package applies additional normalization to account for different numbers of cells sorted into each quantile gate:
 
+This was added as an opportunity to specify unequal bins. It has not been tested.
+
 - **Formula**: `normalized_reads = (variant_reads / total_reads / cell_proportion) * 1e6`
 - **Values**: Cell proportions should be decimal values representing the fraction of viable, singlet cells that fall within each quantile gate
 - **Purpose**: Corrects for cases where quantile gates capture different proportions of the sorted cell population (after dead/doublet removal)
@@ -337,6 +339,25 @@ Controlled by the `mutagenesis_variants` parameter:
 
 **Heatmap Size**: Matrix dimensions scale with your experiment design, improving visualization clarity for focused studies.
 
+### Background Transparency
+
+Heatmap functions support customizable background transparency through the `transparent` parameter:
+
+**Python API**:
+```python
+from sortscore.visualization.heatmaps import plot_heatmap
+
+# Transparent background (default)
+plot_heatmap(data, 'avgscore', experiment, transparent=True)
+
+# White background 
+plot_heatmap(data, 'avgscore', experiment, transparent=False)
+```
+
+**Default Behavior**: All heatmaps use transparent backgrounds (`transparent=True`) by default, making them suitable for presentations and publications where you want to overlay on different background colors.
+
+**Format Support**: Transparency works with PNG and SVG formats. For PDF output, use `transparent=False` for better compatibility.
+
 ### Key Conventions
 
 - Count data stored as nested dictionaries: `counts[replicate][bin] = DataFrame`
@@ -448,3 +469,4 @@ When working on extended tasks or making multiple related changes, Claude should
 - Don't edit config files unless asked
 - Create a new module if it is over 500 lines
 - the python package name is sortscore. Do not use pascal case, only underscores.
+- Add to package documentation means add to usage documentation in the python package.

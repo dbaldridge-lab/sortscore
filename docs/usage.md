@@ -6,29 +6,221 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 - Create your experiment configuration JSON (see `config/example_experiment.json`) and experiment setup CSV.
 - Edit these files to match your experiment's parameters and data file locations. You can place them anywhere; just provide the correct path when running the analysis.
 
-## 2. Run Analysis from the Command Line
-- Use the provided Python API or command-line interface (CLI) to run your analysis.
-- **Example CLI usage:**
-  ```bash
-  python -m sortscore.run_analysis --config path/to/your_config.json
-  ```
-  - Replace `path/to/your_config.json` with the path to your config file.
-  - The config JSON should reference your experiment setup CSV via the `experiment_setup_file` key (with its path).
+## 2. Command Line Interface (CLI)
 
-- **Custom output file naming:**
-  ```bash
-  python -m sortscore.run_analysis --config path/to/your_config.json --suffix "custom_name"
-  ```
-  - Use `--suffix` or `-s` to specify a custom suffix for all output files
-  - Default: auto-generated from experiment parameters (experiment_name, bins_required, etc.)
+### Basic Usage
+
+```bash
+# Standard analysis
+python -m sortscore.run_analysis --config path/to/config.json
+
+# Or using the console (after pip install)
+sortscore --config path/to/config.json
+```
+
+### CLI Arguments Reference
+
+| Argument | Short | Type | Description | Default |
+|----------|-------|------|-------------|---------|
+| `--config` | `-c` | str | Path to experiment config JSON file **(required)** | - |
+| `--suffix` | `-s` | str | Custom suffix for all output files | Current date (YYYYMMDD) |
+| `--batch` | `-b` | flag | Enable batch processing mode | False |
+| `--pos-color` | `-p` | flag | Export positional averages with colors for protein structure visualization | False |
+| `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
+
+### Parameter Organization
+
+**Experiment Configuration (JSON file):**
+- Core parameters that define the experiments
+- Examples: `experiment_name`, `wt_seq`, `avg_method`, `minread_threshold`, `bins_required`
+
+**Runtime Control (CLI arguments):**
+- Parameters that control how analysis runs and output formatting
+- Examples: `--suffix`, `--pos-color`, `--batch`
+
+**Export Options:**
+- `--pos-color` / `-p`: Generates `{experiment_name}_positional_averages.csv` with position, average score, and hex color columns for protein structure visualization
+
+### File Naming Conventions
+
+**Current Implementation:** 
+```
+# Score files (consistent with suffix)
+{experiment_name}_scores_{suffix}.csv
+stats_{avg_method}_{suffix}.json
+
+# Visualization files (mixed patterns - being standardized)
+{experiment_name}_heatmap.png              # New API (no suffix yet)
+{experiment_name}_heatmap_matrix.csv       # New API (no suffix yet) 
+{experiment_name}_positional_averages.csv # New API (no suffix yet)
+aa_heatmap_{avg_method}_{suffix}.png       # Legacy naming
+```
+
+**Auto-generated suffix format:** `{experiment_name}_{bins}bins_{minreads}minreads_{max_cv}cv_{date}`
+
+### Examples
+
+```bash
+# Basic analysis
+sortscore -c my_experiment.json
+
+# With custom output suffix
+sortscore -c my_experiment.json -s "final_analysis" 
+
+# Export positional averages for protein structure visualization
+sortscore -c my_experiment.json -p
+
+# Generate SVG figures
+sortscore -c my_experiment.json --fig-format svg
+
+# Batch processing multiple experiments
+sortscore -b -c batch_config.json
+```
+
+## Batch Processing (Multiple Experiments)
+
+For tiled experimental designs or combining multiple experiments, use batch processing mode:
+
+```bash
+# Run batch analysis
+sortscore --batch --config path/to/batch_config.json
+
+# With custom suffix
+sortscore --batch --config path/to/batch_config.json --suffix "combined_analysis"
+```
+
+### Batch Configuration File
+
+Create a separate JSON configuration file for batch processing:
+
+```json
+{
+    "experiment_configs": [
+        "/path/to/experiment1/config.json",
+        "/path/to/experiment2/config.json", 
+        "/path/to/experiment3/config.json"
+    ],
+    "batch_normalization_method": "zscore_2pole",
+    "pathogenic_control_type": "nonsense",
+    "combined_output_dir": "/path/to/combined/results",
+    "global_min_pos": 1,
+    "global_max_pos": 500,
+    "allow_position_breaks": true,
+    "cleanup_individual_files": true
+}
+```
+
+### Batch Configuration Parameters
+
+| Key                        | Type      | Description                                                              |
+|---------------------------|-----------|--------------------------------------------------------------------------|
+| experiment_configs        | list      | Paths to individual experiment JSON configuration files                   |
+| batch_normalization_method| str       | "zscore_2pole" (default), "2pole", or "zscore_center"                |
+| pathogenic_control_type   | str       | "nonsense" (default) or "custom"                                       |
+| pathogenic_variants       | list      | Custom pathogenic variants (required when using "custom")              |
+| combined_output_dir       | str       | Directory for final combined results                                     |
+| global_min_pos            | int       | Overall minimum position across all experiments (for tiled heatmaps)    |
+| global_max_pos            | int       | Overall maximum position across all experiments (for tiled heatmaps)    |
+| allow_position_breaks     | bool      | Whether to allow gaps/breaks in tiled position display (default: true) |
+| cleanup_individual_files  | bool      | Remove individual experiment outputs after combination (default: true)  |
+
+### Batch Normalization Methods
+
+**1. Z-score scaled 2-pole normalization** (recommended, default)
+- Creates standardized scale where synonymous variants center around 0 with unit variance
+- Enables meaningful cross-experiment comparisons
+- Process:
+  1. WT normalization: `norm1 = raw_score * (global_wt / experiment_wt)`
+  2. Z-score transformation: `norm2 = (norm1 - syn_mean) / syn_std_dev`  
+  3. Pathogenic control normalization: `final = norm2 * (global_pathogenic / experiment_pathogenic)`
+
+**2. 2-pole normalization**
+- Uses synonymous and pathogenic variants as reference points
+- Formula: `(b/(a-c))*(A-C)` where:
+  - `b` = individual variant score
+  - `a` = experiment synonymous median, `c` = experiment pathogenic median
+  - `A` = global synonymous median, `C` = global pathogenic median
+
+**3. Z-score centering normalization** 
+- WT-only normalization
+- Process:
+  1. WT normalization: `norm1 = raw_score * (global_reference / experiment_reference)`
+  2. Z-score transformation: `final = (norm1 - syn_mean) / syn_std_dev`
+- For DNA variants: uses `wt_dna` scores as reference (fallback to synonymous)
+- For AA variants: uses synonymous variants as reference
+- Use when pathogenic controls are unavailable
+
+### Batch Processing Workflow
+
+1. **Individual Analysis**: Each experiment analyzed separately to generate raw scores
+2. **Data Combination**: Raw scores and statistics combined across experiments  
+3. **Global Calculations**: Reference values computed from combined data
+4. **Normalization**: Selected method applied to standardize scores
+5. **Statistics Recalculation**: Final statistics computed from normalized data
+6. **Visualization**: Combined tiled heatmaps generated with position mapping
+7. **Output**: Combined results saved, individual files cleaned up (if requested)
+
+### Tiled Heatmap Features
+
+Batch processing automatically generates tiled heatmaps with:
+- **Position mapping**: Experiments mapped to global coordinate system
+- **Gap handling**: Visualization of non-contiguous coverage
+- **Boundary markers**: Visual indicators of experiment transitions  
+- **Unified scaling**: All data on same normalized scale
+- **Automatic sizing**: Figure dimensions adjust to position range
 
 ## 3. Python API Usage
-- You can also import and use the package directly in your own scripts or notebooks:
-  ```python
-  from sortscore.analysis.load_experiment import ExperimentConfig
-  config = ExperimentConfig.from_json('config.json')
-  # ...proceed with analysis using the loaded config...
-  ```
+
+### Basic Analysis
+You can import and use the package directly in your own scripts or notebooks:
+
+```python
+from sortscore.analysis.load_experiment import ExperimentConfig
+config = ExperimentConfig.from_json('config.json')
+# ...proceed with analysis using the loaded config...
+```
+
+### Heatmap Visualization Customization
+
+The package provides direct control over heatmap background transparency through the Python API:
+
+```python
+from sortscore.visualization.heatmaps import plot_heatmap
+
+# Load your data and experiment config
+config = ExperimentConfig.from_json('config.json')
+# ... load and process data ...
+
+# Generate heatmap with transparent background (default)
+plot_heatmap(
+    data=scores_df,
+    score_col='avgscore', 
+    experiment=config,
+    transparent=True,          # Transparent background
+    fig_format='png',
+    export_heatmap=True,
+    output='output/figures'
+)
+
+# Generate heatmap with white background
+plot_heatmap(
+    data=scores_df,
+    score_col='avgscore',
+    experiment=config, 
+    transparent=False,         # White background
+    fig_format='pdf',          # PDF works better with white backgrounds
+    export_heatmap=True,
+    output='output/figures'
+)
+```
+
+**Transparency Options:**
+- `transparent=True` (default): Creates transparent background, ideal for presentations and overlays
+- `transparent=False`: Creates white background, better for PDF output and traditional publications
+
+**Format Recommendations:**
+- PNG and SVG: Work excellently with transparent backgrounds
+- PDF: Use `transparent=False` for better compatibility with PDF viewers
 
 ## 4. Output
 - Results and plots will be saved to the `output_dir` specified in your config.
@@ -46,7 +238,7 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 | experiment_name       | str     | Name/ID of the experiment or submission.                                                    |
 | bins_required         | int     | Minimum number of bins per replicate a variant must appear in to be scored.                               |
 | reps_required         | int     | Minimum number of replicates a variant must appear in to be scored.                         |
-| avg_method            | str     | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg', 'codon-weighted').         |
+| avg_method            | str     | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg').         |
 | minread_threshold     | int     | Minimum reads per bin for a variant to be scored.                                |
 | max_cv                | float   | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
 | read_count            | list    | List of demultiplexed read counts for each sample/bin.                                      |
