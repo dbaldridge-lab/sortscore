@@ -22,34 +22,35 @@ from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, mak
 from sortscore.visualization.plots import generate_position_avg_colors
 from sortscore.analysis.load_experiment import ExperimentConfig
 from sortscore.analysis.batch_config import BatchConfig
+from sortscore.sequence_parsing import convert_aa_to_three_letter
 
 
 def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_heatmap=False):
     """Add biophysical properties heatmap panel for amino acid groups in codon heatmaps."""
     
-    # Amino acid properties with numeric encoding for heatmap (only type, no separate charge)
+    # Amino acid properties with numeric encoding for heatmap (both single and three-letter codes)
     aa_properties = {
-        'W': {'type': 4},  # Aromatic
-        'F': {'type': 4},  # Aromatic  
-        'Y': {'type': 4},  # Aromatic
-        'P': {'type': 5},  # Special
-        'M': {'type': 3},  # Sulfur
-        'I': {'type': 2},  # Branched
-        'L': {'type': 2},  # Branched
-        'V': {'type': 2},  # Branched
-        'A': {'type': 0},  # Small
-        'G': {'type': 0},  # Small
-        'C': {'type': 3},  # Sulfur
-        'S': {'type': 1},  # Polar
-        'T': {'type': 1},  # Polar
-        'Q': {'type': 1},  # Polar
-        'N': {'type': 1},  # Polar
-        'D': {'type': 6},  # Acidic
-        'E': {'type': 6},  # Acidic
-        'H': {'type': 7},  # Basic
-        'R': {'type': 7},  # Basic
-        'K': {'type': 7},  # Basic
-        '*': {'type': 8}   # Stop
+        'W': {'type': 4}, 'Trp': {'type': 4},  # Aromatic
+        'F': {'type': 4}, 'Phe': {'type': 4},  # Aromatic  
+        'Y': {'type': 4}, 'Tyr': {'type': 4},  # Aromatic
+        'P': {'type': 5}, 'Pro': {'type': 5},  # Special
+        'M': {'type': 3}, 'Met': {'type': 3},  # Sulfur
+        'I': {'type': 2}, 'Ile': {'type': 2},  # Branched
+        'L': {'type': 2}, 'Leu': {'type': 2},  # Branched
+        'V': {'type': 2}, 'Val': {'type': 2},  # Branched
+        'A': {'type': 0}, 'Ala': {'type': 0},  # Small
+        'G': {'type': 0}, 'Gly': {'type': 0},  # Small
+        'C': {'type': 3}, 'Cys': {'type': 3},  # Sulfur
+        'S': {'type': 1}, 'Ser': {'type': 1},  # Polar
+        'T': {'type': 1}, 'Thr': {'type': 1},  # Polar
+        'Q': {'type': 1}, 'Gln': {'type': 1},  # Polar
+        'N': {'type': 1}, 'Asn': {'type': 1},  # Polar
+        'D': {'type': 6}, 'Asp': {'type': 6},  # Acidic
+        'E': {'type': 6}, 'Glu': {'type': 6},  # Acidic
+        'H': {'type': 7}, 'His': {'type': 7},  # Basic
+        'R': {'type': 7}, 'Arg': {'type': 7},  # Basic
+        'K': {'type': 7}, 'Lys': {'type': 7},  # Basic
+        '*': {'type': 8}, 'Ter': {'type': 8}   # Stop
     }
 
     # Pastel color mappings (only for type now) - Start uses same color as Sulfur
@@ -134,7 +135,7 @@ def plot_heatmap(
     show_biophysical_properties: bool = False,
     export_positional_averages: bool = False,
     suffix: Optional[str] = None,
-    three_letter_aa: bool = False
+    transparent: bool = True
 ) -> None:
     """
     Plot a MAVE heatmap using a matrix of activity scores.
@@ -177,8 +178,8 @@ def plot_heatmap(
         If True, export positional averages with hex colors to CSV for protein structure visualization.
     suffix : str, optional
         Suffix to append to output filenames for consistent naming.
-    three_letter_aa : bool, default False
-        If True, use three-letter amino acid codes (Ala, Arg, etc.) instead of single-letter codes.
+    transparent : bool, default True
+        If True, save plot with transparent background. If False, use white background.
     """
     logger = logging.getLogger(__name__)
     
@@ -247,17 +248,20 @@ def plot_heatmap(
     if fig_size == 'small':
         width = max(16.5, experiment.num_aa * 0.15)
         height = 30 if is_codon_heatmap else 12
-        fig = plt.figure(figsize=(width, height), facecolor='none')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 15)
     elif fig_size == 'large':
         width = max(30, experiment.num_aa * 0.25)
         height = 35 if is_codon_heatmap else 10
-        fig = plt.figure(figsize=(width, height), facecolor='none')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 25)
     elif fig_size == 'long':
         width = max(30, experiment.num_aa * 0.3)
         height = 45 if is_codon_heatmap else 25
-        fig = plt.figure(figsize=(width, height), facecolor='none')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 40)
 
     # Set up subplot layout based on row_avg and biophysical properties
@@ -427,7 +431,8 @@ def plot_heatmap(
             heatmap_output = f"{output_prefix}_heatmap_{suffix}.{fig_format}"
         else:
             heatmap_output = f"{output_prefix}_heatmap.{fig_format}"
-        plt.savefig(heatmap_output, dpi=dpi, format=fig_format, facecolor='none', edgecolor='none')
+        facecolor = 'none' if transparent else 'white'
+        plt.savefig(heatmap_output, dpi=dpi, format=fig_format, facecolor=facecolor, edgecolor='none')
         logger.info(f"Heatmap plot saved to {heatmap_output}")
     else:
         plt.show()
@@ -450,7 +455,8 @@ def plot_tiled_heatmap(
     tick_labels: Optional[List[str]] = None,
     title: Optional[str] = None,
     export_matrix: bool = False,
-    show_biophysical_properties: bool = False
+    show_biophysical_properties: bool = False,
+    transparent: bool = True
 ) -> None:
     """
     Plot a tiled heatmap combining data from multiple experiments with proper position mapping.
@@ -490,6 +496,8 @@ def plot_tiled_heatmap(
         Whether to export the underlying matrix data, default False
     show_biophysical_properties : bool, optional
         Whether to show biophysical properties panel, default False
+    transparent : bool, default True
+        If True, save plot with transparent background. If False, use white background.
         
     Examples
     --------
@@ -594,7 +602,8 @@ def plot_tiled_heatmap(
         figsize = (max(20, n_positions * 0.2), figsize[1])
     
     # Create figure
-    fig = plt.figure(figsize=figsize, facecolor='none')
+    facecolor = 'none' if transparent else 'white'
+    fig = plt.figure(figsize=figsize, facecolor=facecolor)
     
     if show_biophysical_properties:
         # Create gridspec with biophysical properties panel
@@ -665,7 +674,8 @@ def plot_tiled_heatmap(
     # Export figure if requested
     if export and output:
         plt.tight_layout()
-        plt.savefig(output, dpi=dpi, bbox_inches='tight', format=format, facecolor='none', edgecolor='none')
+        facecolor = 'none' if transparent else 'white'
+        plt.savefig(output, dpi=dpi, bbox_inches='tight', format=format, facecolor=facecolor, edgecolor='none')
         logging.info(f"Exported tiled heatmap to {output}")
         
     plt.close()
