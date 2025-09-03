@@ -7,10 +7,12 @@ import pandas as pd
 import numpy as np
 import re
 from typing import List, Optional
-from sortscore.sequence_parsing import translate_dna
+from sortscore.sequence_parsing import translate_dna, convert_aa_to_three_letter
 
 def extract_position(sequence_diff: str):
     """Extract variant and position from standardized sequence difference format 'ref.position.alt'."""
+    if pd.isna(sequence_diff):
+        return None, None
     parts = sequence_diff.split('.')
     if len(parts) == 3 and parts[1].isdigit():
         return parts[2], int(parts[1])  # alt, position
@@ -24,7 +26,46 @@ def extract_value(cell: str):
     else:
         return np.nan
 
-def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesis_variants: list = None, position_type: str = 'aa') -> pd.DataFrame:
+def generate_codon_labels(three_letter_aa: bool = False) -> List[str]:
+    """
+    Generate default codon labels for DNA variant type.
+    
+    Parameters
+    ----------
+    three_letter_aa : bool, default False
+        If True, use three-letter amino acid codes (e.g., 'Met(ATG)').
+        If False, use single-letter codes (e.g., 'M(ATG)').
+    
+    Returns
+    -------
+    List[str]
+        List of codon labels grouped by amino acid properties.
+    """
+    # Default codons grouped by amino acid properties
+    codon_data = [
+        ('M', 'ATG'), ('C', 'TGT'), ('C', 'TGC'), ('W', 'TGG'), 
+        ('F', 'TTT'), ('F', 'TTC'), ('Y', 'TAT'), ('Y', 'TAC'), 
+        ('P', 'CCT'), ('P', 'CCC'), ('P', 'CCA'), ('P', 'CCG'),
+        ('I', 'ATT'), ('I', 'ATC'), ('I', 'ATA'), 
+        ('L', 'TTA'), ('L', 'TTG'), ('L', 'CTT'), ('L', 'CTC'), ('L', 'CTA'), ('L', 'CTG'),
+        ('V', 'GTT'), ('V', 'GTC'), ('V', 'GTA'), ('V', 'GTG'), 
+        ('A', 'GCT'), ('A', 'GCC'), ('A', 'GCA'), ('A', 'GCG'), 
+        ('G', 'GGT'), ('G', 'GGC'), ('G', 'GGA'), ('G', 'GGG'), 
+        ('S', 'TCT'), ('S', 'TCC'), ('S', 'TCA'), ('S', 'TCG'), ('S', 'AGT'), ('S', 'AGC'),
+        ('T', 'ACT'), ('T', 'ACC'), ('T', 'ACA'), ('T', 'ACG'), 
+        ('Q', 'CAA'), ('Q', 'CAG'), ('N', 'AAT'), ('N', 'AAC'), 
+        ('D', 'GAT'), ('D', 'GAC'), ('E', 'GAA'), ('E', 'GAG'), 
+        ('H', 'CAT'), ('H', 'CAC'), 
+        ('R', 'CGT'), ('R', 'CGC'), ('R', 'CGA'), ('R', 'CGG'), ('R', 'AGA'), ('R', 'AGG'),
+        ('K', 'AAA'), ('K', 'AAG'), ('*', 'TAA'), ('*', 'TAG'), ('*', 'TGA')
+    ]
+    
+    if three_letter_aa:
+        return [f'{convert_aa_to_three_letter(aa)}({codon})' for aa, codon in codon_data]
+    else:
+        return [f'{aa}({codon})' for aa, codon in codon_data]
+
+def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesis_variants: list = None, position_type: str = 'aa', three_letter_aa: bool = False) -> pd.DataFrame:
     # Column values depend on position_type
     if position_type == 'dna':
         # For DNA positions, use 1-based indexing for each nucleotide position
@@ -36,24 +77,23 @@ def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesi
     # Row labels depend on variant_type and mutagenesis_variants
     if variant_type == 'aa':
         if mutagenesis_variants is not None:
-            row_labels = mutagenesis_variants
+            if three_letter_aa:
+                row_labels = [convert_aa_to_three_letter(aa) for aa in mutagenesis_variants]
+            else:
+                row_labels = mutagenesis_variants
         else:
-            row_labels = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
+            default_aa = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
+            if three_letter_aa:
+                row_labels = [convert_aa_to_three_letter(aa) for aa in default_aa]
+            else:
+                row_labels = default_aa
     elif variant_type == 'dna':
         if mutagenesis_variants is not None:
             # For GCTA-style experiments, use custom DNA bases
             row_labels = mutagenesis_variants
         else:
-            # Default DNA codon variants - grouped by amino acid properties
-            row_labels = [
-                'M(ATG)', 'C(TGT)', 'C(TGC)', 'W(TGG)', 'F(TTT)', 'F(TTC)', 'Y(TAT)', 'Y(TAC)', 'P(CCT)', 'P(CCC)', 'P(CCA)', 'P(CCG)', 
-                'I(ATT)', 'I(ATC)', 'I(ATA)', 'L(TTA)', 'L(TTG)', 'L(CTT)', 'L(CTC)', 'L(CTA)', 'L(CTG)',
-                'V(GTT)', 'V(GTC)', 'V(GTA)', 'V(GTG)', 'A(GCT)', 'A(GCC)', 'A(GCA)', 'A(GCG)', 'G(GGT)', 'G(GGC)',
-                'G(GGA)', 'G(GGG)', 'S(TCT)', 'S(TCC)', 'S(TCA)', 'S(TCG)', 'S(AGT)', 'S(AGC)',
-                'T(ACT)', 'T(ACC)', 'T(ACA)', 'T(ACG)', 'Q(CAA)', 'Q(CAG)', 'N(AAT)', 'N(AAC)', 'D(GAT)', 'D(GAC)',
-                'E(GAA)', 'E(GAG)', 'H(CAT)', 'H(CAC)', 'R(CGT)', 'R(CGC)', 'R(CGA)', 'R(CGG)', 'R(AGA)', 'R(AGG)',
-                'K(AAA)', 'K(AAG)', '*(TAA)', '*(TAG)', '*(TGA)'
-            ]
+            # Use the new function to generate codon labels
+            row_labels = generate_codon_labels(three_letter_aa)
     return pd.DataFrame(index=row_labels, columns=column_values)
 
 def make_dms_matrix(
@@ -63,10 +103,11 @@ def make_dms_matrix(
     wt_seq: str,
     variant_type: str = 'aa',
     mutagenesis_variants: list = None,
-    position_type: str = 'aa'
+    position_type: str = 'aa',
+    three_letter_aa: bool = False
 ) -> pd.DataFrame:
     data = data.dropna(subset=[score_col])
-    matrix = dms_matrix_template(num_positions, variant_type, mutagenesis_variants, position_type)
+    matrix = dms_matrix_template(num_positions, variant_type, mutagenesis_variants, position_type, three_letter_aa)
     
     # Choose the appropriate difference column based on position_type
     if position_type == 'dna':
@@ -90,14 +131,18 @@ def make_dms_matrix(
         is_dna = len(wt_seq) % 3 == 0 and all(c in 'ATCG' for c in wt_seq.upper())
         wt_aa_seq = translate_dna(wt_seq) if is_dna else wt_seq
         for index, amino_acid in enumerate(wt_aa_seq, start=1):
-            if amino_acid in matrix.index and index in matrix.columns:
-                matrix.at[amino_acid, index] = 'WT'
+            # Convert to three-letter if needed for matrix lookup
+            aa_key = convert_aa_to_three_letter(amino_acid) if three_letter_aa else amino_acid
+            if aa_key in matrix.index and index in matrix.columns:
+                matrix.at[aa_key, index] = 'WT'
     elif variant_type == 'dna':
         # For DNA variant type with AA positions (codon-level)
         codon_enumeration = [((i // 3)+1, wt_seq[i:i+3]) for i in range(0, len(wt_seq), 3)]
         for index, codon in codon_enumeration:
             aa = translate_dna(codon)
-            codon_index = f'{aa}({codon})'
+            # Convert to three-letter if needed for codon label
+            aa_display = convert_aa_to_three_letter(aa) if three_letter_aa else aa
+            codon_index = f'{aa_display}({codon})'
             if codon_index in matrix.index and index in matrix.columns:
                 matrix.at[codon_index, index] = 'WT'
     return matrix
