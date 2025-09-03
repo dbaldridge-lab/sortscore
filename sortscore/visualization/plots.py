@@ -82,64 +82,6 @@ def get_color_palette(
         # Fallback to seaborn palette
         return sns.color_palette("husl", n_colors).as_hex()
 
-
-def save_plot(
-    filename: str,
-    output_dir: str = '.',
-    formats: List[str] = ['png'],
-    dpi: int = 300,
-    bbox_inches: str = 'tight',
-    transparent: bool = False
-) -> List[str]:
-    """
-    Save plot in multiple formats with consistent settings.
-    
-    Parameters
-    ----------
-    filename : str
-        Base filename without extension.
-    output_dir : str, default '.'
-        Output directory path.
-    formats : list of str, default ['png']
-        List of file formats ('png', 'svg', 'pdf', 'eps').
-    dpi : int, default 300
-        Resolution for raster formats.
-    bbox_inches : str, default 'tight'
-        Bounding box setting for saving.
-    transparent : bool, default False
-        Whether to use transparent background.
-        
-    Returns
-    -------
-    list of str
-        List of saved file paths.
-    """
-    logger = logging.getLogger(__name__)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    saved_files = []
-    for fmt in formats:
-        filepath = output_dir / f"{filename}.{fmt}"
-        
-        save_kwargs = {
-            'dpi': dpi if fmt in ['png', 'jpg', 'tiff'] else None,
-            'bbox_inches': bbox_inches,
-            'transparent': transparent,
-            'facecolor': 'white' if not transparent else 'none',
-            'edgecolor': 'none'
-        }
-        
-        # Remove None values
-        save_kwargs = {k: v for k, v in save_kwargs.items() if v is not None}
-        
-        plt.savefig(filepath, format=fmt, **save_kwargs)
-        saved_files.append(str(filepath))
-        logger.info(f"Plot saved: {filepath}")
-    
-    return saved_files
-
-
 def setup_plot_style(
     style: str = 'default',
     font_scale: float = 1.0,
