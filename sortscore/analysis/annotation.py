@@ -318,26 +318,12 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     if 'aa_seq_diff' not in scores_df.columns or 'annotate_aa' not in scores_df.columns:
         raise ValueError("DataFrame must contain 'aa_seq_diff' and 'annotate_aa' columns")
     
-    # First, average the individual replicate scores and other columns (excluding avgscore columns)
-    cols_to_average = [col for col in scores_df.columns if col not in ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted']]
+    # Average all numeric columns including avgscore columns
+    cols_to_average = [col for col in scores_df.columns if col not in ['aa_seq_diff', 'annotate_aa']]
     numeric_cols = scores_df[cols_to_average].select_dtypes(include=['number']).columns.tolist()
     
     # Group by AA sequence difference and annotation type, then average
     aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'])[numeric_cols].mean().reset_index()
-    
-    # Recalculate the avgscore columns from the averaged replicate scores
-    # Simple average
-    rep_score_cols = [col for col in aggregated_df.columns if 'Rep' in col and 'score' in col and 'sum' not in col]
-    if rep_score_cols:
-        aggregated_df['avgscore'] = aggregated_df[rep_score_cols].mean(axis=1)
-    
-    # Rep-weighted average (need to recalculate weights from the aggregated rep sums)
-    rep_sum_cols = [col for col in aggregated_df.columns if 'Rep' in col and 'sum' in col]
-    if rep_sum_cols and rep_score_cols:
-        total_weight = aggregated_df[rep_sum_cols].sum(axis=1)
-        weighted_sum = sum(aggregated_df[score_col] * aggregated_df[weight_col] 
-                          for score_col, weight_col in zip(rep_score_cols, rep_sum_cols))
-        aggregated_df['avgscore_rep_weighted'] = weighted_sum / total_weight
     
     # Add back non-numeric columns from the first occurrence
     other_cols = [col for col in scores_df.columns if col not in numeric_cols and 
