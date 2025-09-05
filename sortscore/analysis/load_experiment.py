@@ -183,7 +183,7 @@ class ExperimentConfig:
     experiment_name: str
     experiment_setup_file: str
     wt_seq: str
-    variant_type: str
+    analysis_type: str  # 'snv', 'codon', or 'aa'
     max_pos: int
     min_pos: int
     output_dir: Optional[str] = None
@@ -192,6 +192,9 @@ class ExperimentConfig:
     median_gfp: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
+    
+    # Auto-detected properties (set during loading)
+    variant_type: Optional[str] = None  # Auto-detected: 'dna' or 'aa'
     
     # Analysis parameters with defaults
     bins_required: int = 1
@@ -241,8 +244,15 @@ class ExperimentConfig:
         # Build kwargs only for fields that exist in JSON
         args = {}
         
+        # Validate analysis_type
+        valid_analysis_types = {'snv', 'codon', 'aa'}
+        if 'analysis_type' not in data:
+            raise ValueError(f"Missing required 'analysis_type' parameter. Must be one of: {valid_analysis_types}")
+        if data['analysis_type'] not in valid_analysis_types:
+            raise ValueError(f"Invalid analysis_type '{data['analysis_type']}'. Must be one of: {valid_analysis_types}")
+
         # Required fields
-        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos']:
+        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type', 'max_pos', 'min_pos']:
             if field in data:
                 args[field] = data[field]
         
@@ -252,13 +262,32 @@ class ExperimentConfig:
                 args[field] = data[field]
         
         # Other parameters
-        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos',
+        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type', 'max_pos', 'min_pos',
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
         
-        return ExperimentConfig(**args)
+        # Create config instance
+        config = ExperimentConfig(**args)
+        
+        # Auto-detect variant_type from count files
+        from sortscore.analysis.variant_detection import detect_variant_type_from_experiment
+        try:
+            config.variant_type = detect_variant_type_from_experiment(config.experiment_setup_file)
+            logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
+        except Exception as e:
+            raise ValueError(f"Failed to auto-detect variant_type from count files: {e}")
+        
+        # Validate analysis_type compatibility with detected variant_type
+        if config.analysis_type == 'aa' and config.variant_type == 'dna':
+            logging.info("Analysis type 'aa' with DNA variants - will aggregate synonymous variants")
+        elif config.analysis_type in ['snv', 'codon'] and config.variant_type == 'aa':
+            raise ValueError(f"Analysis type '{config.analysis_type}' requires DNA variants, but detected AA variants")
+        elif config.analysis_type == 'aa' and config.variant_type == 'aa':
+            logging.info("Analysis type 'aa' with AA variants - direct processing")
+        
+        return config
 
     def load_counts(self) -> None:
         """
