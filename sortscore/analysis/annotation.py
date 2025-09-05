@@ -318,18 +318,27 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     if 'aa_seq_diff' not in scores_df.columns or 'annotate_aa' not in scores_df.columns:
         raise ValueError("DataFrame must contain 'aa_seq_diff' and 'annotate_aa' columns")
     
-    # Average all numeric columns including avgscore columns
-    cols_to_average = [col for col in scores_df.columns if col not in ['aa_seq_diff', 'annotate_aa']]
-    numeric_cols = scores_df[cols_to_average].select_dtypes(include=['number']).columns.tolist()
+    # Group by AA sequence difference and annotation type with proper aggregation for variance calculations
+    # Use dropna=False to include NaN values (important for synonymous variants)
+    agg_dict = {}
     
-    # Group by AA sequence difference and annotation type, then average
-    aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'])[numeric_cols].mean().reset_index()
+    for col in scores_df.columns:
+        if col in ['aa_seq_diff', 'annotate_aa']:
+            continue  # These are grouping columns
+        elif col in ['avgscore', 'avgscore_rep_weighted'] or col.endswith('.score'):
+            agg_dict[col] = 'mean'  # Average the scores
+        elif col in ['n_codons', 'n_measurements']:
+            agg_dict[col] = 'sum'  # Sum the counts for proper variance calculation
+        elif col in ['SD_codon', 'SD_rep', 'CV_rep', 'CV_codon', 'SEM', 'CI_lower', 'CI_upper']:
+            # Statistics need to be recalculated with proper codon variance, drop for now
+            continue
+        else:
+            # For other numeric columns, use mean
+            if scores_df[col].dtype.kind in 'biufc':  # numeric types
+                agg_dict[col] = 'mean'
+            else:
+                agg_dict[col] = 'first'  # For non-numeric, take first value
     
-    # Add back non-numeric columns from the first occurrence
-    other_cols = [col for col in scores_df.columns if col not in numeric_cols and 
-                  col not in ['aa_seq_diff', 'annotate_aa']]
-    if other_cols:
-        first_others = scores_df.groupby(['aa_seq_diff', 'annotate_aa'])[other_cols].first().reset_index()
-        aggregated_df = aggregated_df.merge(first_others, on=['aa_seq_diff', 'annotate_aa'])
+    aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'], dropna=False).agg(agg_dict).reset_index()
     
     return aggregated_df
