@@ -22,6 +22,7 @@ from sortscore.analysis.analysis_logger import AnalysisLogger, generate_date_suf
 from sortscore.analysis.statistics import calculate_replicate_statistics, round_score_columns, get_replicate_score_columns
 from sortscore.analysis.summary_stats import calculate_summary_stats, save_summary_stats
 from sortscore.analysis.aa_scores import process_and_save_aa_scores
+from sortscore.analysis.workflows import run_variant_analysis_workflow
 from sortscore.sequence_parsing import translate_dna
 from sortscore.visualization.heatmaps import plot_heatmap
 from sortscore.console_utils import create_analysis_parser
@@ -71,62 +72,26 @@ def main():
     # Initialize analysis logger with automatic parameter extraction
     analysis_logger = AnalysisLogger(experiment, args, output_suffix, output_dir)
     
-    # Calculate activity scores using dataclass parameters
+    # Run variant analysis workflow based on analysis_type
     try:
-        logging.info("Calculating activity scores...")
-        
-        # Get merged counts DataFrame
-        merged_df = experiment.get_merged_counts()
-        
-        scores_df = calculate_full_activity_scores(
-            counts=experiment.counts,
-            median_gfp=experiment.median_gfp,
-            min_bins=experiment.bins_required,
-            min_reps=experiment.reps_required,
-            minread_threshold=experiment.minread_threshold,
-            avg_method=experiment.avg_method,
-            total_reads=experiment.total_reads,
-            cell_prop=experiment.cell_prop,
-            merged_df=merged_df,
-            max_cv=experiment.max_cv
+        dna_scores_file, aa_scores_file = run_variant_analysis_workflow(
+            experiment, output_dir, output_suffix, analysis_logger
         )
-        logging.info(f"Calculated scores for {len(scores_df)} variants.")
-        analysis_logger.set_processing_stats(len(scores_df))
         
+        # Load the final scores for visualization
+        if aa_scores_file and os.path.exists(aa_scores_file):
+            scores_df = pd.read_csv(aa_scores_file)
+            logging.info(f"Loaded AA scores for visualization: {len(scores_df)} variants")
+        elif dna_scores_file and os.path.exists(dna_scores_file):
+            scores_df = pd.read_csv(dna_scores_file)
+            logging.info(f"Loaded DNA scores for visualization: {len(scores_df)} variants")
+        else:
+            raise ValueError("No scores files were generated")
+            
     except Exception as e:
-        analysis_logger.add_error(f"Failed to calculate activity scores: {e}")
-        logging.error(f"Failed to calculate activity scores: {e}")
+        analysis_logger.add_error(f"Failed to run variant analysis workflow: {e}")
+        logging.error(f"Failed to run variant analysis workflow: {e}")
         sys.exit(1)
-    
-    # Annotate sequences
-    try:
-        # Annotate the scores DataFrame with sequence information
-        scores_df = annotate_scores_dataframe(scores_df, experiment.wt_seq, experiment.variant_type, experiment.transcript_id)
-    except Exception as e:
-        analysis_logger.add_warning(f"Failed to add annotations: {e}")
-        logging.warning(f"Failed to add annotations: {e}")
-
-    # Prepare scores DataFrame for saving
-    scores_dir = os.path.join(output_dir, 'scores')
-    scores_df_rounded = scores_df.copy()
-    rep_score_columns = get_replicate_score_columns(scores_df_rounded)
-    scores_df_rounded = calculate_replicate_statistics(scores_df_rounded, rep_score_columns)
-    scores_df_rounded = round_score_columns(scores_df_rounded)
-    
-    # Save DNA scores if applicable
-    if experiment.variant_type == 'dna':
-        dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv")
-        scores_df_rounded.to_csv(dna_scores_file, index=False)
-        logging.info(f"Saved DNA scores to {dna_scores_file}")
-
-        analysis_logger.log_output_file(
-            'dna_scores', 
-            f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv",
-            dna_scores_file,
-            variant_count=len(scores_df_rounded)
-        )
-
-    process_and_save_aa_scores(scores_df, experiment, scores_dir, output_suffix, analysis_logger)
     
     # Generate visualizations
     try:
@@ -146,10 +111,13 @@ def main():
             # Use AA data directly for AA-only experiments, or aggregate for DNA experiments
             if experiment.variant_type == 'aa':
                 # For AA-only data, use the data directly
+                logging.info(f"AA data creation: scores_df shape {scores_df.shape}")
                 aa_data = scores_df[['aa_seq_diff', 'annotate_aa', score_col]].copy()
+                logging.info(f"AA data created: aa_data shape {aa_data.shape}")
             else:
                 # For DNA data, aggregate to AA level
                 aa_data = aggregate_aa_data(scores_df, score_col)
+                logging.info(f"AA data aggregated: aa_data shape {aa_data.shape}")
             
             # Get WT score from the aggregated AA data for AA heatmap
             # For AA substitution heatmaps, average synonymous WT variants
@@ -252,13 +220,7 @@ def main():
         logging.error(f"Failed to generate visualizations: {e}")
         sys.exit(1)
     
-    # Save summary statistics
-    try:
-        stats = calculate_summary_stats(scores_df, experiment)
-        save_summary_stats(stats, experiment, scores_dir, output_suffix, analysis_logger)
-    except Exception as e:
-        analysis_logger.add_warning(f"Failed to save statistics: {e}")
-        logging.warning(f"Failed to save statistics: {e}")
+    # Statistics are now calculated within each workflow at the end
     
     log_file = analysis_logger.finish()
     
