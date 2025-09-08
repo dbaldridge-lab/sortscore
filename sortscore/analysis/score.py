@@ -59,7 +59,7 @@ def calculate_activity_scores(
     count_dfs: List[pd.DataFrame],
     method: str = 'rep-weighted',
     min_reads: int = 0,
-    bins_required: int = 3,
+    bins_required: int = 1,
     reps_required: int = 3,
     read_count: Optional[List[int]] = None
 ) -> pd.DataFrame:
@@ -74,7 +74,7 @@ def calculate_activity_scores(
         Averaging method ('simple-avg', 'rep-weighted').
     min_reads : int, default 0
         Minimum normalized reads per bin for a variant to be scored.
-    bins_required : int, default 3
+    bins_required : int, default 1
         Number of bins a variant must appear in to be scored.
     reps_required : int, default 3
         Number of replicates a variant must appear in to be scored.
