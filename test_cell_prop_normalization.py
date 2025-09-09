@@ -27,8 +27,8 @@ def test_cell_prop_normalization():
         }
     }
     
-    # Mock median GFP values
-    median_gfp = {
+    # Mock median MFI values
+    median_mfi = {
         1: {'A': 100.0, 'B': 500.0}
     }
     
@@ -65,7 +65,7 @@ def test_cell_prop_normalization():
     print("\n--- Test 1: Without cell proportion normalization ---")
     scores_no_cell_prop = calculate_full_activity_scores(
         counts=counts,
-        median_gfp=median_gfp,
+        median_mfi=median_mfi,
         merged_df=merged_df.copy(),
         min_bins=1,
         min_reps=1,
@@ -81,7 +81,7 @@ def test_cell_prop_normalization():
     print("\n--- Test 2: With cell proportion normalization ---")
     scores_with_cell_prop = calculate_full_activity_scores(
         counts=counts,
-        median_gfp=median_gfp,
+        median_mfi=median_mfi,
         merged_df=merged_df.copy(),
         min_bins=1,
         min_reps=1,

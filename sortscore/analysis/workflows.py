@@ -34,7 +34,7 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
     # Calculate activity scores
     scores_df = calculate_full_activity_scores(
         counts=experiment.counts,
-        median_gfp=experiment.median_gfp,
+        mfi=experiment.mfi,
         min_bins=experiment.bins_required,
         min_reps=experiment.reps_required,
         minread_threshold=experiment.minread_threshold,

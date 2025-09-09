@@ -35,7 +35,7 @@ sortscore/
 
 ### Configuration System
 - **JSON Config Files**: Experiment parameters (submission, bins_required, reps_required, avg_method, etc.)
-- **CSV Setup Files**: Maps replicates/bins to count files with median GFP values
+- **CSV Setup Files**: Maps replicates/bins to count files with MFI values
 - **Dataclass Defaults**: Built into ExperimentConfig (bins_required=1, reps_required=1, avg_method='simple-avg', minread_threshold=0)
 
 ### Installation & Dependencies
@@ -116,7 +116,7 @@ sortscore/
 - **Count Files**: TSV/CSV with 'seq' column and count column (any name, must be second column)
   - **Full sequences**: Complete DNA or amino acid sequences (traditional format)
   - **Pre-annotated AA changes**: Auto-detected support for "M1M", "R98C", "Met1Met", "p.M1M" formats
-- **Experiment Setup**: CSV with columns: Replicate, Bin, Read Counts (CSV), Median GFP
+- **Experiment Setup**: CSV with columns: Replicate, Bin, Read Counts (CSV), MFI
 - **Configuration**: JSON with required fields: submission, experiment_setup_file, wt_seq, mutant_type, num_aa, min_pos
 
 ## Test Data Setup
