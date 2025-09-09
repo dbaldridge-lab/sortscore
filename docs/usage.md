@@ -77,38 +77,40 @@ sortscore -c my_experiment.json --fig-format svg
 sortscore -b -c batch_config.json
 ```
 
-## Batch Processing (Multiple Experiments)
+## Tiled Mutagenesis Batch Processing
 
-For tiled experimental designs or combining multiple experiments, use batch processing mode:
+For tiled experimental designs where different sequencing datasets cover different regions of the same protein, sortscore supports automatic batch processing with cross-tile normalization:
 
 ```bash
-# Run batch analysis
-sortscore --batch --config path/to/batch_config.json
+# Run tiled analysis with automatic tile detection
+sortscore --config experiment_config.json
 
-# With custom suffix
-sortscore --batch --config path/to/batch_config.json --suffix "combined_analysis"
+# With custom suffix for combined results
+sortscore --config experiment_config.json --suffix "tiled_analysis"
 ```
 
-### Batch Configuration File
+### Tiled Experimental Setup
 
-Create a separate JSON configuration file for batch processing:
+Add a `tile` column to your experiment setup CSV to indicate which sequence region each count file represents:
 
-```json
-{
-    "experiment_configs": [
-        "/path/to/experiment1/config.json",
-        "/path/to/experiment2/config.json", 
-        "/path/to/experiment3/config.json"
-    ],
-    "batch_normalization_method": "zscore_2pole",
-    "pathogenic_control_type": "nonsense",
-    "combined_output_dir": "/path/to/combined/results",
-    "global_min_pos": 1,
-    "global_max_pos": 500,
-    "allow_position_breaks": true,
-    "cleanup_individual_files": true
-}
+```csv
+Replicate,Bin,Read Counts (CSV),MFI,tile
+1,1,tile1_rep1_bin1.tsv,1000,N_terminal_1-50
+1,2,tile1_rep1_bin2.tsv,2000,N_terminal_1-50
+1,3,tile1_rep1_bin3.tsv,3000,N_terminal_1-50
+2,1,tile2_rep1_bin1.tsv,1500,middle_domain_51-100
+2,2,tile2_rep1_bin2.tsv,2500,middle_domain_51-100
+2,3,tile2_rep1_bin3.tsv,3500,middle_domain_51-100
+3,1,tile3_rep1_bin1.tsv,1800,C_terminal_101-150
+3,2,tile3_rep1_bin2.tsv,2800,C_terminal_101-150
+3,3,tile3_rep1_bin3.tsv,3800,C_terminal_101-150
 ```
+
+### Automatic Tiled Workflow
+
+When sortscore detects a `tile` column in your experiment setup CSV, it automatically processes each sequence tile separately and then combines them using the selected normalization method and controls. Each tile is analyzed independently to generate raw activity scores, then all tiles are combined to allow comparisons of scores across the entire protein sequence.
+
+The system generates unified tiled heatmaps that properly map each tile's positions to the global protein coordinate system, with visual indicators showing tile boundaries and handling any gaps between non-contiguous sequence regions. Individual tile outputs are automatically cleaned up after successful combination, leaving only the final combined results. Intermediate files for individual experiments can be optionally retained.
 
 ### Batch Configuration Parameters
 
@@ -233,25 +235,97 @@ plot_heatmap(
 
 The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
 
-| Key                   | Type    | Description                                                                                 |
-|-----------------------|---------|---------------------------------------------------------------------------------------------|
-| experiment_name       | str     | Name/ID of the experiment or submission.                                                    |
-| bins_required         | int     | Minimum number of bins per replicate a variant must appear in to be scored.                               |
-| reps_required         | int     | Minimum number of replicates a variant must appear in to be scored.                         |
-| avg_method            | str     | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg').         |
-| minread_threshold     | int     | Minimum reads per bin for a variant to be scored.                                |
-| max_cv                | float   | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
-| read_count            | list    | List of demultiplexed read counts for each sample/bin.                                      |
-| output_dir            | str     | Directory where all results and figures will be saved. Default value is the current directory.                                       |
-| experiment_setup_file | str     | Path to the experiment setup CSV file (see below).                                          |
-| wt_seq                | str     | Wild-type sequence (DNA) for the region analyzed.                                     |
-| variant_type          | str     | Type of variant ('aa' for amino acid, 'dna' for nucleotide/codon).                           |
-| min_pos               | int     | Starting amino acid sequence position for the region analyzed (used for plot labels).            |
-| max_pos               | int     | Ending amino acid sequence position for the region analyzed (used for plot labels).              |
-| mutagenesis_variants  | list    | Custom list of variants for heatmap y-axis. Default: all 20 AAs + stop codon.               |
-| position_type         | str     | Position type for heatmap x-axis ('aa' for amino acid positions, 'dna' for DNA positions). Default: 'aa'. |
+| Key                   | Type    | Required | Description                                                                                 |
+|-----------------------|---------|----------|---------------------------------------------------------------------------------------------|
+| **Required Parameters** | | | |
+| experiment_name       | str     | Yes      | Name/ID of the experiment or submission.                                                    |
+| experiment_setup_file | str     | Yes      | Path to the experiment setup CSV file (see below).                                          |
+| wt_seq                | str     | Yes      | Wild-type reference sequence (DNA or amino acid) for the region analyzed.                                     |
+| analysis_type         | str     | Yes      | Type of analysis workflow: 'aa' (amino acid), 'codon' (codon-level), 'snv' (single nucleotide). **Each run processes one workflow only.** |
+| **Optional Parameters** | | | |
+| bins_required         | int     | No       | Minimum number of bins per replicate a variant must appear in to be scored. Default: 1.                               |
+| reps_required         | int     | No       | Minimum number of replicates a variant must appear in to be scored. Default: 1.                         |
+| avg_method            | str     | No       | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg'). Default: 'rep-weighted'.         |
+| minread_threshold     | int     | No       | Minimum reads per bin for a variant to be scored. Default: 0.                                |
+| max_cv                | float   | No       | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
+| read_count            | list    | No       | List of demultiplexed read counts for each sample/bin.                                      |
+| output_dir            | str     | No       | Directory where all results and figures will be saved. Default: current directory.                                       |
+| mutagenesis_variants  | list    | No       | Custom list of variants for heatmap y-axis. Default: all 20 AAs + stop codon.               |
+| position_offset       | int     | No       | What position 1 of wt_seq becomes (e.g., position_offset=50 means position 1 → 50). Default: 0. |
 
 See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
+
+### Automatic Variant Format Detection
+
+The system automatically detects the input variant format from your count files and validates compatibility with your specified `analysis_type`:
+
+**DNA Formats Detected:**
+- Full DNA sequences: `ATGCGTAAC...`
+- Nucleotide changes: `A123T`, `G.252.C`, `C_45_T`
+- HGVS DNA notation: `c.123A>T`
+
+**Amino Acid Formats Detected:**
+- Full AA sequences: `MKILVAGD...`
+- Single-letter changes: `M1V`, `R.98.C`, `P171*`
+- Three-letter changes: `Met1Val`, `Arg98Cys`, `Pro171Ter`
+- HGVS protein notation: `p.Met1Val`, `p.Arg98Cys`
+
+The system validates that all count files use consistent formatting and that the detected format is compatible with your specified `analysis_type`.
+
+### Position Numbering Convention
+
+All positions are relative to the provided `wt_seq` unless otherwise specified:
+
+- **Default**: Position 1 corresponds to the first character of `wt_seq`
+- **With position_offset**: Position 1 of `wt_seq` becomes the offset value
+  (e.g., `position_offset=50` means position 1 → position 50, position 2 → position 51)
+- **Pre-annotated data**: If count files contain position annotations (e.g., "K.2.E"),
+  those positions are used as-is, with optional offset adjustment applied
+- **Sequence flexibility**: `wt_seq` can be DNA or amino acid sequence - the system auto-detects the type and handles accordingly
+
+**Examples**:
+```json
+// Default: positions relative to wt_seq
+{"wt_seq": "MKVLIVAG", "position_offset": 0}
+// Position 1 = M, Position 2 = K, etc.
+
+// With offset: position 1 of wt_seq becomes position 50  
+{"wt_seq": "MKVLIVAG", "position_offset": 50}
+// Position 1 → 50, Position 2 → 51, Position 8 → 57
+```
+
+### Analysis Workflows
+
+Each analysis run processes **one workflow type only**. The `analysis_type` parameter determines which workflow runs:
+
+#### `analysis_type: "aa"` - Amino Acid Analysis
+- **Input**: DNA sequences (aggregates synonymous variants) OR AA sequences (direct processing)
+- **Output**: AA substitution heatmap, AA-level statistics, AA scores file
+- **Use for**: Deep mutational scanning, protein function studies
+
+#### `analysis_type: "codon"` - Codon-Level Analysis  
+- **Input**: DNA sequences (required)
+- **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
+- **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
+
+#### `analysis_type: "snv"` - Single Nucleotide Variant Analysis
+- **Input**: DNA sequences (required)  
+- **Output**: Position-by-nucleotide heatmap, SNV-specific statistics
+- **Use for**: Saturation genome editing (SGE), base editing, nucleotide-level screens
+
+#### Getting Multiple Output Types
+
+To generate both codon and amino acid analysis from the same DNA data, run the analysis twice with different `analysis_type` values:
+
+```bash
+# First run: Generate codon-level analysis
+sortscore --config config_codon.json --suffix codon_analysis
+
+# Second run: Generate amino acid-level analysis  
+sortscore --config config_aa.json --suffix aa_analysis
+```
+
+Where `config_codon.json` has `"analysis_type": "codon"` and `config_aa.json` has `"analysis_type": "aa"`.
 
 ## Experiment Setup CSV Reference
 
@@ -259,7 +333,7 @@ The experiment setup CSV must contain the following columns:
 - `Replicate`: Replicate number (integer)
 - `Bin`: Bin number (integer)
 - `Read Counts (CSV)`: Path to the variant count file for this replicate/bin
-- `Median GFP`: Median GFP value for this replicate/bin
+- `MFI`: Median fluorescence value for this replicate/bin
 
 ### Input Variant Count File Format
 Each input variant count file must:
@@ -296,23 +370,20 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "MyProtein_DMS",
-  "position_type": "aa",
-  "variant_type": "aa",
-  "min_pos": 1,
-  "max_pos": 150,
+  "analysis_type": "aa",
+  "wt_seq": "MKVLIVAG...",
   "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
 }
 ```
-- **X-axis**: Amino acid positions (1, 2, 3... up to 150)
+- **X-axis**: Amino acid positions (auto-detected from data)
 - **Y-axis**: All 20 amino acids + stop codon
-- **Matrix size**: 21 × 150
+- **Matrix size**: 21 × (detected position range)
 
 #### GCTA (Single Nucleotide Scanning)
 ```json
 {
   "experiment_name": "MyGene_GCTA",
-  "position_type": "dna",
-  "variant_type": "dna", 
+  "analysis_type": "snv", 
   "mutagenesis_variants": ["G", "C", "T", "A"],
   "wt_seq": "ATGCGTAAC..."
 }
@@ -325,23 +396,21 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "Hydrophobic_Screen",
-  "position_type": "aa",
-  "variant_type": "aa",
-  "min_pos": 50,
-  "max_pos": 100,
+  "analysis_type": "aa",
+  "wt_seq": "MKVLIVAG...",
+  "position_offset": 50,
   "mutagenesis_variants": ["M", "I", "L", "V", "F", "W", "Y", "A"]
 }
 ```
-- **X-axis**: Amino acid positions (50 to 100)
+- **X-axis**: Amino acid positions (auto-detected, with offset so position 1 becomes 50)
 - **Y-axis**: Only hydrophobic amino acids
-- **Matrix size**: 8 × 51
+- **Matrix size**: 8 × (detected position range)
 
 #### Custom DNA Base Subset
 ```json
 {
   "experiment_name": "GC_Content_Study",
-  "position_type": "dna",
-  "variant_type": "dna",
+  "analysis_type": "snv",
   "mutagenesis_variants": ["G", "C"],
   "wt_seq": "ATGCGTAAC..."
 }

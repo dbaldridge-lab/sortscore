@@ -64,9 +64,34 @@ sortscore --batch --config batch_config.json
 sortscore --batch --config batch_config.json --suffix custom_name
 ```
 
-## Batch Normalization
+## Tiled Mutagenesis Batch Processing
 
-The package supports batch processing to combine and normalize multiple Sort-seq experiments, enabling cross-experiment comparisons through systematic normalization. This is particularly useful for tiled experimental designs where different experiments cover different regions of a protein.
+The package supports automatic batch processing for tiled mutagenesis experiments where different sequencing datasets cover different regions of the same protein. This enables systematic analysis of large proteins through coordinated tile-based experiments with proper cross-tile normalization and unified visualization.
+
+**Key Features:**
+- **Automatic batch detection** from experiment setup CSV using batch column
+- **Tile-based organization** where each batch represents a sequence tile/region
+- **Unified normalization** across all tiles for meaningful comparisons
+- **Tiled heatmap visualization** with proper position mapping and gap handling
+- **Automatic cleanup** of intermediate files after combination
+
+### Tiled Experimental Design
+
+**Tile Column in Experiment Setup CSV:**
+Add a `tile` column to your experiment setup CSV to indicate which sequence region each count file represents:
+
+```csv
+Replicate,Bin,Read Counts (CSV),MFI,tile
+1,1,tile1_rep1_bin1.tsv,1000,N_terminal_1-50
+1,2,tile1_rep1_bin2.tsv,2000,N_terminal_1-50
+2,1,tile2_rep1_bin1.tsv,1500,middle_domain_51-100
+2,2,tile2_rep1_bin2.tsv,2500,middle_domain_51-100
+3,1,tile3_rep1_bin1.tsv,1800,C_terminal_101-150
+3,2,tile3_rep1_bin2.tsv,2800,C_terminal_101-150
+```
+
+**Automatic Workflow:**
+When the system detects a `tile` column, it processes each sequence tile separately and then combines them using cross-tile normalization. Each tile is analyzed independently to generate raw activity scores, then all tiles are combined with proper position mapping to create unified visualizations across the entire protein sequence. Individual tile outputs are automatically cleaned up after successful combination.
 
 ### Normalization Methods
 
@@ -83,35 +108,13 @@ Creates standardized scale where synonymous variants center around 0 with unit v
   - `a` = experiment synonymous median, `c` = experiment pathogenic median
   - `A` = global synonymous median, `C` = global pathogenic median
 
-### Batch Configuration
+### Handling Sequence Overlaps
 
-Batch processing uses a dedicated configuration file format:
-
-```json
-{
-    "experiment_configs": [
-        "/path/to/experiment1/config.json",
-        "/path/to/experiment2/config.json",
-        "/path/to/experiment3/config.json"
-    ],
-    "batch_normalization_method": "zscore_threestep",
-    "pathogenic_control_type": "nonsense",
-    "combined_output_dir": "/path/to/combined/results",
-    "global_min_pos": 1,
-    "global_max_pos": 500,
-    "allow_position_breaks": true,
-    "cleanup_individual_files": true
-}
-```
-
-**Configuration Parameters:**
-- `experiment_configs`: List of paths to individual experiment JSON files
-- `batch_normalization_method`: "zscore_2pole" (default) or "2pole"
-- `pathogenic_control_type`: "nonsense" (default) or "custom" 
-- `pathogenic_variants`: Custom pathogenic variants (when using "custom")
-- `global_min_pos`/`global_max_pos`: Overall position range for tiled heatmaps
-- `allow_position_breaks`: Handle gaps in tiled designs
-- `cleanup_individual_files`: Remove individual experiment outputs after combination
+For tiled experiments with overlapping sequence regions, sortscore will:
+- **Detect overlaps**: Automatically identify variants present in multiple tiles
+- **Position resolution**: Use global coordinate system to map overlapping positions
+- **Score reconciliation**: Average scores from overlapping regions or flag conflicts for manual review
+- **Visualization**: Show overlap boundaries in tiled heatmaps
 
 ### Batch Workflow
 
@@ -140,7 +143,7 @@ The tiled heatmap automatically adjusts figure size based on the global position
 
 **ExperimentConfig** (`sortscore/analysis/load_experiment.py`): Central dataclass that loads experiment configuration from JSON and manages count data loading. Key methods:
 - `from_json()`: Loads config from JSON file
-- `load_counts()`: Populates `counts[rep][bin]` and `median_gfp[rep][bin]` dictionaries
+- `load_counts()`: Populates `counts[rep][bin]` and `mfi[rep][bin]` dictionaries
 - `annotate_counts()`: Adds sequence difference annotations
 
 **Activity Score Calculation** (`sortscore/analysis/score.py`): 
@@ -161,11 +164,69 @@ The tiled heatmap automatically adjusts figure size based on the global position
 
 ### Configuration Files
 
-**Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq`, `variant_type`, `min_pos`, `max_pos`, `output_dir`, `experiment_setup_file`, `mutagenesis_variants`, `position_type`
+**Experiment JSON**: Contains parameters like `experiment_name`, `bins_required`, `reps_required`, `avg_method`, `minread_threshold`, `wt_seq` (DNA or AA), `analysis_type`, `output_dir`, `experiment_setup_file`, `mutagenesis_variants`, `position_offset`
 
-**Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Path` (or `Read Counts (CSV)`), `Median GFP`, and optionally `Read Count` and `Proportion of Cells`
+#### Position Numbering Convention
+
+All positions are relative to the provided `wt_seq` unless otherwise specified:
+
+- **Default**: Position 1 corresponds to the first character of `wt_seq`
+- **With position_offset**: Position 1 of `wt_seq` becomes the offset value
+  (e.g., `position_offset=50` means position 1 → position 50, position 2 → position 51)
+- **Pre-annotated data**: If count files contain position annotations (e.g., "K.2.E"),
+  those positions are used as-is, with optional offset adjustment applied
+- **Sequence flexibility**: `wt_seq` can be DNA or amino acid sequence - the system auto-detects the type and handles accordingly
+
+**Examples**:
+```json
+// Default: positions relative to wt_seq
+{"wt_seq": "MKVLIVAG", "position_offset": 0}
+// Position 1 = M, Position 2 = K, etc.
+
+// With offset: position 1 of wt_seq becomes position 50  
+{"wt_seq": "MKVLIVAG", "position_offset": 50}
+// Position 1 → 50, Position 2 → 51, Position 8 → 57
+```
+
+#### Analysis Types
+
+The system automatically detects the input variant format from count files and validates compatibility with your specified analysis type:
+
+- **`analysis_type: "aa"`**: Amino acid-level analysis
+  - Compatible with DNA input (aggregates synonymous variants) or AA input (direct processing)
+  - Output: AA substitution heatmaps, AA-level statistics
+  - Use for: Deep mutational scanning, protein function studies
+
+- **`analysis_type: "codon"`**: Codon-level analysis  
+  - Requires DNA input, preserves all codon variants
+  - Output: Codon heatmaps, synonymous vs non-synonymous analysis
+  - Use for: Codon optimization studies, synonymous variant effects
+
+- **`analysis_type: "snv"`**: Single nucleotide variant analysis
+  - Requires DNA input, focuses on individual nucleotide changes
+  - Output: Position-by-nucleotide heatmaps, SNV-specific statistics  
+  - Use for: Single guide editing (SGE), CRISPR screens, base editing
+
+**Experiment Setup CSV**: Maps replicates/bins to count files with columns: `Replicate`, `Bin`, `Path` (or `Read Counts (CSV)`), `MFI`, and optionally `Read Count` and `Proportion of Cells`
 
 **Count Files**: TSV/CSV with columns `seq` (variant sequence) and count column (any name, must be second column)
+
+#### Automatic Variant Format Detection
+
+The system automatically detects the input variant format from all count files:
+
+**DNA Formats Detected:**
+- Full DNA sequences: `ATGCGTAAC...`
+- Nucleotide changes: `A123T`, `G.252.C`, `C_45_T`
+- HGVS DNA notation: `c.123A>T`
+
+**Amino Acid Formats Detected:**
+- Full AA sequences: `MKILVAGD...`
+- Single-letter changes: `M1V`, `R.98.C`, `P171*`
+- Three-letter changes: `Met1Val`, `Arg98Cys`, `Pro171Ter`  
+- HGVS protein notation: `p.Met1Val`, `p.Arg98Cys`
+
+The system validates that all count files use consistent formatting and that the detected format is compatible with your specified `analysis_type`.
 
 #### Normalization Options
 
@@ -268,10 +329,10 @@ The package supports flexible heatmap generation with customizable axes for diff
 
 ### X-Axis (Positions)
 
-Controlled by the `position_type` parameter:
+Auto-detected from the variant data based on `analysis_type`:
 
-- **`"aa"`** (default): Amino acid positions using `min_pos` to `max_pos` range
-- **`"dna"`**: DNA nucleotide positions (1 to length of `wt_seq`)
+- **AA analysis**: Amino acid positions (auto-detected from variants)
+- **DNA/SNV/Codon analysis**: DNA nucleotide positions (1 to length of `wt_seq`)
 
 ### Y-Axis (Variants)
 
@@ -285,20 +346,20 @@ Controlled by the `mutagenesis_variants` parameter:
 #### Standard Deep Mutational Scanning
 ```json
 {
-  "position_type": "aa",
-  "variant_type": "aa",
+  "analysis_type": "aa",
+  "wt_seq": "MKVLIVAG...",
   "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
 }
 ```
-- **X-axis**: Amino acid positions (e.g., 1, 2, 3... up to protein length)
+- **X-axis**: Amino acid positions (auto-detected from data)
 - **Y-axis**: All 20 amino acids + stop codon
-- **Matrix size**: ~21 × (max_pos - min_pos + 1)
+- **Matrix size**: ~21 × (detected position range)
 
 #### GCTA (Single Nucleotide Scanning)
 ```json
 {
-  "position_type": "dna",
-  "variant_type": "dna", 
+  "analysis_type": "snv", 
+  "wt_seq": "ATGCGTAAC...",
   "mutagenesis_variants": ["G", "C", "T", "A"]
 }
 ```
@@ -309,20 +370,21 @@ Controlled by the `mutagenesis_variants` parameter:
 #### Hydrophobic Amino Acid Screen
 ```json
 {
-  "position_type": "aa",
-  "variant_type": "aa",
+  "analysis_type": "aa",
+  "wt_seq": "MKVLIVAG...",
+  "position_offset": 50,
   "mutagenesis_variants": ["M", "I", "L", "V", "F", "W", "Y", "A"]
 }
 ```
-- **X-axis**: Amino acid positions
+- **X-axis**: Amino acid positions (auto-detected, with offset so position 1 becomes 50)
 - **Y-axis**: Only hydrophobic amino acids
-- **Matrix size**: 8 × (max_pos - min_pos + 1)
+- **Matrix size**: 8 × (detected position range)
 
 #### Custom DNA Base Subset
 ```json
 {
-  "position_type": "dna",
-  "variant_type": "dna",
+  "analysis_type": "snv",
+  "wt_seq": "ATGCGTAAC...",
   "mutagenesis_variants": ["G", "A"]
 }
 ```
@@ -361,11 +423,11 @@ plot_heatmap(data, 'avgscore', experiment, transparent=False)
 ### Key Conventions
 
 - Count data stored as nested dictionaries: `counts[replicate][bin] = DataFrame`
-- Median GFP values: `median_gfp[replicate][bin] = float`
+- MFI values: `mfi[replicate][bin] = float`
 - Activity scores calculated per replicate, then averaged across replicates
 - Filtering requires minimum bins per replicate and minimum replicates per variant
 - Sequence parsing supports both DNA ('dna') and amino acid ('aa') variant types
-- Heatmap axes automatically adjust to experiment design via `position_type` and `mutagenesis_variants`
+- Heatmap axes automatically adjust to experiment design via auto-detected positions and `mutagenesis_variants`
 
 ### Testing
 
