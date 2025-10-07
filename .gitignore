@@ -1,78 +1,60 @@
-# Ignore data files
-*.tsv
-*.html
-*.json
-
-# Ignore genetic data
-*.fasta
-*.fastq*
-*.vcf
-*.bam
-*.bed
-*.wig
-*.gff
-*.gtf
-*.fa
-*.tsv*
-
-# Ignore jupyter notebooks
-#*.ipynb
-
-# Ignore log files
+# Log files
 *.out
 *.log
 
-# Ignore temporary files
+# Temp files
 *.tmp
 *.bak
 *~
 
-# Ignore IDE and editor specific files
+# IDE and editor files
 .vscode/
+.idea/
 *.sublime-project
 *.sublime-workspace
 *.swp
+*.swo
 *.code-workspace
-*.Rhistory
-*.Rprofile
 
-# Ignore other Mac dot files
+# OS
 .DS_Store
 .AppleDouble
 .LSOverride
+Thumbs.db
 
-# Ignore compiled binaries
+# Compiled binaries
 *.exe
 *.dll
 *.so
 *.dylib
-.Rproj.user
 
-# Ignore Python bytecode files
-*.pyc
+# Python cache
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# Ignore archived files
-**/archive/
-
-# Ignore figures
-figures/*
-*.png
-*.svg
-
-# Ignore notes
-.obsidian/*
-eln/
-
-# Ignore test data folders
-tests/oPool5b_GTAC/
-tests/OTX2/
-tests/GLI2_DBD_B/
-tests/crx_cohen/
-
-# Ignore virtual environment
+# Virtual environment
 venv/
+env/
+.venv/
+ENV/
 
-# Ignore Python package distribution files
+# Distribution / packaging
+build/
+dist/
 *.egg-info/
+.eggs/
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/scratch/
+
+# Context files
+.claude/
+
+# Misc project files
+eln/
