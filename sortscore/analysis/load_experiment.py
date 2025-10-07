@@ -34,6 +34,8 @@ import pandas as pd
 import re
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
+from sortscore.sequence_parsing import compare_to_reference, translate_dna, get_reference_sequence
+from sortscore.analysis.variant_detection import detect_sequence_format
 
 logger = logging.getLogger(__name__)
 
@@ -184,17 +186,17 @@ class ExperimentConfig:
     experiment_setup_file: str
     wt_seq: str
     analysis_type: str  # 'snv', 'codon', or 'aa'
-    max_pos: int
-    min_pos: int
     output_dir: Optional[str] = None
     other_params: Optional[Dict[str, Any]] = None
     counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
-    median_gfp: Optional[Dict[int, Dict[int, float]]] = None
+    mfi: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
     
     # Auto-detected properties (set during loading)
     variant_type: Optional[str] = None  # Auto-detected: 'dna' or 'aa'
+    min_pos: Optional[int] = None  # Auto-detected from data
+    max_pos: Optional[int] = None  # Auto-detected from data
     
     # Analysis parameters with defaults
     bins_required: int = 1
@@ -206,22 +208,26 @@ class ExperimentConfig:
     aa_pre_annotated: bool = False
     transcript_id: Optional[str] = None
     mutagenesis_variants: Optional[list] = None
-    position_type: str = 'aa'  # 'aa' for amino acid positions, 'dna' for DNA positions
+    position_offset: int = 0  # Offset for position numbering (e.g., if data positions start from 1 but gene positions start from 51)
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
     
     @property
     def num_aa(self) -> int:
-        """Calculate number of amino acids from min_pos and max_pos."""
+        """Calculate number of amino acids from detected position range."""
+        if self.min_pos is None or self.max_pos is None:
+            self._detect_position_range()
         return self.max_pos - self.min_pos + 1
     
     @property 
     def num_positions(self) -> int:
-        """Calculate number of positions based on position_type."""
-        if self.position_type == 'dna':
+        """Calculate number of positions based on variant_type."""
+        if self.variant_type == 'dna':
             # For DNA positions, use the full DNA sequence length
             return len(self.wt_seq)
         else:
-            # For AA positions, use the AA range
+            # For AA positions, use the detected range
+            if self.min_pos is None or self.max_pos is None:
+                self._detect_position_range()
             return self.max_pos - self.min_pos + 1
 
     @staticmethod
@@ -252,18 +258,18 @@ class ExperimentConfig:
             raise ValueError(f"Invalid analysis_type '{data['analysis_type']}'. Must be one of: {valid_analysis_types}")
 
         # Required fields
-        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type', 'max_pos', 'min_pos']:
+        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type']:
             if field in data:
                 args[field] = data[field]
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop']:
+        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_offset', 'biophysical_prop']:
             if field in data:
                 args[field] = data[field]
         
         # Other parameters
-        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type', 'max_pos', 'min_pos',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop'}
+        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type',
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_offset', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -278,6 +284,9 @@ class ExperimentConfig:
             logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
         except Exception as e:
             raise ValueError(f"Failed to auto-detect variant_type from count files: {e}")
+        
+        # Load counts to enable position detection
+        config.load_counts()
         
         # Validate analysis_type compatibility with detected variant_type
         if config.analysis_type == 'aa' and config.variant_type == 'dna':
@@ -294,7 +303,7 @@ class ExperimentConfig:
         Load count DataFrames for all replicates and bins as specified in the experiment setup file.
 
         This populates the `counts` attribute as a nested dictionary: counts[rep][bin] = DataFrame.
-        Also populates the `median_gfp` attribute as a nested dictionary: median_gfp[rep][bin] = float.
+        Also populates the `mfi` attribute as a nested dictionary: mfi[rep][bin] = float.
 
         Returns
         -------
@@ -306,7 +315,7 @@ class ExperimentConfig:
         except Exception as e:
             raise RuntimeError(f"Failed to load experiment setup file: {e}")
         counts = {}
-        median_gfp = {}
+        mfi = {}
         total_reads = {}
         cell_prop = {}
         
@@ -317,7 +326,7 @@ class ExperimentConfig:
             if 'Read Counts (CSV)' in row:
                 count_file = str(row['Read Counts (CSV)']).strip()
                 
-            gfp = float(row['Median GFP'])
+            mfi_val = float(row['MFI'])
             
             # Load total reads if available (for sample read depth normalization)
             if 'Read Count' in row:
@@ -348,10 +357,10 @@ class ExperimentConfig:
                 logging.error(f"Failed to load count file {count_file}: {e}")
                 continue
             counts.setdefault(rep, {})[bin_] = df
-            median_gfp.setdefault(rep, {})[bin_] = gfp
+            mfi.setdefault(rep, {})[bin_] = mfi_val
             
         self.counts = counts
-        self.median_gfp = median_gfp
+        self.mfi = mfi
         
         # Auto-detect variant format and convert pre-annotated AA changes if needed
         if counts:
@@ -367,6 +376,9 @@ class ExperimentConfig:
         # Set cell_prop if we loaded any
         if cell_prop:
             self.cell_prop = cell_prop
+        
+        # Auto-detect position range from loaded data
+        self._detect_position_range()
     
     def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
         """
@@ -570,6 +582,22 @@ class ExperimentConfig:
                 # Add annotation categories
                 from sortscore.analysis.annotation import add_variant_categories
                 df = add_variant_categories(df)
+    
+    def _detect_position_range(self) -> None:
+        """Auto-detect min_pos and max_pos from loaded variant data using sequence comparison."""
+        if not self.counts:
+            logging.warning("No counts loaded, cannot detect position range")
+            return
+            
+        min_pos = float('inf')
+        max_pos = float('-inf')
+        
+        try:
+            ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
+        except ValueError as e:
+            logging.error(f"Cannot get reference wild-type sequence: {e}")
+            return
+
 
     def annotate_counts(self, wt_ref_seq: str) -> None:
         """

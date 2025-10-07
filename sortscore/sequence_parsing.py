@@ -9,7 +9,7 @@ Examples
 >>> translate_dna('ATGGCC')
 'MA'
 """
-from typing import List
+from typing import List, Optional
 from Bio.Seq import Seq
 
 def translate_dna(dna_sequence: str) -> str:
@@ -159,3 +159,48 @@ def convert_aa_to_three_letter(aa_code: str) -> str:
         '*': 'Ter'
     }
     return conversion_map.get(aa_code, aa_code)
+
+def get_reference_sequence(wt_seq: str, target_format: str) -> str:
+    """
+    Get the appropriate reference sequence for comparison based on target format.
+    
+    Parameters
+    ----------
+    wt_seq : str
+        Wild-type sequence (nucleotide or protein sequence)
+    target_format : str
+        Target format for analysis ('dna' or 'aa')
+        
+    Returns
+    -------
+    str
+        Reference sequence in the target format
+        
+    Raises
+    ------
+    ValueError
+        If conversion is invalid (e.g., trying to convert AA to DNA)
+        
+    Examples
+    --------
+    >>> get_reference_sequence('ATGGCC', 'aa')
+    'MA'
+    >>> get_reference_sequence('MKVL', 'aa')
+    'MKVL'
+    """
+    from sortscore.analysis.variant_detection import detect_sequence_format
+    
+    wt_seq_format = detect_sequence_format([wt_seq])
+    
+    if target_format == 'aa':
+        if wt_seq_format == 'dna':
+            return translate_dna(wt_seq)
+        else:
+            return wt_seq
+    elif target_format == 'dna':
+        if wt_seq_format == 'dna':
+            return wt_seq
+        else:
+            raise ValueError("DNA analysis requires DNA wt_seq, invalid sequence provided")
+    else:
+        raise ValueError(f"Unknown target format: {target_format}. Must be 'dna' or 'aa'.")
