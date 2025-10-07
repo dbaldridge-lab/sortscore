@@ -77,7 +77,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
         merged_df = experiment.get_merged_counts()
         scores_df = calculate_full_activity_scores(
             counts=experiment.counts,
-            median_gfp=experiment.median_gfp,
+            mfi=experiment.mfi,
             min_bins=experiment.bins_required,
             min_reps=experiment.reps_required,
             minread_threshold=experiment.minread_threshold,
