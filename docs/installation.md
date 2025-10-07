@@ -36,20 +36,6 @@ cd sortscore
 pip install -r requirements.txt
 ```
 
-### Optional 3: Install in Editable/Development Mode
-If you want to make changes to the code and have them reflected immediately:
-
-```bash
-pip install -e .
-```
-
-## Testing Your Installation
-Run the test suite to verify your setup:
-
-```bash
-pytest sortscore/sortscore/visualization/tests/
-```
-
 ## Troubleshooting
 If you encounter any issues during installation:
 
@@ -57,7 +43,11 @@ Ensure you're using Python 3.11 or higher: `python --version`
 Try updating pip: `pip install --upgrade pip`
 For dependency conflicts, consider using a virtual environment
 
-For usage instructions, see [docs/usage.md](usage.md).
+---
+
+For usage instructions, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/usage.md).
+
+For contributing to sortscore development, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/contributing.md).
 
 
 
