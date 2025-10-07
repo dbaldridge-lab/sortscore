@@ -1,8 +1,5 @@
 # sortscore
-- [Installation Guide](docs/installation.md)
-- [Usage Guide](docs/usage.md)
-- [Batch Processing Guide](docs/batch_processing.md) - For combining multiple experiments
-- [Documentation Index](docs/index.md)
+[Documentation Index](docs/index.md)
 
 ## Quickstart
 
