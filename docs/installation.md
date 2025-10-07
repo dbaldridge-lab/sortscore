@@ -1,8 +1,25 @@
 # Installation Guide
 
 ## Requirements
+
+### Core Requirements
 - Python 3.11 or higher
-- See `requirements.txt` for Python package dependencies
+- Python package dependencies (see `requirements.txt`)
+
+### Shell Environment Requirements
+
+**Command-line scoring pipeline:**
+Bash shell environment is required to run the default scoring pipeline. This has not been tested with other shells (e.g., Zsh, Fish).
+- **Linux:** Bash (default on most distributions)
+- **macOS:** Bash available (run `bash` to switch from default Zsh)
+- **Windows:** [Git Bash](https://git-scm.com/downloads) (included with Git for Windows)
+
+**Python API for incorporating scoring functionality into your scripts:**
+- No shell environment requirement
+- Use sortscore public functions directly in any Python environment (scripts, notebooks, IDEs)
+---
+
+**Summary:** If you're only importing sortscore functions in Python code, any environment works. Bash is only needed for the command-line scoring pipeline.
 
 ## Install Options
 ### Option 1: Install from PyPI (Recommended)
@@ -34,7 +51,12 @@ Run the test suite to verify your setup:
 pytest sortscore/sortscore/visualization/tests/
 ```
 
----
+## Troubleshooting
+If you encounter any issues during installation:
+
+Ensure you're using Python 3.11 or higher: `python --version`
+Try updating pip: `pip install --upgrade pip`
+For dependency conflicts, consider using a virtual environment
 
 For usage instructions, see [docs/usage.md](usage.md).
 
