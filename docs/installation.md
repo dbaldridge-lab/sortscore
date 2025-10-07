@@ -7,6 +7,7 @@
 - Python package dependencies (see `requirements.txt`)
 
 ### Shell Environment Requirements
+If you're only importing sortscore functions in Python code, any environment works. Bash is only needed for the command-line scoring pipeline.
 
 **Command-line scoring pipeline:**
 Bash shell environment is required to run the default scoring pipeline. This has not been tested with other shells (e.g., Zsh, Fish).
@@ -18,8 +19,6 @@ Bash shell environment is required to run the default scoring pipeline. This has
 - No shell environment requirement
 - Use sortscore public functions directly in any Python environment (scripts, notebooks, IDEs)
 ---
-
-**Summary:** If you're only importing sortscore functions in Python code, any environment works. Bash is only needed for the command-line scoring pipeline.
 
 ## Install Options
 ### Option 1: Install from PyPI (Recommended)
