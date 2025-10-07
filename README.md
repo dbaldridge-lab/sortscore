@@ -30,6 +30,8 @@
 
 ## Config Templates
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
+
+## API
 - All public functions use NumPy-style docstrings; see module docstrings and examples for API details.
 
 ## System Requirements
