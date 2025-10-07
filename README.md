@@ -1,4 +1,8 @@
 # sortscore
+- [Installation Guide](docs/installation.md)
+- [Usage Guide](docs/usage.md)
+- [Batch Processing Guide](docs/batch_processing.md) - For combining multiple experiments
+- [Documentation Index](docs/index.md)
 
 ## Quickstart
 
@@ -24,12 +28,7 @@
    plot_activity_score_distribution(scores, score_col='avgscore')
    ```
 
-## Further Documentation
-- For detailed installation, configuration, and usage instructions, see the [docs/](docs/) folder:
-  - [Installation Guide](docs/installation.md)
-  - [Usage Guide](docs/usage.md)
-  - [Batch Processing Guide](docs/batch_processing.md) - For combining multiple experiments
-  - [Documentation Index](docs/index.md)
+## Config Templates
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
 - All public functions use NumPy-style docstrings; see module docstrings and examples for API details.
 
