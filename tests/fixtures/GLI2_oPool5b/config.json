@@ -1,0 +1,14 @@
+{
+  "experiment_name": "oPool5",
+  "bins_required": 3,
+  "reps_required": 1,
+  "avg_method": "rep-weighted", 
+  "minread_threshold": 0,
+  "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
+  "variant_type": "dna",
+  "min_pos": 551,
+  "max_pos": 583,
+  "output_dir": "tests/oPool5b_GTAC/results_3bin_reproduced",
+  "experiment_setup_file": "tests/oPool5b_GTAC/experiment_setup.csv",
+  "biophysical_prop": true
+}
