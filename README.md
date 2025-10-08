@@ -3,12 +3,9 @@
 
 ## Quickstart
 
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Example usage**
 
-2. **Example usage**
+[Add info on how to run standard pipeline.]
 
    ```python
    import pandas as pd
