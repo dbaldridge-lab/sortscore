@@ -1,15 +1,13 @@
 # sortscore
 [Documentation Index](docs/index.md)
 
-## Quickstart
-
 ## Installation
 Installation can be done via pip to pull code directly from GitHub.
 ```
 pip install git+https://git@github.com/idptools/sparrow.git
 ```
 
-**Example usage**
+## Example usage
 
 [Add info on how to run standard pipeline.]
 
