@@ -4,7 +4,7 @@
 ## Installation
 Installation can be done via pip to pull code directly from GitHub.
 ```
-pip install git+https://git@github.com/idptools/sparrow.git
+pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
 ```
 
 ## Example usage
