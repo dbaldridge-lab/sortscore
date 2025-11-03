@@ -23,7 +23,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
 
 ## Config Templates
 
-Example configuration files:
 [config.json](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/config.json)
 - define additional parameters impacting the analysis execution and outputs
 
