@@ -22,7 +22,7 @@ pip install git+https://github.com/dbaldridge-lab/sortscore.git
 
 ## Usage
 
-With virtual environment activated:
+After you virtual environment is activated or sortscore directory was added to PATH manually
 ```bash
 sortscore --config path/to/config.json
 ```
