@@ -3,10 +3,10 @@
 
 ## Installation
 
-**Recommended: Use a virtual environment**
+**Option 1: Using a virtual environment (recommended)**
 
 ```bash
-# Create and activate a virtual environment (recommended)
+# Create and activate a virtual environment
 python -m venv sortscore-env
 source sortscore-env/bin/activate  # On Windows: sortscore-env\Scripts\activate
 
@@ -14,7 +14,20 @@ source sortscore-env/bin/activate  # On Windows: sortscore-env\Scripts\activate
 pip install git+https://github.com/dbaldridge-lab/sortscore.git
 ```
 
-**Or install directly (may require adding scripts directory to PATH):**
+**Option 2: Using conda/anaconda**
+
+```bash
+# Activate your conda environment
+conda activate your-env-name
+
+# Verify you're using conda's pip
+which pip  # Should show path to conda environment
+
+# Install sortscore
+pip install git+https://github.com/dbaldridge-lab/sortscore.git
+```
+
+**Option 3: Install directly (may require adding scripts directory to PATH)**
 
 ```bash
 pip install git+https://github.com/dbaldridge-lab/sortscore.git
@@ -22,9 +35,14 @@ pip install git+https://github.com/dbaldridge-lab/sortscore.git
 
 ## Usage
 
-With virtual environment activated:
+With virtual environment or conda environment activated:
 ```bash
 sortscore --config path/to/config.json
+```
+
+Otherwise:
+```bash
+python -m sortscore --config path/to/config.json
 ```
 
 ## Testing and Development
@@ -34,6 +52,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
 - Running tests with example fixtures
 - Using the package in Jupyter notebooks
 - Python API examples
+
+## Troubleshooting
+
+Having installation or usage issues? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common problems.
 
 ## Config Templates
 

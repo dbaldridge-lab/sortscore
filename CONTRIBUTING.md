@@ -41,24 +41,7 @@ sortscore --help
 python -m sortscore --help
 ```
 
-**Troubleshooting:** If you get `command not found: sortscore`:
-
-1. Check the package is installed:
-   ```bash
-   pip show sortscore
-   ```
-
-2. Find where scripts are installed:
-   ```bash
-   python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
-   ```
-
-3. Make sure that directory is in your PATH, or use the full path to the script
-
-4. **Recommended workaround:** Use `python -m sortscore` instead:
-   ```bash
-   python -m sortscore --config tests/fixtures/GLI2_oPool5b/config.json
-   ```
+**Having issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common problems and solutions.
 
 ## Running Tests with Fixtures
 
