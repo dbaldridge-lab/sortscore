@@ -86,63 +86,62 @@ def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed'
 def _parse_hgvs_variant(seq: str) -> Optional[Literal['dna', 'aa']]:
     """
     Try to parse sequence as HGVS notation and return variant type.
-    
     Parameters
     ----------
     seq : str
         Sequence to parse as HGVS
-        
     Returns
     -------
     Optional[Literal['dna', 'aa']]
         'aa' for protein variants (p.), 'dna' for DNA variants (c./g./n.), None if not HGVS
     """
     try:
-        import hgvs.parser
-        import hgvs.exceptions
-        
-        parser = hgvs.parser.Parser()
-        variant = parser.parse_hgvs_variant(seq)
-        
+        from mavehgvs import Variant
+
+        variant = Variant(seq)
+
         # Check variant type based on HGVS prefix
-        if hasattr(variant, 'type') and variant.type == 'p':
+        if variant.prefix == 'p':
             return 'aa'  # Protein variant
-        elif hasattr(variant, 'type') and variant.type in ['c', 'g', 'n']:
+        elif variant.prefix in ['c', 'g', 'n']:
             return 'dna'  # DNA variant
         else:
             return None
-            
+
     except ImportError:
-        # HGVS library not available, fall back to pattern matching
+        # mavehgvs library not available, fall back to pattern matching
         return None
-    except (hgvs.exceptions.HGVSError, Exception):
-        # Not valid HGVS notation
+    except Exception:
+        # Not valid HGVS notation or parsing error
         return None
 
 
 def _classify_single_sequence(seq: str) -> Literal['dna', 'aa', 'unknown']:
     """
     Classify a single sequence as DNA, AA, or unknown.
-    
+
     Uses HGVS parsing first, then falls back to pattern matching.
-    
+
     Parameters
     ----------
     seq : str
         Sequence string to classify
-        
+
     Returns
     -------
     Literal['dna', 'aa', 'unknown']
         Classification of the sequence
     """
-    seq = seq.upper().strip()
-    
-    # First try HGVS parsing
+    seq = seq.strip()
+
+    # Try HGVS parsing (case-sensitive)
     hgvs_type = _parse_hgvs_variant(seq)
     if hgvs_type:
         return hgvs_type
-    
+
+    # For pattern matching, use uppercase
+    seq = seq.upper()
+
     # Fall back to pattern matching for common non-HGVS formats
     
     # Amino acid change patterns (single letter)

@@ -6,4 +6,4 @@ numpy>=1.24.0
 matplotlib>=3.6.0
 seaborn>=0.12.0
 biopython>=1.81
-hgvs>=1.5.0
+mavehgvs>=0.7.0
