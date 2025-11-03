@@ -24,8 +24,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
 ## Config Templates
 
 Example configuration files:
-- [config.json](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/config.json) - Experiment configuration template 
-- [experiment_setup.csv](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/experiment_setup.csv) - Experiment setup CSV template
+[config.json](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/config.json)
+- define additional parameters impacting the analysis execution and outputs
+
+[experiment_setup.csv](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/experiment_setup.csv)
+- define replicates and bins for each sample
+- provide parameters for each sample (MFI, cell counts, etc.)
 
 ## System Requirements
 
