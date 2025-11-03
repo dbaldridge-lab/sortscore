@@ -11,6 +11,7 @@ Welcome to the documentation for the `sortscore` package.
 - [API Reference](../sortscore/)
 - [Testing](../tests/)
 - [Contributing](contributing.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
 
 ## About
 `sortscore` is a modular Python package for Sort-seq variant analysis, supporting flexible experiment configuration, robust analysis, and publication-quality visualization.
