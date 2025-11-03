@@ -2,6 +2,45 @@
 
 This guide helps resolve common installation and usage issues with sortscore.
 
+## Diagnostic Commands
+
+If you're having issues, run these diagnostic commands:
+
+```bash
+echo "=== Python location ==="
+which python
+
+echo "=== Pip location ==="
+which pip
+
+echo "=== Is sortscore installed? ==="
+python -m pip show sortscore
+
+echo "=== Can Python import it? ==="
+python -c "import sortscore; print('Import successful')"
+
+echo "=== Can we run as module? ==="
+python -m sortscore --help 2>&1 | head -3
+
+echo "=== Where is sortscore command? ==="
+which sortscore
+
+echo "=== Try running sortscore ==="
+sortscore --help 2>&1 | head -3
+```
+
+This will help identify where the installation is failing.
+
+## Getting More Help
+Report issues at https://github.com/dbaldridge-lab/sortscore/issues
+
+Include in your issue report:
+- Python version: `python --version`
+- Installation method used
+- Full error message
+- Operating system
+- Diagnostic commands output
+
 ## Installation Issues
 
 ### Using Conda/Anaconda Environments
@@ -208,17 +247,3 @@ jupyter notebook
 - `Read Counts (CSV)`
 - `Count File`
 - `File Path`
-
-## Getting More Help
-
-If these solutions don't resolve your issue:
-
-1. Check the [README.md](README.md) for basic usage
-2. See [CONTRIBUTING.md](CONTRIBUTING.md) for testing with fixtures
-3. Report issues at https://github.com/dbaldridge-lab/sortscore/issues
-
-Include in your issue report:
-- Python version: `python --version`
-- Installation method used
-- Full error message
-- Operating system
