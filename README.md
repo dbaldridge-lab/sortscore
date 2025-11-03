@@ -12,7 +12,7 @@ pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
 # Standard analysis
 Running if you cloned from GitHub:
 ```
-python -m sortscore.run_analysis --config path/to/config.json
+python -m sortscore --config path/to/config.json
 ```
 
 Or from the console (after pip install):
