@@ -3,7 +3,7 @@
 ## Requirements
 
 ### Core Requirements
-- Python 3.11 or higher
+- Python 3.10 or higher
 - Python package dependencies (see `requirements.txt`)
 
 ### Shell Environment Requirements
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 ## Troubleshooting
 If you encounter any issues during installation:
 
-Ensure you're using Python 3.11 or higher: `python --version`
+Ensure you're using Python 3.10 or higher: `python --version`
 Try updating pip: `pip install --upgrade pip`
 For dependency conflicts, consider using a virtual environment
 

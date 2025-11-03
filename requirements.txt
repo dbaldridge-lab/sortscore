@@ -1,4 +1,4 @@
-# This project requires Python 3.11 or higher.
+# This project requires Python 3.10 or higher.
 # Core dependencies for Sort-seq variant analysis
 
 pandas>=2.0.0
