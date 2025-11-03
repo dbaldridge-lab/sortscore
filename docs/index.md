@@ -10,7 +10,7 @@ Welcome to the documentation for the `sortscore` package.
 - [Configuration File Reference](../config/example_experiment.json)
 - [API Reference](../sortscore/)
 - [Testing](../tests/)
-- [Contributing](../contributing.md)
+- [Contributing](../CONTRIBUTING.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)
 
 ## About
