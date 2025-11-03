@@ -9,7 +9,13 @@ pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
 
 ## Example usage
 
-[Add info on how to run standard pipeline.]
+# Standard analysis
+```
+python -m sortscore.run_analysis --config path/to/config.json
+
+# Or using the console (after pip install)
+sortscore --config path/to/config.json
+```
 
 ## Config Templates
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
