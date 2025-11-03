@@ -1,9 +1,13 @@
 # sortscore
 [Documentation Index](docs/index.md)
 
-## Quickstart
+## Installation
+Installation can be done via pip to pull code directly from GitHub.
+```
+pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
+```
 
-**Example usage**
+## Example usage
 
 [Add info on how to run standard pipeline.]
 
@@ -26,7 +30,7 @@
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
 
 ## API
-- All public functions use NumPy-style docstrings; see module docstrings and examples for API details.
+See module docstrings and examples for API details.
 
 ## System Requirements
 - Python 3.11+
