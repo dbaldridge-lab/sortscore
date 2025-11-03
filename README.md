@@ -3,7 +3,18 @@
 
 ## Installation
 
-Run the following commands in the terminal or a bash Jupyter cell:
+**Recommended: Use a virtual environment**
+
+```bash
+# Create and activate a virtual environment (recommended)
+python -m venv sortscore-env
+source sortscore-env/bin/activate  # On Windows: sortscore-env\Scripts\activate
+
+# Install sortscore
+pip install git+https://github.com/dbaldridge-lab/sortscore.git
+```
+
+**Or install directly (may require adding scripts directory to PATH):**
 
 ```bash
 pip install git+https://github.com/dbaldridge-lab/sortscore.git
@@ -11,6 +22,7 @@ pip install git+https://github.com/dbaldridge-lab/sortscore.git
 
 ## Usage
 
+With virtual environment activated:
 ```bash
 sortscore --config path/to/config.json
 ```

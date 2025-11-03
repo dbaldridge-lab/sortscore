@@ -13,26 +13,52 @@ cd sortscore
 
 **All paths below are relative to this `sortscore/` directory (the repository root).**
 
-### 2. Install the Package
+### 2. Create a Virtual Environment (Recommended)
+
+```bash
+python -m venv sortscore-env
+source sortscore-env/bin/activate  # On Windows: sortscore-env\Scripts\activate
+```
+
+This ensures the `sortscore` command will be in your PATH.
+
+### 3. Install the Package
 
 ```bash
 # Install the package from the local directory
 pip install .
 ```
 
-This installs `sortscore` like any PyPI package, making the `sortscore` command available system-wide.
+This installs `sortscore` like any PyPI package, making the `sortscore` command available in your virtual environment.
 
-### 3. Verify Installation
+### 4. Verify Installation
 
 ```bash
 # Check that the command is available
 sortscore --help
-```
 
-```
 # Verify you can run as a module
 python -m sortscore --help
 ```
+
+**Troubleshooting:** If you get `command not found: sortscore`:
+
+1. Check the package is installed:
+   ```bash
+   pip show sortscore
+   ```
+
+2. Find where scripts are installed:
+   ```bash
+   python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
+   ```
+
+3. Make sure that directory is in your PATH, or use the full path to the script
+
+4. **Recommended workaround:** Use `python -m sortscore` instead:
+   ```bash
+   python -m sortscore --config tests/fixtures/GLI2_oPool5b/config.json
+   ```
 
 ## Running Tests with Fixtures
 
