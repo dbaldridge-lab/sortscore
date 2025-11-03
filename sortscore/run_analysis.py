@@ -4,9 +4,10 @@ Main entry point for Sort-seq variant analysis.
 This script loads the experiment configuration, ensures output directories exist, and orchestrates the analysis workflow.
 
 Usage:
-    python -m sortscore.run_analysis --config path/to/your_config.json
-    python -m sortscore.run_analysis --config path/to/your_config.json --suffix custom_name
-    python -m sortscore.run_analysis --batch --config path/to/batch_config.json
+    sortscore --config path/to/your_config.json
+    python -m sortscore --config path/to/your_config.json
+    python -m sortscore --config path/to/your_config.json --suffix custom_name
+    python -m sortscore --batch --config path/to/batch_config.json
 """
 import logging
 import sys

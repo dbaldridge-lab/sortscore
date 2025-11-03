@@ -11,11 +11,11 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 ### Basic Usage
 
 ```bash
-# Standard analysis
-python -m sortscore.run_analysis --config path/to/config.json
-
-# Or using the console (after pip install)
+# After installation (recommended)
 sortscore --config path/to/config.json
+
+# Without installation (from project root)
+python -m sortscore --config path/to/config.json
 ```
 
 ### CLI Arguments Reference
