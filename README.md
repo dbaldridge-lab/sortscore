@@ -24,8 +24,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
 ## Config Templates
 
 Example configuration files:
-- `config/example_experiment.json` - Experiment configuration template
-- `config/experiment_setup.csv` - Experiment setup CSV template
+- [config.json](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/config.json) - Experiment configuration template 
+- [experiment_setup.csv](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/experiment_setup.csv) - Experiment setup CSV template
 
 ## System Requirements
 
