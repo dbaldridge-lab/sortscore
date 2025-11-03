@@ -3,6 +3,8 @@
 
 ## Installation
 
+Run the following commands in the terminal or a bash Jupyter cell:
+
 ```bash
 pip install git+https://github.com/dbaldridge-lab/sortscore.git
 ```
