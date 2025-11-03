@@ -2,33 +2,35 @@
 [Documentation Index](docs/index.md)
 
 ## Installation
-Installation can be done via pip to pull code directly from GitHub.
-```
-pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
+
+```bash
+pip install git+https://github.com/dbaldridge-lab/sortscore.git
 ```
 
-## Example usage
+## Usage
 
-# Standard analysis
-Running if you cloned from GitHub:
-```
-python -m sortscore --config path/to/config.json
-```
-
-Or from the console (after pip install):
-```
+```bash
 sortscore --config path/to/config.json
 ```
 
-## Config Templates
-- See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
+## Testing and Development
 
-## API
-See module docstrings and examples for API details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
+- Installing from a cloned repository
+- Running tests with example fixtures
+- Using the package in Jupyter notebooks
+- Python API examples
+
+## Config Templates
+
+Example configuration files:
+- `config/example_experiment.json` - Experiment configuration template
+- `config/experiment_setup.csv` - Experiment setup CSV template
 
 ## System Requirements
-- Python 3.11+
-- See `requirements.txt` for dependencies.
+
+- Python 3.10+
+- See `requirements.txt` for dependencies
 
 ```mermaid
 flowchart TB
