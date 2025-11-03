@@ -9,22 +9,16 @@ pip install git+https://git@github.com/dbaldridge-lab/sortscore.git
 
 ## Example usage
 
-[Add info on how to run standard pipeline.]
+# Standard analysis
+Running if you cloned from GitHub:
+```
+python -m sortscore.run_analysis --config path/to/config.json
+```
 
-   ```python
-   import pandas as pd
-   from sortscore.analysis.score import calculate_activity_scores
-   from sortscore.visualization.plots import plot_activity_score_distribution
-
-   # Load your data
-   df = pd.read_csv('your_data.csv')
-
-   # Calculate activity scores
-   scores = calculate_activity_scores([df], method='simple-avg')
-
-   # Plot distribution
-   plot_activity_score_distribution(scores, score_col='avgscore')
-   ```
+Or from the console (after pip install):
+```
+sortscore --config path/to/config.json
+```
 
 ## Config Templates
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
