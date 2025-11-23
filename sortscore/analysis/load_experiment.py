@@ -6,36 +6,33 @@ It includes automatic detection and conversion of pre-annotated amino acid chang
 
 Supported Variant Formats
 -------------------------
-The system automatically detects and handles multiple formats for variant sequences:
-
-1. **Full Sequences**: Complete DNA or amino acid sequences
+1. **Full Sequences**: DNA or protein sequences to be compared against the wild-type sequence.
    - DNA: Full nucleotide sequences for variant_type="dna"
    - AA: Full amino acid sequences for variant_type="aa"
 
-2. **Pre-annotated Amino Acid Changes** (Auto-detected):
+TODO: Add HGVS c. notation support
+2. **Pre-annotated Variants** (Auto-detected):
    - Single-letter codes: "M1M", "R98C", "P171X"
    - Three-letter codes: "Met1Met", "Arg98Cys", "Pro171Ter"
    - HGVS p. notation: "p.M1M", "p.Arg98Cys", "p.Pro171Ter"
-   - With separators: "M.1.M", "R-98-C", "P_171_X"
+   - Other delimiters: "M.1.M", "R-98-C", "P_171_X"
 
-The system automatically detects pre-annotated formats and converts them to the 
-internal annotation format for downstream analysis.
+Variants are converted to a consistent internal annotation format for downstream analysis.
 
 Examples
 --------
 >>> from sortscore.analysis.load_experiment import ExperimentConfig
 >>> config = ExperimentConfig.from_json('config.json')
 >>> config.load_counts()  # Automatically detects and converts pre-annotated formats
->>> df = config.counts[1][2]  # Access replicate 1, bin 2
+>>> df = config.counts[1][2]  # Access replicate 1, bin 2 read counts
 """
 import json
 import logging
 import pandas as pd
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Any, Optional
-from sortscore.sequence_parsing import compare_to_reference, translate_dna, get_reference_sequence
-from sortscore.analysis.variant_detection import detect_sequence_format
+from sortscore.sequence_parsing import get_reference_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +194,7 @@ class ExperimentConfig:
     variant_type: Optional[str] = None  # Auto-detected: 'dna' or 'aa'
     min_pos: Optional[int] = None  # Auto-detected from data
     max_pos: Optional[int] = None  # Auto-detected from data
+    position_type: str = 'aa'  # Controls heatmap x-axis ('aa' or 'dna')
     
     # Analysis parameters with defaults
     bins_required: int = 1
@@ -263,13 +261,20 @@ class ExperimentConfig:
                 args[field] = data[field]
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_offset', 'biophysical_prop']:
+        optional_fields = [
+            'output_dir', 'bins_required', 'reps_required', 'avg_method',
+            'minread_threshold', 'barcoded', 'max_cv', 'transcript_id',
+            'mutagenesis_variants', 'position_offset', 'biophysical_prop',
+            'position_type'
+        ]
+
+        for field in optional_fields:
             if field in data:
                 args[field] = data[field]
         
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_offset', 'biophysical_prop'}
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_offset', 'biophysical_prop', 'position_type'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -284,6 +289,15 @@ class ExperimentConfig:
             logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
         except Exception as e:
             raise ValueError(f"Failed to auto-detect variant_type from count files: {e}")
+
+        # Set default position_type when not provided: SNV analyses default to DNA coordinates
+        position_type = data.get('position_type')
+        if position_type is None:
+            config.position_type = 'dna' if config.analysis_type == 'snv' else 'aa'
+        elif position_type not in {'aa', 'dna'}:
+            raise ValueError("position_type must be 'aa' or 'dna'")
+        else:
+            config.position_type = position_type
         
         # Load counts to enable position detection
         config.load_counts()

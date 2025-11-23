@@ -55,6 +55,7 @@ tests/scratch/
 
 # Context files
 .claude/
+.agents/
 
 # Misc project files
 eln/
