@@ -9,8 +9,7 @@ import os
 import logging
 import pandas as pd
 from typing import Dict, Any, Optional
-from sortscore.analysis.annotation import aggregate_synonymous_variants
-
+from sortscore.analysis.data_processing import aggregate_synonymous_variants
 
 def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Optional[str] = None) -> Dict[str, Any]:
     """

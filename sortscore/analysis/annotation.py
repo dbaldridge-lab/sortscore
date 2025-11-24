@@ -78,38 +78,6 @@ def add_hgvs_notations(scores_df: pd.DataFrame, wt_dna_seq: str, variant_type: s
             return p_notation
     
     df['hgvs_p'] = df['aa_seq_diff'].apply(format_p_notation)
-    
-    # For DNA variants, also add c. notation
-    if variant_type == 'dna':
-        def format_c_notation(aa_change):
-            if not aa_change or aa_change == '':
-                return ''
-            
-            match = re.match(r'([A-Z*])\.(\d+)\.([A-Z*])', aa_change)
-            if not match:
-                return ''
-            
-            ref_aa, pos_str, alt_aa = match.groups()
-            aa_pos = int(pos_str)
-            
-            # Convert AA position to codon positions
-            codon_start = (aa_pos - 1) * 3 + 1
-            codon_end = aa_pos * 3
-            
-            if ref_aa == alt_aa:
-                c_notation = f"c.{codon_start}_{codon_end}="
-            elif alt_aa == '*':
-                c_notation = f"c.{codon_start}_{codon_end}>"  # Simplified for stop
-            else:
-                c_notation = f"c.{codon_start}_{codon_end}"  # Simplified for missense
-            
-            if transcript_id:
-                return f"{transcript_id}:{c_notation}"
-            else:
-                return c_notation
-        
-        df['hgvs_c'] = df['aa_seq_diff'].apply(format_c_notation)
-    
     return df
 
 
@@ -289,56 +257,3 @@ def add_variant_categories(df: pd.DataFrame) -> pd.DataFrame:
             df['annotate_dna'] = df['dna_seq_diff'].apply(lambda x: 'missense_dna' if x else 'wt_dna')
     
     return df
-
-
-def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggregate synonymous variants by averaging their scores.
-    
-    Groups variants by their AA sequence difference and annotation type,
-    then averages individual replicate scores and recalculates the three
-    avgscore columns.
-    
-    Parameters
-    ----------
-    scores_df : pd.DataFrame
-        DataFrame with annotated scores including 'aa_seq_diff' and 'annotate_aa' columns.
-        
-    Returns
-    -------
-    aggregated_df : pd.DataFrame
-        DataFrame with synonymous variants averaged into single rows.
-        
-    Examples
-    --------
-    >>> aggregated = aggregate_synonymous_variants(annotated_scores)
-    """
-    import numpy as np
-    
-    if 'aa_seq_diff' not in scores_df.columns or 'annotate_aa' not in scores_df.columns:
-        raise ValueError("DataFrame must contain 'aa_seq_diff' and 'annotate_aa' columns")
-    
-    # Group by AA sequence difference and annotation type with proper aggregation for variance calculations
-    # Use dropna=False to include NaN values (important for synonymous variants)
-    agg_dict = {}
-    
-    for col in scores_df.columns:
-        if col in ['aa_seq_diff', 'annotate_aa']:
-            continue  # These are grouping columns
-        elif col in ['avgscore', 'avgscore_rep_weighted'] or col.endswith('.score'):
-            agg_dict[col] = 'mean'  # Average the scores
-        elif col in ['n_codons', 'n_measurements']:
-            agg_dict[col] = 'sum'  # Sum the counts for proper variance calculation
-        elif col in ['SD_codon', 'SD_rep', 'CV_rep', 'CV_codon', 'SEM', 'CI_lower', 'CI_upper']:
-            # Statistics need to be recalculated with proper codon variance, drop for now
-            continue
-        else:
-            # For other numeric columns, use mean
-            if scores_df[col].dtype.kind in 'biufc':  # numeric types
-                agg_dict[col] = 'mean'
-            else:
-                agg_dict[col] = 'first'  # For non-numeric, take first value
-    
-    aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'], dropna=False).agg(agg_dict).reset_index()
-    
-    return aggregated_df

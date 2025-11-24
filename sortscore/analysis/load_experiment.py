@@ -189,13 +189,13 @@ class ExperimentConfig:
     mfi: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
-    
+    position_type: str = 'aa'  # Controls heatmap x-axis ('aa' or 'dna')
+
     # Auto-detected properties (set during loading)
     variant_type: Optional[str] = None  # Auto-detected: 'dna' or 'aa'
     min_pos: Optional[int] = None  # Auto-detected from data
     max_pos: Optional[int] = None  # Auto-detected from data
-    position_type: str = 'aa'  # Controls heatmap x-axis ('aa' or 'dna')
-    
+
     # Analysis parameters with defaults
     bins_required: int = 1
     reps_required: int = 1  

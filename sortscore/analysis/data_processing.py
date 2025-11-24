@@ -9,9 +9,6 @@ Examples
 >>> aa_data = aggregate_aa_data(scores_df, 'avgscore_rep_weighted')
 """
 import pandas as pd
-from typing import Optional
-from sortscore.sequence_parsing import translate_dna
-
 
 def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
     """
@@ -44,3 +41,54 @@ def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
     aa_data = scores_df.groupby('aa_seq_diff').agg(agg_cols).reset_index()
     
     return aa_data
+
+def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate synonymous variants by averaging their scores.
+    
+    Groups variants by their AA sequence difference and variant annotation type 'synonymous',
+    then averages individual replicate scores and recalculates avgscores.
+    
+    Parameters
+    ----------
+    scores_df : pd.DataFrame
+        DataFrame with annotated scores including 'aa_seq_diff' and 'annotate_aa' columns.
+        
+    Returns
+    -------
+    aggregated_df : pd.DataFrame
+        DataFrame with synonymous variants averaged into single rows.
+        
+    Examples
+    --------
+    >>> aggregated = aggregate_synonymous_variants(annotated_scores)
+    """
+    import numpy as np
+    
+    if 'aa_seq_diff' not in scores_df.columns or 'annotate_aa' not in scores_df.columns:
+        raise ValueError("DataFrame must contain 'aa_seq_diff' and 'annotate_aa' columns")
+    
+    # Group by AA sequence difference and annotation type with proper aggregation for variance calculations
+    # Use dropna=False to include NaN values (important for synonymous variants)
+    agg_dict = {}
+    
+    for col in scores_df.columns:
+        if col in ['aa_seq_diff', 'annotate_aa']:
+            continue  # These are grouping columns
+        elif col in ['avgscore', 'avgscore_rep_weighted'] or col.endswith('.score'):
+            agg_dict[col] = 'mean'  # Average the scores
+        elif col in ['n_codons', 'n_measurements']:
+            agg_dict[col] = 'sum'  # Sum the counts for proper variance calculation
+        elif col in ['SD_codon', 'SD_rep', 'CV_rep', 'CV_codon', 'SEM', 'CI_lower', 'CI_upper']:
+            # Statistics need to be recalculated with proper codon variance, drop for now
+            continue
+        else:
+            # For other numeric columns, use mean
+            if scores_df[col].dtype.kind in 'biufc':  # numeric types
+                agg_dict[col] = 'mean'
+            else:
+                agg_dict[col] = 'first'  # For non-numeric, take first value
+    
+    aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'], dropna=False).agg(agg_dict).reset_index()
+    
+    return aggregated_df
