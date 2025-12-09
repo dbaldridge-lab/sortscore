@@ -118,7 +118,12 @@ def main():
             else:
                 # For DNA data, aggregate to AA level
                 aa_data = aggregate_aa_data(scores_df, score_col)
-                logging.info(f"AA data aggregated: aa_data shape {aa_data.shape}")
+                logging.info(
+                    "AA data aggregated: aa_data shape %s; columns: %s",
+                    aa_data.shape,
+                    ", ".join(aa_data.columns)
+                )
+
             
             # Get WT score from the aggregated AA data for AA heatmap
             # For AA substitution heatmaps, average synonymous WT variants
@@ -129,7 +134,6 @@ def main():
                 logging.info(f"Found {len(wt_subset)} synonymous-WT variants")
                 if len(wt_subset) > 0 and score_col in wt_subset.columns:
                     score_val = wt_subset[score_col].mean()
-                    logging.info(f"Averaged across scores in {score_col}")
                     wt_score = float(score_val) if pd.notna(score_val) else pd.NA
                     logging.info(f"Synonymous-WT score from AA data: {wt_score}")
             

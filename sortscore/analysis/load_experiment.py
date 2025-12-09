@@ -265,7 +265,7 @@ class ExperimentConfig:
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold', 'barcoded', 'max_cv', 'transcript_id',
             'mutagenesis_variants', 'position_offset', 'biophysical_prop',
-            'position_type'
+            'position_type', 'min_pos', 'max_pos'
         ]
 
         for field in optional_fields:
@@ -599,8 +599,20 @@ class ExperimentConfig:
     
     def _detect_position_range(self) -> None:
         """Auto-detect min_pos and max_pos from loaded variant data using sequence comparison."""
+        # If both values are already set (e.g., provided in config), keep them
+        if self.min_pos is not None and self.max_pos is not None:
+            return
+
         if not self.counts:
             logging.warning("No counts loaded, cannot detect position range")
+            # Fallback to sequence length so downstream code has usable values
+            try:
+                ref_seq = get_reference_sequence(self.wt_seq, self.variant_type or 'dna')
+                seq_len = len(ref_seq)
+            except Exception:
+                seq_len = len(self.wt_seq)
+            self.min_pos = self.min_pos or 1
+            self.max_pos = self.max_pos or seq_len
             return
             
         min_pos = float('inf')
@@ -610,7 +622,23 @@ class ExperimentConfig:
             ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
         except ValueError as e:
             logging.error(f"Cannot get reference wild-type sequence: {e}")
-            return
+            ref_seq = self.wt_seq
+
+        # If no variant annotations are available, fall back to full sequence length
+        if self.min_pos is None:
+            self.min_pos = 1
+        if self.max_pos is None:
+            # Use AA length for AA position_type, DNA length otherwise
+            if self.variant_type == 'dna' and self.position_type == 'dna':
+                self.max_pos = len(ref_seq)
+            else:
+                aa_len = len(get_reference_sequence(ref_seq, 'aa')) if ref_seq else 0
+                self.max_pos = aa_len
+        # If values were partially provided (one missing), fill the other based on sequence length
+        if self.min_pos is None:
+            self.min_pos = 1
+        if self.max_pos is None:
+            self.max_pos = len(ref_seq)
 
 
     def annotate_counts(self, wt_ref_seq: str) -> None:
