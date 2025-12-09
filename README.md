@@ -5,6 +5,8 @@
 
 **Option 1: Using a virtual environment (recommended)**
 
+Note: these are bash commands
+
 ```bash
 # Create and activate a virtual environment
 python -m venv sortscore-env
