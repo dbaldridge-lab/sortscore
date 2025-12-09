@@ -5,7 +5,7 @@
   "avg_method": "rep-weighted", 
   "minread_threshold": 0,
   "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
-  "variant_type": "dna",
+  "analysis_type": "codon",
   "min_pos": 551,
   "max_pos": 583,
   "output_dir": "tests/oPool5b_GTAC/results_3bin_reproduced",
