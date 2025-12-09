@@ -126,10 +126,12 @@ def main():
             wt_label = "WT Avg"
             if 'annotate_aa' in aa_data.columns:
                 wt_subset = aa_data[aa_data['annotate_aa'] == 'synonymous']
+                logging.info(f"Found {len(wt_subset)} synonymous-WT variants")
                 if len(wt_subset) > 0 and score_col in wt_subset.columns:
                     score_val = wt_subset[score_col].mean()
+                    logging.info(f"Averaged across scores in {score_col}")
                     wt_score = float(score_val) if pd.notna(score_val) else pd.NA
-                    logging.info(f"Found WT score from AA data (averaged from {len(wt_subset)} synonymous variants): {wt_score}")
+                    logging.info(f"Synonymous-WT score from AA data: {wt_score}")
             
             # Create a config object for AA heatmap with proper fields
             from types import SimpleNamespace
