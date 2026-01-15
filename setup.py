@@ -23,7 +23,7 @@ setup(
     url='https://github.com/dbaldridge-lab/sortscore',
     packages=find_packages(include=["sortscore", "sortscore.*"]),
     install_requires=read_requirements(),
-    python_requires='>=3.11',
+    python_requires='>=3.10',
     entry_points={
         'console_scripts': [
             'sortscore=sortscore.run_analysis:main',
@@ -35,6 +35,7 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
     ],
