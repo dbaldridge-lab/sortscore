@@ -2,25 +2,46 @@
 
 ## Quickstart
 
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
+## Scoring Analysis Pipeline
+### Configuration
+- See `config.json` and `experiment_setup.csv` for configuration file templates.
+### Usage
+```bash
+sortscore -c config.json
+```
+### Example usage
+
+## Tile Normalization Pipeline
+### Configuration
+- See `batch_config.json` for configuration file template.
+### Usage
+```bash
+sortscore -cb batch_config.json
+```
+### Example usage
+
+## Python API
+- All public functions use NumPy-style docstrings. See module docstrings and examples for API details.
+### TODO: test these example workflows
+### Loading Counts
+   ```python
+      import pandas as pd
+      # Load your data
+      df = pd.read_csv('your_data.csv')
    ```
 
-2. **Example usage**
-
+### Calculating Activity scores
    ```python
-   import pandas as pd
    from sortscore.analysis.score import calculate_activity_scores
-   from sortscore.visualization.plots import plot_activity_score_distribution
 
-   # Load your data
-   df = pd.read_csv('your_data.csv')
-
-   # Calculate activity scores
+   # Calculate activity scores. Average over replicates using a simple average, instead of default averaging weighted by variant read count.
    scores = calculate_activity_scores([df], method='simple-avg')
+```
 
-   # Plot distribution
+### Plotting
+#### Histogram
+   ```python
+   from sortscore.visualization.plots import plot_activity_score_distribution
    plot_activity_score_distribution(scores, score_col='avgscore')
    ```
 
@@ -29,12 +50,10 @@
   - [Installation Guide](docs/installation.md)
   - [Usage Guide](docs/usage.md)
   - [Documentation Index](docs/index.md)
-- See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration file templates.
-- All public functions use NumPy-style docstrings; see module docstrings and examples for API details.
 
 ## System Requirements
-- Python 3.11+
-- See `requirements.txt` for dependencies.
+- Python 3.10+
+- Bash shell
 
 ## License
 MIT

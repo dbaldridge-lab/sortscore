@@ -4,7 +4,7 @@
 
 ### Core Requirements
 - Python 3.10 or higher
-- Python package dependencies (see `requirements.txt`)
+- Python package dependencies (see [requirements.txt](https://github.com/dbaldridge-lab/sortscore/blob/main/requirements.txt))
 
 **Variant scoring pipeline:**
 Bash is used to run the default scoring pipeline. This has not been tested with other shells (e.g., Zsh, Fish).
