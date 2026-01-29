@@ -72,6 +72,7 @@ tests/crx_cohen/
 
 # Ignore virtual environment
 venv/
+.venv/
 
 # Ignore Python package distribution files
 *.egg-info/
