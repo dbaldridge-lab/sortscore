@@ -30,7 +30,7 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/dbaldridge-lab/sortscore
 cd sortscore
-pip install sortscore
+pip install -e .
 ```
 
 ## Troubleshooting
