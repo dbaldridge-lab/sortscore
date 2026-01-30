@@ -1,6 +1,6 @@
 # Batch Processing Guide
 
-This guide provides detailed instructions for combining and normalizing multiple Sort-seq experiments using the batch processing functionality in `sortscore`.
+This guide provides detailed instructions for combining and normalizing multiple Sort-seq experiments using the batch processing functionality in sortscore.
 
 ## Overview
 
@@ -93,7 +93,7 @@ This is the default method that creates a standardized scale making cross-experi
 - When you want standardized effect sizes
 - Cross-experiment statistical comparisons needed
 
-### 2-Pole Normalization
+### 2-Pole Normalization from BRCA1 2018 DMS analysis
 
 Uses synonymous and pathogenic variants as reference anchor points.
 
@@ -166,12 +166,10 @@ Batch processing automatically generates combined heatmaps with advanced feature
 
 ### Position Mapping
 
-Each experiment's positions are mapped to a global coordinate system:
-
+Experiment position index are mapped to a global position:
 ```
-Experiment 1: positions 1-100   → Global positions 1-100
-Experiment 2: positions 101-200 → Global positions 101-200  
-Experiment 3: positions 201-300 → Global positions 201-300
+Experiment 1: positions 1-100  → Positions 1-100 in combined heatmap
+Experiment 2: positions 1-100 with 100 start position offset specified → Positions 101-200 in combined heatmap
 ```
 
 ### Gap Handling
@@ -189,7 +187,7 @@ When `allow_position_breaks: false`:
 ### Visual Features
 
 - **Experiment boundaries**: Vertical lines mark transitions between experiments
-- **Unified scaling**: Single colorbar applies to all data  
+- **Unified scaling**: Single colorbar applies to all data
 - **Automatic sizing**: Figure dimensions scale with position range
 - **Biophysical properties**: Optional amino acid property panel
 
