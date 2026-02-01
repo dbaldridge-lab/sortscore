@@ -114,4 +114,4 @@ def test_cell_prop_normalization():
 
 if __name__ == "__main__":
     test_cell_prop_normalization()
-    print("\n✅ Cell proportion normalization test completed!")
+    print("\nCell proportion normalization test completed!")
