@@ -28,11 +28,13 @@ Examples
 """
 import json
 import logging
+import os
 import pandas as pd
 import re
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 from sortscore.sequence_parsing import get_reference_sequence
+from sortscore.utils.path_utils import resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +249,7 @@ class ExperimentConfig:
             data = json.load(f)
         # Build kwargs only for fields that exist in JSON
         args = {}
+        config_file_dir = os.path.dirname(os.path.abspath(json_path))
         
         # Validate analysis_type
         valid_analysis_types = {'snv', 'codon', 'aa'}
@@ -258,7 +261,10 @@ class ExperimentConfig:
         # Required fields
         for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type']:
             if field in data:
-                args[field] = data[field]
+                value = data[field]
+                if field == 'experiment_setup_file':
+                    value = resolve_path(value, config_file_dir)
+                args[field] = value
         
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
         optional_fields = [
@@ -270,7 +276,10 @@ class ExperimentConfig:
 
         for field in optional_fields:
             if field in data:
-                args[field] = data[field]
+                value = data[field]
+                if field == 'output_dir' and value is not None:
+                    value = resolve_path(value, config_file_dir)
+                args[field] = value
         
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'analysis_type',
@@ -332,6 +341,7 @@ class ExperimentConfig:
         mfi = {}
         total_reads = {}
         cell_prop = {}
+        config_file_dir = os.path.dirname(os.path.abspath(self.experiment_setup_file))
         
         for _, row in setup_df.iterrows():
             rep = int(row['Replicate'])
@@ -339,7 +349,8 @@ class ExperimentConfig:
             count_file = str(row['Path']).strip()
             if 'Read Counts (CSV)' in row:
                 count_file = str(row['Read Counts (CSV)']).strip()
-                
+            count_file = resolve_path(count_file, config_file_dir)
+            
             mfi_val = float(row['MFI'])
             
             # Load total reads if available (for sample read depth normalization)
