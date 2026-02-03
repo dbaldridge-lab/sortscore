@@ -5,6 +5,28 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 ## 1. Prepare Your Experiment Configuration
 - Create your experiment configuration JSON (see `config/example_experiment.json`) and experiment setup CSV.
 - Edit these files to match your experiment's parameters and data file locations. You can place them anywhere; just provide the correct path when running the analysis.
+  - `variant_type` is not a config option; it is auto-detected from your count files.
+
+### Variant Type Auto-Detection (Accepted Nomenclature)
+
+`sortscore` auto-detects whether your inputs are **DNA variants** or **amino-acid (AA) variants** by sampling the **first column** of the count files referenced by your experiment setup CSV.
+
+**Count file expectations**
+- The **first column** is treated as the variant identifier/sequence.
+- The detector samples variants for classification.
+- If <90% of sampled variants agree on a single type, detection fails as “mixed”.
+
+**Accepted DNA variant formats**
+# TODO: test this
+- Full DNA sequences using `A`, `T`, `C`, `G` (ambiguous IUPAC bases like `N`, `R`, `Y`, etc. are also treated as DNA).
+- Simple substitutions: `A123T` (also accepts `A.123.T`, `A-123-T`, `A_123_T`).
+- HGVS DNA notation like `c.123A>T`, `g.123A>T`, `n.123A>T` (supported when `mavehgvs` is installed).
+
+**Accepted AA variant formats**
+- Full AA sequences using the 20 one-letter amino acids plus `*` (stop).
+- One-letter substitutions: `M1V`, `R98*` (also accepts `M.1.V`, `M-1-V`, `M_1_V`).
+- Three-letter substitutions: `Ala123Val`, and `Ter` for stop.
+- HGVS protein notation like `p.Arg97Cys` (supported when `mavehgvs` is installed).
 
 ## 2. Command Line Interface (CLI)
 
@@ -43,20 +65,27 @@ python -m sortscore --config path/to/config.json
 
 ### File Naming Conventions
 
-**Current Implementation:** 
+**Current Implementation:**
 ```
-# Score files (consistent with suffix)
-{experiment_name}_scores_{suffix}.csv
-stats_{avg_method}_{suffix}.json
+# Score files
+scores/{experiment_name}_dna_scores_{suffix}.csv         # when analysis_type == codon
+scores/{experiment_name}_aa_scores_{suffix}.csv
+# TODO: add SNV functionality and test
+scores/{experiment_name}_dna_scores_snv_{suffix}.csv     # when analysis_type == snv
 
-# Visualization files (mixed patterns - being standardized)
-{experiment_name}_heatmap.png              # New API (no suffix yet)
-{experiment_name}_heatmap_matrix.csv       # New API (no suffix yet) 
-{experiment_name}_positional_averages.csv # New API (no suffix yet)
-aa_heatmap_{avg_method}_{suffix}.png       # Legacy naming
+# Summary statistics
+scores/{experiment_name}_dna_stats_{suffix}.json         # when DNA scores are produced
+scores/{experiment_name}_aa_stats_{suffix}.json
+
+# Visualization files
+figures/{experiment_name}_aa_heatmap_{suffix}.{png|svg|pdf}
+figures/{experiment_name}_aa_heatmap_matrix_{suffix}.csv
+figures/{experiment_name}_codon_heatmap_{suffix}.{png|svg|pdf}         # when plotting DNA-level scores
+figures/{experiment_name}_codon_heatmap_matrix_{suffix}.csv            # when plotting DNA-level scores
+figures/{experiment_name}_positional_averages_{suffix}.csv   # when using --pos-color
 ```
 
-**Auto-generated suffix format:** `{experiment_name}_{bins}bins_{minreads}minreads_{max_cv}cv_{date}`
+**Auto-generated suffix format:** `YYYYMMDD` (current date)
 
 ### Examples
 
@@ -234,7 +263,7 @@ plot_heatmap(
 ## Experiment Configuration JSON Reference
 
 The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
-
+# TODO: Update this with latest config updates
 | Key                   | Type    | Required | Description                                                                                 |
 |-----------------------|---------|----------|---------------------------------------------------------------------------------------------|
 | **Required Parameters** | | | |
