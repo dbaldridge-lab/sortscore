@@ -8,7 +8,7 @@
   "analysis_type": "codon",
   "min_pos": 551,
   "max_pos": 583,
-  "output_dir": "tests/oPool5b_GTAC/results_3bin_reproduced",
-  "experiment_setup_file": "tests/oPool5b_GTAC/experiment_setup.csv",
+  "output_dir": "/Users/c.chitwood/code/sortscore/tests/scratch/_test_output",
+  "experiment_setup_file": "/Users/c.chitwood/code/sortscore/tests/data/GLI2_oPool5b/experiment_setup.csv",
   "biophysical_prop": true
 }
