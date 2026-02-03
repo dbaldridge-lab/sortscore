@@ -82,7 +82,10 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
         return None
     
     if experiment.analysis_type not in ['codon', 'snv']:
-        logging.info(f"Skipping DNA workflow (analysis_type '{experiment.analysis_type}' will be handled by AA workflow)")
+        logging.info(
+            "Skipping DNA workflow (analysis_type '%s' is not 'codon' or 'snv')",
+            experiment.analysis_type,
+        )
         return None
     
     logging.info(f"Processing DNA workflow for analysis_type '{experiment.analysis_type}'...")
@@ -118,7 +121,15 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     
     # Calculate and save statistics on the final processed DNA data
     stats = calculate_summary_stats(scores_df_rounded, experiment)
-    save_summary_stats(stats, experiment, scores_dir, output_suffix, analysis_logger)
+    save_summary_stats(
+        stats,
+        experiment,
+        scores_dir,
+        output_suffix,
+        analysis_logger,
+        stats_basename="dna_stats",
+        output_field="dna_statistics",
+    )
     logging.info("Calculated statistics on final DNA scores")
     
     return dna_scores_file
@@ -151,8 +162,13 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
     str
         Path to AA scores file
     """
-    if experiment.analysis_type != 'aa':
-        logging.info(f"Skipping AA workflow (analysis_type is '{experiment.analysis_type}')")
+    should_run = (experiment.analysis_type == 'aa') or (experiment.variant_type == 'dna')
+    if not should_run:
+        logging.info(
+            "Skipping AA workflow (analysis_type '%s' with variant_type '%s')",
+            experiment.analysis_type,
+            experiment.variant_type,
+        )
         return ""
     
     logging.info("Processing AA workflow...")
@@ -191,7 +207,15 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
     if os.path.exists(aa_scores_file):
         final_scores_df = pd.read_csv(aa_scores_file)
         stats = calculate_summary_stats(final_scores_df, experiment)
-        save_summary_stats(stats, experiment, scores_dir, output_suffix, analysis_logger)
+        save_summary_stats(
+            stats,
+            experiment,
+            scores_dir,
+            output_suffix,
+            analysis_logger,
+            stats_basename="aa_stats",
+            output_field="aa_statistics",
+        )
         logging.info("Calculated statistics on final AA scores")
     
     return aa_scores_file

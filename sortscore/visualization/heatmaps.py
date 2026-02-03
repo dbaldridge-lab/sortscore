@@ -135,6 +135,8 @@ def plot_heatmap(
     show_biophysical_properties: bool = False,
     export_positional_averages: bool = False,
     suffix: Optional[str] = None,
+    heatmap_basename: str = "heatmap",
+    matrix_basename: str = "heatmap_matrix",
     transparent: bool = True
 ) -> None:
     """
@@ -178,6 +180,10 @@ def plot_heatmap(
         If True, export positional averages with hex colors to CSV for protein structure visualization.
     suffix : str, optional
         Suffix to append to output filenames for consistent naming.
+    heatmap_basename : str, optional
+        Base name for exported heatmap image (default: ``"heatmap"``).
+    matrix_basename : str, optional
+        Base name for exported heatmap matrix CSV (default: ``"heatmap_matrix"``).
     transparent : bool, default True
         If True, save plot with transparent background. If False, use white background.
     """
@@ -217,9 +223,9 @@ def plot_heatmap(
         matrix_for_export.columns = new_columns
 
         if suffix:
-            matrix_output = f"{output_prefix}_heatmap_matrix_{suffix}.csv"
+            matrix_output = f"{output_prefix}_{matrix_basename}_{suffix}.csv"
         else:
-            matrix_output = f"{output_prefix}_heatmap_matrix.csv"
+            matrix_output = f"{output_prefix}_{matrix_basename}.csv"
         matrix_for_export.to_csv(matrix_output)
         logger.info(f"Heatmap matrix saved to {matrix_output}")
     
@@ -428,9 +434,9 @@ def plot_heatmap(
     # Save or show plot
     if export_heatmap:
         if suffix:
-            heatmap_output = f"{output_prefix}_heatmap_{suffix}.{fig_format}"
+            heatmap_output = f"{output_prefix}_{heatmap_basename}_{suffix}.{fig_format}"
         else:
-            heatmap_output = f"{output_prefix}_heatmap.{fig_format}"
+            heatmap_output = f"{output_prefix}_{heatmap_basename}.{fig_format}"
         facecolor = 'none' if transparent else 'white'
         plt.savefig(heatmap_output, dpi=dpi, format=fig_format, facecolor=facecolor, edgecolor='none')
         logger.info(f"Heatmap plot saved to {heatmap_output}")

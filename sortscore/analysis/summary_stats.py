@@ -125,7 +125,17 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
     return stats
 
 
-def save_summary_stats(stats: Dict[str, Any], experiment, scores_dir: str, output_suffix: str, analysis_logger) -> str:
+def save_summary_stats(
+    stats: Dict[str, Any],
+    experiment,
+    scores_dir: str,
+    output_suffix: str,
+    analysis_logger,
+    *,
+    stats_basename: str = "stats",
+    output_field: str,
+    include_in_log_metadata: bool = False,
+) -> str:
     """
     Save summary stats to JSON file with logging.
     
@@ -141,6 +151,14 @@ def save_summary_stats(stats: Dict[str, Any], experiment, scores_dir: str, outpu
         Suffix for output filename
     analysis_logger : AnalysisLogger
         Logger instance for recording outputs
+    stats_basename : str, optional
+        Basename used for the stats JSON filename (default: ``"stats"``).
+    output_field : str
+        Attribute name on ``analysis_logger.outputs`` to store this output (e.g.
+        ``"dna_statistics"`` or ``"aa_statistics"``).
+    include_in_log_metadata : bool, optional
+        If True, embed the stats dictionary into the analysis log metadata for this
+        output. Default False to keep logs small (the JSON file is still written).
         
     Returns
     -------
@@ -152,18 +170,22 @@ def save_summary_stats(stats: Dict[str, Any], experiment, scores_dir: str, outpu
     >>> stats = calculate_summary_stats(scores_df, experiment)
     >>> stats_file = save_summary_stats(stats, experiment, 'output/scores', 'suffix', logger)
     """
-    stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_stats_{output_suffix}.json")
+    stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_{stats_basename}_{output_suffix}.json")
     
     with open(stats_file, 'w') as f:
         json.dump(stats, f, indent=2)
     logging.info(f"Saved stats to {stats_file}")
     
     # Log file output
+    metadata = {}
+    if include_in_log_metadata:
+        metadata["stats_summary"] = stats
+
     analysis_logger.log_output_file(
-        'statistics',
-        f"{experiment.experiment_name}_stats_{output_suffix}.json",
+        output_field,
+        f"{experiment.experiment_name}_{stats_basename}_{output_suffix}.json",
         stats_file,
-        stats_summary=stats
+        **metadata,
     )
     
     return stats_file

@@ -150,15 +150,30 @@ def generate_heatmap_visualizations(
         )
 
         if pd.notna(wt_score):
-            plot_heatmap(aa_data, score_col, aa_config, wt_score=float(wt_score), **plot_kwargs)
+            plot_heatmap(
+                aa_data,
+                score_col,
+                aa_config,
+                wt_score=float(wt_score),
+                heatmap_basename="aa_heatmap",
+                matrix_basename="aa_heatmap_matrix",
+                **plot_kwargs,
+            )
         else:
-            plot_heatmap(aa_data, score_col, aa_config, **plot_kwargs)
+            plot_heatmap(
+                aa_data,
+                score_col,
+                aa_config,
+                heatmap_basename="aa_heatmap",
+                matrix_basename="aa_heatmap_matrix",
+                **plot_kwargs,
+            )
 
-        aa_heatmap_file = os.path.join(figures_dir, f"aa_heatmap_{experiment.avg_method}_{output_suffix}.{fig_format}")
+        aa_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_aa_heatmap_{output_suffix}.{fig_format}")
         logger.info("Saved AA heatmap to %s", aa_heatmap_file)
 
-    # Codon heatmap generation
-    if experiment.variant_type == 'dna':
+    # Codon heatmap generation (DNA-level plots only make sense when plotting DNA-level scores)
+    if experiment.variant_type == 'dna' and 'annotate_dna' in scores_df.columns:
         wt_score_codon = _compute_wt_score(scores_df, score_col, 'annotate_dna', 'wt_dna')
         if pd.notna(wt_score_codon):
             logger.info("Found WT score for codon heatmap: %s", wt_score_codon)
@@ -184,9 +199,24 @@ def generate_heatmap_visualizations(
         )
 
         if pd.notna(wt_score_codon):
-            plot_heatmap(scores_df, score_col, experiment, wt_score=float(wt_score_codon), **plot_kwargs)
+            plot_heatmap(
+                scores_df,
+                score_col,
+                experiment,
+                wt_score=float(wt_score_codon),
+                heatmap_basename="codon_heatmap",
+                matrix_basename="codon_heatmap_matrix",
+                **plot_kwargs,
+            )
         else:
-            plot_heatmap(scores_df, score_col, experiment, **plot_kwargs)
+            plot_heatmap(
+                scores_df,
+                score_col,
+                experiment,
+                heatmap_basename="codon_heatmap",
+                matrix_basename="codon_heatmap_matrix",
+                **plot_kwargs,
+            )
 
-        codon_heatmap_file = os.path.join(figures_dir, f"codon_heatmap_{experiment.avg_method}_{output_suffix}.{fig_format}")
+        codon_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_codon_heatmap_{output_suffix}.{fig_format}")
         logger.info("Saved codon heatmap to %s", codon_heatmap_file)

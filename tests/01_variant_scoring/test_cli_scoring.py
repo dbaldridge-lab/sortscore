@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 import pytest
 
+from sortscore.analysis.variant_detection import detect_variant_type_from_experiment
+
 
 def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_outputs):
     """Test that sortscore CLI for scoring pipeline runs and produces expected outputs."""
@@ -40,17 +42,23 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
     # Define expected output files regardless of analysis type
     expected = {
         "stats_json": any(name.endswith(".json") and "_stats_" in name for name in filenames),
-        "aa_heatmap": any("_aa_heatmap_" in name for name in filenames),
-        "codon_heatmap": any("_codon_heatmap_" in name for name in filenames),
+        "log_json": any(name.endswith(".log.json") for name in filenames),
     }
 
     # Add expected outputs based on analysis type
     analysis_type = config_dict.get("analysis_type")
+    # TODO: Remove variant_type user override from config file, update usage.md
+    variant_type = config_dict.get("variant_type") or detect_variant_type_from_experiment(
+        config_dict["experiment_setup_file"]
+    )
     if analysis_type == "aa":
         expected["aa_scores_csv"] = any(name.endswith(".csv") and "_aa_scores_" in name for name in filenames)
-    else:
-        expected["dna_scores_csv"] = any(name.endswith(".csv") and "_dna_scores" in name for name in filenames)
+        expected["aa_heatmap"] = any("_aa_heatmap_" in name for name in filenames)
 
+    # TODO: Add option for analysis_type == "both" to return DNA and AA scores? Currently returns both.
+    if variant_type == "dna" and analysis_type in ("codon", "snv"):
+        expected["dna_scores_csv"] = any(name.endswith(".csv") and "_dna_scores" in name for name in filenames)
+        expected["codon_heatmap"] = any("_codon_heatmap_" in name for name in filenames)
 
     missing = [k for k, v in expected.items() if not v]
     if missing:

@@ -71,14 +71,16 @@ def main():
             experiment, output_dir, output_suffix, analysis_logger
         )
         
-        # Load the final scores for visualization
-        if aa_scores_file and os.path.exists(aa_scores_file):
-            scores_df = pd.read_csv(aa_scores_file)
-            logging.info(f"Loaded AA scores for visualization: {len(scores_df)} variants")
-        elif dna_scores_file and os.path.exists(dna_scores_file):
-            scores_df = pd.read_csv(dna_scores_file)
-            logging.info(f"Loaded DNA scores for visualization: {len(scores_df)} variants")
-        else:
+        # Load scores for visualization.
+        # For DNA inputs, codon/snv analyses may also export AA-aggregated scores.
+        dna_scores_df = pd.read_csv(dna_scores_file) if dna_scores_file and os.path.exists(dna_scores_file) else None
+        aa_scores_df = pd.read_csv(aa_scores_file) if aa_scores_file and os.path.exists(aa_scores_file) else None
+        if dna_scores_df is not None:
+            logging.info(f"Loaded DNA scores for visualization: {len(dna_scores_df)} variants")
+        if aa_scores_df is not None:
+            logging.info(f"Loaded AA scores for visualization: {len(aa_scores_df)} variants")
+
+        if dna_scores_df is None and aa_scores_df is None:
             raise ValueError("No scores files were generated")
             
     except Exception as e:
@@ -88,14 +90,26 @@ def main():
     
     # Generate visualizations
     try:
-        generate_heatmap_visualizations(
-            scores_df=scores_df,
-            experiment=experiment,
-            output_dir=output_dir,
-            output_suffix=output_suffix,
-            fig_format=args.fig_format,
-            export_positional_averages=args.pos_color,
-        )
+        # Generate plots for any score tables that exist.
+        if dna_scores_df is not None:
+            dna_plot_df = dna_scores_df.drop(columns=['aa_seq_diff', 'annotate_aa'], errors='ignore')
+            generate_heatmap_visualizations(
+                scores_df=dna_plot_df,
+                experiment=experiment,
+                output_dir=output_dir,
+                output_suffix=output_suffix,
+                fig_format=args.fig_format,
+                export_positional_averages=args.pos_color,
+            )
+        if aa_scores_df is not None:
+            generate_heatmap_visualizations(
+                scores_df=aa_scores_df,
+                experiment=experiment,
+                output_dir=output_dir,
+                output_suffix=output_suffix,
+                fig_format=args.fig_format,
+                export_positional_averages=args.pos_color,
+            )
     except Exception as e:
         logging.error(f"Failed to generate visualizations: {e}")
         sys.exit(1)
