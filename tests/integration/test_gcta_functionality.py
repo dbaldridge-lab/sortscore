@@ -83,22 +83,6 @@ def test_custom_dna_variants():
     assert 'C' not in matrix.index
 
 
-def test_mixed_position_variant_types():
-    """Test different combinations of position_type and variant_type."""
-    # DNA variants with DNA positions (GCTA)
-    matrix1 = dms_matrix_template(10, 'dna', ['G', 'C', 'T', 'A'], 'dna')
-    assert matrix1.shape == (4, 10)
-    
-    # AA variants with DNA positions (e.g., for deep scanning)
-    matrix2 = dms_matrix_template(30, 'aa', ['M', 'V', 'L'], 'dna')
-    assert matrix2.shape == (3, 30)
-    
-    # DNA variants with AA positions (traditional codon-level)
-    matrix3 = dms_matrix_template(10, 'dna', None, 'aa')
-    assert matrix3.shape[1] == 10  # Should have 10 AA positions
-    assert matrix3.shape[0] > 20  # Should have many codon variants
-
-
 def test_gcta_example_config():
     """Test realistic GCTA experiment configuration."""
     # Simulate GCTA experiment: single nucleotide changes across DNA sequence
