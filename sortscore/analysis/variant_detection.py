@@ -11,20 +11,18 @@ import pandas as pd
 import re
 from typing import List, Tuple, Literal, Optional
 from pathlib import Path
-import logging
 
 from sortscore.analysis.experiment_setup import load_experiment_setup
 
 
-def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed', 'unknown']:
+def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa']:
     """
-    Destinguish between DNA and AA input sequences using HGVS parsing and pattern matching.
+    Classify a set of sequences as containing DNA or AA input sequences
+    using HGVS parsing and pattern matching.
     
     Analyzes a sample of sequences from an input file to determine if they are:
     - DNA sequences (full sequences or nucleotide changes)
-    - Amino acid sequences (full sequences or AA changes) 
-    - Mixed formats (error condition)
-    - Unknown format (error condition)
+    - Amino acid sequences (full sequences or AA changes)
     
     Parameters
     ----------
@@ -33,71 +31,66 @@ def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed'
         
     Returns
     -------
-    Literal['dna', 'aa', 'mixed', 'unknown']
+    Literal['dna', 'aa']
         Detected sequence format
         
     Examples
     --------
-    # TODO: add DNA variant examples T123G, c.123A>G, g.123456A>G
+    # TODO: add DNA variant and ID examples T123G, c.123A>G, g.123456A>G
     # TODO: could someone provide multiple DNA variants in the input column
     >>> sequences = ['ATGCGT', 'ATGCGA', 'ATGCGG']
     >>> detect_sequence_format(sequences)
     'dna'
     
-    # TODO: add AA sequence examples
+    # TODO: add AA sequence and ID examples
     >>> sequences = ['M1V', 'R98C', 'P171*']
     >>> detect_sequence_format(sequences)
     'aa'
+    
+    Raises
+    ------
+    ValueError
+        If mixed formats are detected or format cannot be determined
     """
     if not sequences:
-        return 'unknown'
+        raise ValueError("No sequences provided for format detection")
     
     # Remove empty/null sequences
     valid_sequences = [seq for seq in sequences if seq and pd.notna(seq) and str(seq).strip()]
     if not valid_sequences:
-        return 'unknown'
-    
-    # Take a sample for analysis (max 100 sequences)
-    sample = valid_sequences[:100]
-    
+        raise ValueError("No valid sequences provided for format detection")
+
     dna_count = 0
     aa_count = 0
-    unknown_count = 0
     
-    for seq in sample:
+    for seq in valid_sequences:
         seq = str(seq).strip()
         if not seq:
-            continue
+            raise ValueError("Empty sequence encountered during format detection")
             
         format_type = _classify_single_sequence(seq)
         if format_type == 'dna':
             dna_count += 1
         elif format_type == 'aa':
             aa_count += 1
-        else:
-            unknown_count += 1
     
     # Determine overall format
-    total_classified = dna_count + aa_count + unknown_count
+    total_classified = dna_count + aa_count
     if total_classified == 0:
-        return 'unknown'
+        raise ValueError("All input sequences are unrecognized. Could not determine sequence format.")
     
     dna_fraction = dna_count / total_classified
     aa_fraction = aa_count / total_classified
-    unknown_fraction = unknown_count / total_classified
-    
-    logging.info(
-        f"Sequence format fractions: DNA={dna_fraction:.2f}, AA={aa_fraction:.2f}, Unknown={unknown_fraction:.2f}"
-    )
     
     # Require consensus to avoid mixed format issues
     if dna_fraction == 1.0:
         return 'dna'
     elif aa_fraction == 1.0:
         return 'aa'
+    elif dna_count > 0 and aa_count > 0:
+        raise ValueError("Mixed sequence formats detected (both DNA and AA present). Ensure all sequences use a consistent format.")
     else:
-        return 'mixed'
-
+        raise ValueError("Could not determine sequence format from input sequences.")
 
 def _parse_hgvs_variant(seq: str) -> Optional[Literal['dna', 'aa']]:
     """
@@ -132,7 +125,7 @@ def _parse_hgvs_variant(seq: str) -> Optional[Literal['dna', 'aa']]:
         return None
 
 
-def _classify_single_sequence(seq: str) -> Literal['dna', 'aa', 'unknown']:
+def _classify_single_sequence(seq: str) -> Optional[Literal['dna', 'aa']]:
     """
     Classify a single sequence as DNA, AA, or unknown.
 
@@ -217,12 +210,13 @@ def _classify_single_sequence(seq: str) -> Literal['dna', 'aa', 'unknown']:
     if seq_chars.issubset(extended_dna_bases) and len(seq) > 1:
         return 'dna'
     
-    return 'unknown'
+    return None
 
 # TODO: detect codon and snv variant logic
+# TODO: remove sequence sampling, pass filename to detect_sequence_format
 def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     """
-    Detect variant type by examining count files from experiment setup.
+    Detect variant type by examining count files from experiment setup. 
     
     Parameters
     ----------
@@ -260,7 +254,7 @@ def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
             sequences = count_df[seq_col].dropna().astype(str).tolist()
             
             # Take sample from this file
-            all_sequences.extend(sequences[:50])  # 50 sequences per file
+            all_sequences.extend(sequences[:100])  # 100 sequences per file
             files_sampled += 1
             
         except Exception as e:
@@ -268,15 +262,7 @@ def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     
     if not all_sequences:
         raise ValueError("Could not read any sequences from count files")
-    
-    # Detect format
+
     detected_format = detect_sequence_format(all_sequences)
-    
-    if detected_format == 'mixed':
-        raise ValueError("Mixed sequence formats detected in count files - ensure all files use consistent format")
-    elif detected_format == 'unknown':
-        raise ValueError("Could not determine sequence format from count files")
-    elif detected_format not in ['dna', 'aa']:
-        raise ValueError(f"Unexpected sequence format detected: {detected_format}")
-    
+
     return detected_format

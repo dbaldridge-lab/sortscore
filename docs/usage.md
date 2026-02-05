@@ -14,7 +14,6 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 **Count file expectations**
 - The **first column** is treated as the variant identifier/sequence.
 - The detector samples variants for classification.
-- If <90% of sampled variants agree on a single type, detection fails as “mixed”.
 
 **Accepted DNA variant formats**
 # TODO: test this
