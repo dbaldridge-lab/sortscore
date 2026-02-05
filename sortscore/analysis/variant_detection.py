@@ -2,20 +2,25 @@
 Automatic variant type detection from count files.
 
 This module provides functions to automatically detect the format of variant
-sequences in count files, distinguishing between DNA sequences, amino acid
-sequences, and pre-annotated variant notations using HGVS parsing and pattern matching.
+sequences in count files. It checks for common variant notations using HGVS 
+parsing and pattern matching. For full sequences, pattern matching is used to
+distinguish between sequence types. This module can detect mutagenesis types such
+as amino acid (AA) substitutions, codon changes, and single nucleotide variants (SNV).
 """
 import pandas as pd
 import re
 from typing import List, Tuple, Literal, Optional
 from pathlib import Path
+import logging
+
+from sortscore.analysis.experiment_setup import load_experiment_setup
 
 
 def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed', 'unknown']:
     """
-    Detect the format of variant sequences using HGVS parsing and pattern matching.
+    Destinguish between DNA and AA input sequences using HGVS parsing and pattern matching.
     
-    Analyzes a sample of sequences to determine if they are:
+    Analyzes a sample of sequences from an input file to determine if they are:
     - DNA sequences (full sequences or nucleotide changes)
     - Amino acid sequences (full sequences or AA changes) 
     - Mixed formats (error condition)
@@ -33,10 +38,13 @@ def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed'
         
     Examples
     --------
+    # TODO: add DNA variant examples T123G, c.123A>G, g.123456A>G
+    # TODO: could someone provide multiple DNA variants in the input column
     >>> sequences = ['ATGCGT', 'ATGCGA', 'ATGCGG']
     >>> detect_sequence_format(sequences)
     'dna'
     
+    # TODO: add AA sequence examples
     >>> sequences = ['M1V', 'R98C', 'P171*']
     >>> detect_sequence_format(sequences)
     'aa'
@@ -54,6 +62,7 @@ def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed'
     
     dna_count = 0
     aa_count = 0
+    unknown_count = 0
     
     for seq in sample:
         seq = str(seq).strip()
@@ -65,19 +74,26 @@ def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa', 'mixed'
             dna_count += 1
         elif format_type == 'aa':
             aa_count += 1
+        else:
+            unknown_count += 1
     
     # Determine overall format
-    total_classified = dna_count + aa_count
+    total_classified = dna_count + aa_count + unknown_count
     if total_classified == 0:
         return 'unknown'
     
     dna_fraction = dna_count / total_classified
     aa_fraction = aa_count / total_classified
+    unknown_fraction = unknown_count / total_classified
     
-    # Require >90% consensus to avoid mixed format issues
-    if dna_fraction > 0.9:
+    logging.info(
+        f"Sequence format fractions: DNA={dna_fraction:.2f}, AA={aa_fraction:.2f}, Unknown={unknown_fraction:.2f}"
+    )
+    
+    # Require consensus to avoid mixed format issues
+    if dna_fraction == 1.0:
         return 'dna'
-    elif aa_fraction > 0.9:
+    elif aa_fraction == 1.0:
         return 'aa'
     else:
         return 'mixed'
@@ -203,7 +219,7 @@ def _classify_single_sequence(seq: str) -> Literal['dna', 'aa', 'unknown']:
     
     return 'unknown'
 
-
+# TODO: detect codon and snv variant logic
 def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     """
     Detect variant type by examining count files from experiment setup.
@@ -216,36 +232,25 @@ def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     Returns
     -------
     str
-        Detected variant type ('dna' or 'aa')
+        Detected variant type ('aa', 'snv', 'codon')
         
     Raises
     ------
     ValueError
         If variant type cannot be determined or is mixed/ambiguous
     """
-    # Load experiment setup
-    setup_df = pd.read_csv(experiment_setup_file)
-    
-    # Find count file column (flexible naming)
-    count_col = None
-    for col in ['Path', 'Read Counts (CSV)', 'Count File', 'File Path']:
-        if col in setup_df.columns:
-            count_col = col
-            break
-    
-    if count_col is None:
-        raise ValueError(f"No count file column found in {experiment_setup_file}")
+    setup_df, setup_cols = load_experiment_setup(experiment_setup_file)
     
     # Sample sequences from all count files to ensure consistency
     all_sequences = []
     files_sampled = 0
+    setup_dir = Path(str(experiment_setup_file).strip()).expanduser().resolve().parent
     
-    for file_path in setup_df[count_col].dropna():
+    for file_path in setup_df[setup_cols.count_file].dropna():
         try:
-            # Handle relative paths
-            if not Path(file_path).is_absolute():
-                setup_dir = Path(experiment_setup_file).parent
-                file_path = setup_dir / file_path
+            # Handle paths relative to setup file
+            file_path = setup_dir / Path(str(file_path).strip()).expanduser()
+            file_path = file_path.resolve()
             
             # Read count file
             count_df = pd.read_csv(file_path, sep=None, engine='python')  # Auto-detect separator

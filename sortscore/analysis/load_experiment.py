@@ -271,7 +271,7 @@ class ExperimentConfig:
             if field in data:
                 value = data[field]
                 if field == 'output_dir' and value is not None:
-                    value = resolve_path(value, config_file_dir)
+                    value = config_file_dir / Path(value).expanduser().resolve()
                 args[field] = value
         
         # Other parameters
@@ -333,13 +333,15 @@ class ExperimentConfig:
         mfi = {}
         total_reads = {}
         cell_prop = {}
-        config_file_dir = os.path.dirname(os.path.abspath(self.experiment_setup_file))
+        config_file_dir = Path(self.experiment_setup_file).expanduser().resolve().parent
         
         for _, row in setup_df.iterrows():
             rep = int(row[setup_cols.replicate])
             bin_ = str(row[setup_cols.bin]).strip()
             count_file = str(row[setup_cols.count_file]).strip()
-            count_file = resolve_path(count_file, config_file_dir)
+            count_file = config_file_dir / Path(count_file).expanduser()
+            count_file = count_file.resolve()
+            count_file = str(count_file)
             
             mfi_val = float(row[setup_cols.mfi])
             
