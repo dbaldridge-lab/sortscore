@@ -173,7 +173,7 @@ def generate_heatmap_visualizations(
         logger.info("Saved AA heatmap to %s", aa_heatmap_file)
 
     # Codon heatmap generation (DNA-level plots only make sense when plotting DNA-level scores)
-    if experiment.variant_type == 'dna' and 'annotate_dna' in scores_df.columns:
+    if experiment.variant_type == 'codon' and 'annotate_dna' in scores_df.columns:
         wt_score_codon = _compute_wt_score(scores_df, score_col, 'annotate_dna', 'wt_dna')
         if pd.notna(wt_score_codon):
             logger.info("Found WT score for codon heatmap: %s", wt_score_codon)

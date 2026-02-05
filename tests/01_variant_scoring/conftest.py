@@ -11,7 +11,6 @@ DEFAULT_CONFIG_DICT = {
     "avg_method": "rep-weighted",
     "minread_threshold": 0,
     "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
-    "analysis_type": "codon",
     "min_pos": 551,
     "max_pos": 583,
     "output_dir": '/Users/c.chitwood/code/sortscore/tests/scratch/_test_output',

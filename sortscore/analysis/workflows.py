@@ -50,8 +50,7 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
     scores_df = annotate_scores_dataframe(
         scores_df, 
         experiment.wt_seq, 
-        experiment.variant_type, 
-        experiment.transcript_id
+        experiment.variant_type
     )
     
     return scores_df
@@ -77,18 +76,11 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     Optional[str]
         Path to DNA scores file if created, None if skipped
     """
-    if experiment.variant_type != 'dna':
-        logging.info("Skipping DNA workflow (auto-detected variant type is not 'dna')")
+    if experiment.variant_type == 'aa':
+        logging.info("Skipping DNA workflow (auto-detected variant type is 'aa')")
         return None
     
-    if experiment.analysis_type not in ['codon', 'snv']:
-        logging.info(
-            "Skipping DNA workflow (analysis_type '%s' is not 'codon' or 'snv')",
-            experiment.analysis_type,
-        )
-        return None
-    
-    logging.info(f"Processing DNA workflow for analysis_type '{experiment.analysis_type}'...")
+    logging.info(f"Processing DNA workflow")
     
     # Get merged counts DataFrame
     merged_df = experiment.get_merged_counts()
@@ -106,15 +98,14 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     scores_df_rounded = round_score_columns(scores_df_rounded)
     
     # Save DNA scores
-    analysis_type_suffix = f"_{experiment.analysis_type}" if experiment.analysis_type != 'codon' else ""
-    dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores{analysis_type_suffix}_{output_suffix}.csv")
+    dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv")
     scores_df_rounded.to_csv(dna_scores_file, index=False)
     logging.info(f"Saved DNA scores to {dna_scores_file}")
     
     # Log output
     analysis_logger.log_output_file(
         'dna_scores', 
-        f"{experiment.experiment_name}_dna_scores{analysis_type_suffix}_{output_suffix}.csv",
+        f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv",
         dna_scores_file,
         variant_count=len(scores_df_rounded)
     )
@@ -162,15 +153,7 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
     str
         Path to AA scores file
     """
-    should_run = (experiment.analysis_type == 'aa') or (experiment.variant_type == 'dna')
-    if not should_run:
-        logging.info(
-            "Skipping AA workflow (analysis_type '%s' with variant_type '%s')",
-            experiment.analysis_type,
-            experiment.variant_type,
-        )
-        return ""
-    
+
     logging.info("Processing AA workflow...")
     scores_dir = os.path.join(output_dir, 'scores')
     
@@ -223,11 +206,11 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
 
 def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: str, analysis_logger) -> Tuple[Optional[str], str]:
     """
-    Run the complete variant analysis workflow based on analysis_type.
+    Run the complete variant analysis workflow based on variant_type.
     
     This orchestrates the DNA and AA workflows in the correct order:
-    1. DNA workflow (if needed for codon/snv analysis)
-    2. AA workflow (if needed for aa analysis)
+    1. DNA workflow if count files specify DNA variants
+    2. AA workflow
     
     Parameters
     ----------
@@ -246,7 +229,6 @@ def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: st
         (dna_scores_file_path, aa_scores_file_path)
         Either path can be empty string if that workflow was skipped
     """
-    logging.info(f"Running variant analysis workflow for analysis_type: '{experiment.analysis_type}'")
     logging.info(f"Auto-detected variant_type: '{experiment.variant_type}'")
     
     dna_scores_file = process_dna_workflow(experiment, output_dir, output_suffix, analysis_logger)

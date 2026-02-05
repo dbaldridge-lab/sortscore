@@ -13,10 +13,11 @@ import pandas as pd
 from typing import Optional
 from sortscore.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
 
+# TODO: redundant, see if we can remove
 def annotate_scores_dataframe(
     scores_df: pd.DataFrame, 
     wt_dna_seq: str, 
-    variant_type: str = 'dna'
+    variant_type: str = 'codon'
 ) -> pd.DataFrame:
     """
     Add sequence annotation columns to a scores DataFrame.
@@ -27,8 +28,8 @@ def annotate_scores_dataframe(
         DataFrame with variant sequences and scores.
     wt_dna_seq : str
         Wild-type DNA reference sequence.
-    variant_type : str, default 'dna'
-        Type of variants ('dna' or 'aa').
+    variant_type : str, default 'codon'
+        Type of variants ('codon', 'snv', 'aa').
     
     Returns
     -------
@@ -44,7 +45,7 @@ def annotate_scores_dataframe(
     # Check if aa_seq_diff already exists (from pre-annotated data)
     has_pre_annotated_aa = 'aa_seq_diff' in df.columns
     
-    if variant_type == 'dna':
+    if variant_type == 'codon' or variant_type == 'snv':
         # Add codon differences
         df['codon_diff'] = df['variant_seq'].apply(
             lambda x: compare_codon_lists(wt_dna_seq, x)
@@ -85,8 +86,8 @@ def annotate_scores_dataframe(
     
     return df
 
-
-def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: str = 'dna') -> pd.DataFrame:
+# TODO: isn't this redundant with similar functions
+def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: str = 'aa') -> pd.DataFrame:
     """
     Add sequence difference columns to a DataFrame.
     
@@ -96,8 +97,8 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
         DataFrame with variant sequences.
     wt_dna_seq : str
         Wild-type DNA sequence.
-    variant_type : str, default 'dna'
-        Type of variants ('dna' or 'aa').
+    variant_type : str, default 'aa'
+        Type of variants ('codon', 'snv', 'aa').
         
     Returns
     -------
@@ -106,7 +107,7 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
     """
     df = df.copy()
     
-    if variant_type == 'dna':
+    if variant_type == 'codon' or variant_type == 'snv':
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
             lambda x: compare_to_reference(wt_dna_seq, x)

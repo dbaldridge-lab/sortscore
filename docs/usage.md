@@ -5,7 +5,7 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 ## 1. Prepare Your Experiment Configuration
 - Create your experiment configuration JSON (see `config/example_experiment.json`) and experiment setup CSV.
 - Edit these files to match your experiment's parameters and data file locations. You can place them anywhere; just provide the correct path when running the analysis.
-  - `variant_type` is not a config option; it is auto-detected from your count files.
+  - `variant_type` is not a config option; it is auto-detected from your count files. Current supported mutagenesis schemes are AA, codon, and SNV.
 
 ### Variant Type Auto-Detection (Accepted Nomenclature)
 
@@ -68,10 +68,10 @@ python -m sortscore --config path/to/config.json
 **Current Implementation:**
 ```
 # Score files
-scores/{experiment_name}_dna_scores_{suffix}.csv         # when analysis_type == codon
+scores/{experiment_name}_dna_scores_{suffix}.csv
 scores/{experiment_name}_aa_scores_{suffix}.csv
 # TODO: add SNV functionality and test
-scores/{experiment_name}_dna_scores_snv_{suffix}.csv     # when analysis_type == snv
+scores/{experiment_name}_dna_scores_snv_{suffix}.csv
 
 # Summary statistics
 scores/{experiment_name}_dna_stats_{suffix}.json         # when DNA scores are produced
@@ -261,6 +261,8 @@ plot_heatmap(
 - See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration and file manifest examples.
 
 ## Experiment Configuration JSON Reference
+Note:
+Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
 The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
 # TODO: Update this with latest config updates
@@ -270,7 +272,6 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 | experiment_name       | str     | Yes      | Name/ID of the experiment or submission.                                                    |
 | experiment_setup_file | str     | Yes      | Path to the experiment setup CSV file (see below).                                          |
 | wt_seq                | str     | Yes      | Wild-type reference sequence (DNA or amino acid) for the region analyzed.                                     |
-| analysis_type         | str     | Yes      | Type of analysis workflow: 'aa' (amino acid), 'codon' (codon-level), 'snv' (single nucleotide). **Each run processes one workflow only.** |
 | **Optional Parameters** | | | |
 | bins_required         | int     | No       | Minimum number of bins per replicate a variant must appear in to be scored. Default: 1.                               |
 | reps_required         | int     | No       | Minimum number of replicates a variant must appear in to be scored. Default: 1.                         |
@@ -286,7 +287,7 @@ See also the [experiment setup CSV reference](#experiment-setup-csv-reference) f
 
 ### Automatic Variant Format Detection
 
-The system automatically detects the input variant format from your count files and validates compatibility with your specified `analysis_type`:
+The system automatically detects the input variant format from your count files.
 
 **DNA Formats Detected:**
 - Full DNA sequences: `ATGCGTAAC...`
@@ -299,7 +300,6 @@ The system automatically detects the input variant format from your count files 
 - Three-letter changes: `Met1Val`, `Arg98Cys`, `Pro171Ter`
 - HGVS protein notation: `p.Met1Val`, `p.Arg98Cys`
 
-The system validates that all count files use consistent formatting and that the detected format is compatible with your specified `analysis_type`.
 
 ### Position Numbering Convention
 
@@ -323,38 +323,23 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 // Position 1 → 50, Position 2 → 51, Position 8 → 57
 ```
 
-### Analysis Workflows
+### Common Mutagenesis Libraries
 
-Each analysis run processes **one workflow type only**. The `analysis_type` parameter determines which workflow runs:
-
-#### `analysis_type: "aa"` - Amino Acid Analysis
+#### Amino Acid Analysis
 - **Input**: DNA sequences (aggregates synonymous variants) OR AA sequences (direct processing)
 - **Output**: AA substitution heatmap, AA-level statistics, AA scores file
 - **Use for**: Deep mutational scanning, protein function studies
 
-#### `analysis_type: "codon"` - Codon-Level Analysis  
+#### Codon-Level Analysis  
 - **Input**: DNA sequences (required)
 - **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
 
-#### `analysis_type: "snv"` - Single Nucleotide Variant Analysis
+#### Single Nucleotide Variant Analysis (in development)
 - **Input**: DNA sequences (required)  
 - **Output**: Position-by-nucleotide heatmap, SNV-specific statistics
 - **Use for**: Saturation genome editing (SGE), base editing, nucleotide-level screens
 
-#### Getting Multiple Output Types
-
-To generate both codon and amino acid analysis from the same DNA data, run the analysis twice with different `analysis_type` values:
-
-```bash
-# First run: Generate codon-level analysis
-sortscore --config config_codon.json --suffix codon_analysis
-
-# Second run: Generate amino acid-level analysis  
-sortscore --config config_aa.json --suffix aa_analysis
-```
-
-Where `config_codon.json` has `"analysis_type": "codon"` and `config_aa.json` has `"analysis_type": "aa"`.
 
 ## Experiment Setup CSV Reference
 
@@ -385,11 +370,14 @@ The package supports flexible heatmap generation with customizable axes for diff
 
 ### Controlling Heatmap Axes
 
+# TODO: check if this is still valid after updating config docs
 **X-Axis (Positions)** - Controlled by `position_type`:
 - `"aa"` (default): Amino acid positions using `min_pos` to `max_pos` range
+# TODO: make position offset apply to DNA plots
 - `"dna"`: DNA nucleotide positions (1 to length of `wt_seq`)
 
 **Y-Axis (Variants)** - Controlled by `mutagenesis_variants`:
+# TODO: test that changing this doesn't break the codon heatmap
 - Default: All 20 amino acids + stop codon `["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]`
 - Custom: Any subset or reordering of variants
 
@@ -399,7 +387,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "MyProtein_DMS",
-  "analysis_type": "aa",
   "wt_seq": "MKVLIVAG...",
   "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
 }
@@ -412,7 +399,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "MyGene_GCTA",
-  "analysis_type": "snv", 
   "mutagenesis_variants": ["G", "C", "T", "A"],
   "wt_seq": "ATGCGTAAC..."
 }
@@ -425,7 +411,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "Hydrophobic_Screen",
-  "analysis_type": "aa",
   "wt_seq": "MKVLIVAG...",
   "position_offset": 50,
   "mutagenesis_variants": ["M", "I", "L", "V", "F", "W", "Y", "A"]
@@ -439,7 +424,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 ```json
 {
   "experiment_name": "GC_Content_Study",
-  "analysis_type": "snv",
   "mutagenesis_variants": ["G", "C"],
   "wt_seq": "ATGCGTAAC..."
 }

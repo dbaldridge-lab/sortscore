@@ -87,13 +87,10 @@ def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesi
                 row_labels = [convert_aa_to_three_letter(aa) for aa in default_aa]
             else:
                 row_labels = default_aa
-    elif variant_type == 'dna':
-        if mutagenesis_variants is not None:
-            # For GCTA-style experiments, use custom DNA bases
-            row_labels = mutagenesis_variants
-        else:
-            # Use the new function to generate codon labels
-            row_labels = generate_codon_labels(three_letter_aa)
+    elif variant_type == 'codon':
+        row_labels = generate_codon_labels(three_letter_aa)
+    elif variant_type == 'snv':
+        row_labels = ['A', 'C', 'G', 'T']
     return pd.DataFrame(index=row_labels, columns=column_values)
 
 def make_dms_matrix(
@@ -135,7 +132,7 @@ def make_dms_matrix(
             aa_key = convert_aa_to_three_letter(amino_acid) if three_letter_aa else amino_acid
             if aa_key in matrix.index and index in matrix.columns:
                 matrix.at[aa_key, index] = 'WT'
-    elif variant_type == 'dna':
+    elif variant_type == 'codon':
         # For DNA variant type with AA positions (codon-level)
         codon_enumeration = [((i // 3)+1, wt_seq[i:i+3]) for i in range(0, len(wt_seq), 3)]
         for index, codon in codon_enumeration:

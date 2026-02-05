@@ -65,7 +65,7 @@ def main():
     # Initialize analysis logger with automatic parameter extraction
     analysis_logger = AnalysisLogger(experiment, args, output_suffix, output_dir)
     
-    # Run variant analysis workflow based on analysis_type
+    # Run variant analysis workflow
     try:
         dna_scores_file, aa_scores_file = run_variant_analysis_workflow(
             experiment, output_dir, output_suffix, analysis_logger
