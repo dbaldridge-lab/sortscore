@@ -175,7 +175,7 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
             logging.info("Building AA scores directly from AA input data")
         else:
             logging.info("Building AA scores directly from DNA input data (no pre-existing DNA scores)")
-        
+
         merged_df = experiment.get_merged_counts()
         scores_df = calculate_variant_scores(experiment, merged_df)
         logging.info(f"Calculated AA scores for {len(scores_df)} variants.")

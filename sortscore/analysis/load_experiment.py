@@ -636,7 +636,7 @@ class ExperimentConfig:
             self.min_pos = 1
         if self.max_pos is None:
             # TODO: will this work with variant IDs that are not full sequences? May need to edit ref_seq
-            if (self.variant_type == 'codon' or self.variant_type == 'snv') and self.position_type == 'dna':
+            if self.variant_type in {'codon', 'snv', 'dna'} and self.position_type == 'dna':
                 self.max_pos = len(ref_seq)
             else:
                 aa_len = len(get_reference_sequence(ref_seq, 'aa')) if ref_seq else 0
@@ -668,7 +668,7 @@ class ExperimentConfig:
         if variant_type == 'aa':
             df['aa_seq'] = df['variant_seq']  # AA sequences provided directly
         # TODO: will this work with variant IDs that are not full sequences?
-        elif variant_type == 'codon' or variant_type == 'snv':
+        elif variant_type in {'codon', 'snv', 'dna'}:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
             # DNA annotation
             df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))

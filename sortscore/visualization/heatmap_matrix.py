@@ -89,8 +89,8 @@ def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesi
                 row_labels = default_aa
     elif variant_type == 'codon':
         row_labels = generate_codon_labels(three_letter_aa)
-    elif variant_type == 'snv':
-        row_labels = ['A', 'C', 'G', 'T']
+    elif variant_type in {'snv', 'dna'}:
+        row_labels = mutagenesis_variants if mutagenesis_variants is not None else ['A', 'C', 'G', 'T']
     return pd.DataFrame(index=row_labels, columns=column_values)
 
 def make_dms_matrix(
