@@ -45,7 +45,8 @@ def annotate_scores_dataframe(
     # Check if aa_seq_diff already exists (from pre-annotated data)
     has_pre_annotated_aa = 'aa_seq_diff' in df.columns
     
-    if variant_type == 'codon' or variant_type == 'snv':
+    # Treat 'dna' as a DNA-sequence variant type (full-length DNA sequences)
+    if variant_type in {'codon', 'snv', 'dna'}:
         # Add codon differences
         df['codon_diff'] = df['variant_seq'].apply(
             lambda x: compare_codon_lists(wt_dna_seq, x)
@@ -107,7 +108,7 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
     """
     df = df.copy()
     
-    if variant_type == 'codon' or variant_type == 'snv':
+    if variant_type in {'codon', 'snv', 'dna'}:
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
             lambda x: compare_to_reference(wt_dna_seq, x)
