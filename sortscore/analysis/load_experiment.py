@@ -291,14 +291,16 @@ class ExperimentConfig:
             load_experiment_setup(config.experiment_setup_file)
         except Exception as e:
             raise ValueError(f"Invalid experiment setup CSV '{config.experiment_setup_file}': {e}") from e
-        
-        # Auto-detect variant_type from count files
-        from sortscore.analysis.variant_detection import detect_variant_type_from_experiment
+
+        # Load counts once; variant type detection uses loaded sequences (no extra file reads).
+        config.load_counts(detect_position_range=False)
+
+        from sortscore.analysis.variant_detection import detect_variant_type_from_counts
         try:
-            config.variant_type = detect_variant_type_from_experiment(config.experiment_setup_file)
+            config.variant_type = detect_variant_type_from_counts(config.counts)
             logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
         except Exception as e:
-            raise ValueError(f"Failed to auto-detect variant_type from count files: {e}")
+            raise ValueError(f"Failed to auto-detect variant_type from loaded counts: {e}") from e
 
         # Set default position_type when not provided: SNV analyses default to DNA coordinates
         position_type = data.get('position_type')
@@ -308,13 +310,13 @@ class ExperimentConfig:
             raise ValueError("position_type must be 'aa' or 'dna'")
         else:
             config.position_type = position_type
-        
-        # Load counts to enable position detection
-        config.load_counts()
+
+        # Now that variant_type/position_type are set, detect position range from loaded data.
+        config._detect_position_range()
         
         return config
 
-    def load_counts(self) -> None:
+    def load_counts(self, detect_position_range: bool = True) -> None:
         """
         Load count DataFrames for all replicates and bins as specified in the experiment setup file.
 
@@ -380,6 +382,22 @@ class ExperimentConfig:
             counts.setdefault(rep, {})[bin_] = df
             mfi.setdefault(rep, {})[bin_] = mfi_val
             
+        # Fail fast if nothing usable was loaded (prevents later redundant errors in variant detection).
+        has_any_sequences = False
+        for rep_dict in counts.values():
+            for df in rep_dict.values():
+                if df is None or df.empty or 'variant_seq' not in df.columns:
+                    continue
+                if df['variant_seq'].dropna().astype(str).str.strip().ne('').any():
+                    has_any_sequences = True
+                    break
+            if has_any_sequences:
+                break
+        if not has_any_sequences:
+            raise ValueError(
+                f"Could not read any sequences from count files listed in setup file: {self.experiment_setup_file}"
+            )
+
         self.counts = counts
         self.mfi = mfi
         
@@ -399,7 +417,8 @@ class ExperimentConfig:
             self.cell_prop = cell_prop
         
         # Auto-detect position range from loaded data
-        self._detect_position_range()
+        if detect_position_range:
+            self._detect_position_range()
     
     def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
         """

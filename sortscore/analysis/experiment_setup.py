@@ -79,7 +79,12 @@ def load_experiment_setup(
 def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
     columns = list(df_columns)
 
-    def find_one(candidates: Iterable[str], *, required: bool = True) -> Optional[str]:
+    def find_one(
+        candidates: Iterable[str],
+        *,
+        required: bool = True,
+        exclude_if_contains: Iterable[str] = (),
+    ) -> Optional[str]:
         """
         Find a column name in `columns` that matches any of the provided candidates.
 
@@ -114,6 +119,14 @@ def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
             norm_candidate = str(candidate).strip().lower()
             for norm_col, actuals in normalized_to_actual.items():
                 if norm_candidate in norm_col:
+                    if exclude_if_contains:
+                        excluded = False
+                        for token in exclude_if_contains:
+                            if str(token).strip().lower() in norm_col:
+                                excluded = True
+                                break
+                        if excluded:
+                            continue
                     matches.extend(actuals)
 
         unique_matches = list(dict.fromkeys(matches))
@@ -134,7 +147,13 @@ def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
                     "gfp"])
 
     count_file = find_one(
-        ["path", "file"],
+        [
+            "path",
+            "file",
+            "counts",
+            "tsv",
+            "parquet"
+        ],
         required=False,
     )
 
@@ -144,10 +163,17 @@ def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
             "Accepted column names must contain at least one of: 'path', 'file'."
         )
 
-    read_count = find_one(["read count",
-                           "read_count",
-                           "total reads",
-                           "total_reads"], required=False)
+    read_count = find_one(
+        [
+            "read count",
+            "read_count",
+            "total reads",
+            "total_reads",
+        ],
+        required=False,
+        # Avoid treating file-path columns as numeric read-count columns.
+        exclude_if_contains=("path", "file", "csv", "tsv", "parquet"),
+    )
 
     proportion_of_cells = find_one(
         ["proportion of cells", 
@@ -257,4 +283,3 @@ def _validate_count_files_exist(
         raise FileNotFoundError(
             f"{len(missing)} count file(s) referenced in {experiment_setup_file} do not exist: {preview}{suffix}"
         )
-

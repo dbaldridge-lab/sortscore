@@ -213,7 +213,70 @@ def _classify_single_sequence(seq: str) -> Optional[Literal['dna', 'aa']]:
     return None
 
 # TODO: detect codon and snv variant logic
-# TODO: remove sequence sampling, pass filename to detect_sequence_format
+# TODO: Pass filename to detect_sequence_format
+def detect_variant_type_from_counts(counts) -> str:
+    """
+    Detect variant type by examining already-loaded count DataFrames.
+
+    This is intended to avoid re-reading count files when counts have already
+    been loaded via ExperimentConfig.load_counts().
+
+    Parameters
+    ----------
+    counts : dict
+        Nested dict: counts[rep][bin] = DataFrame with a 'variant_seq' column.
+
+    Returns
+    -------
+    str
+        Detected variant type ('dna' or 'aa').
+
+    Raises
+    ------
+    ValueError
+        If no sequences are found, mixed formats are detected, or sequences are unrecognized.
+    """
+    if not counts:
+        raise ValueError("No counts provided for variant type detection")
+
+    dna_count = 0
+    aa_count = 0
+    unknown_examples: List[str] = []
+
+    for rep_dict in counts.values():
+        for df in rep_dict.values():
+            if df is None or df.empty or 'variant_seq' not in df.columns:
+                continue
+            for seq in df['variant_seq'].dropna().astype(str):
+                seq = seq.strip()
+                if not seq:
+                    continue
+                format_type = _classify_single_sequence(seq)
+                if format_type == 'dna':
+                    dna_count += 1
+                elif format_type == 'aa':
+                    aa_count += 1
+                else:
+                    if len(unknown_examples) < 5:
+                        unknown_examples.append(seq)
+                if dna_count > 0 and aa_count > 0:
+                    raise ValueError(
+                        "Mixed sequence formats detected (both DNA and AA present). "
+                        "Ensure all sequences use a consistent format."
+                    )
+
+    if dna_count == 0 and aa_count == 0:
+        raise ValueError("No valid sequences found in loaded counts for variant type detection")
+
+    if unknown_examples:
+        raise ValueError(
+            "Unrecognized sequence format(s) detected in count files. "
+            f"Examples: {unknown_examples}"
+        )
+
+    return 'dna' if dna_count > 0 else 'aa'
+
+
 def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     """
     Detect variant type by examining count files from experiment setup. 
@@ -242,26 +305,27 @@ def detect_variant_type_from_experiment(experiment_setup_file: str) -> str:
     
     for file_path in setup_df[setup_cols.count_file].dropna():
         try:
-            # Handle paths relative to setup file
             file_path = setup_dir / Path(str(file_path).strip()).expanduser()
             file_path = file_path.resolve()
             
-            # Read count file
-            count_df = pd.read_csv(file_path, sep=None, engine='python')  # Auto-detect separator
+            # Load read counts from file
+            count_df = pd.read_csv(file_path, sep=None, engine='python')
             
-            # Get sequence column (assume first column is sequences)
+            # Get sequence column (assumes first column is sequences)
             seq_col = count_df.columns[0]
             sequences = count_df[seq_col].dropna().astype(str).tolist()
             
-            # Take sample from this file
-            all_sequences.extend(sequences[:100])  # 100 sequences per file
+            # Take sample from the file
+            all_sequences.extend(sequences[:100])
             files_sampled += 1
             
         except Exception as e:
-            continue  # Skip problematic files
+            raise RuntimeError(f"Failed to process count file '{file_path}': {e}") from e
     
     if not all_sequences:
-        raise ValueError("Could not read any sequences from count files")
+        raise ValueError(
+            f"Could not read any sequences from count files listed in setup file: {experiment_setup_file}"
+        )
 
     detected_format = detect_sequence_format(all_sequences)
 
