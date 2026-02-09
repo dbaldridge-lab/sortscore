@@ -18,10 +18,19 @@ Bash is used to run the default scoring pipeline. This has not been tested with 
 
 ## Install Options TODO - test release on PyPI. Use option 2 for now.
 ### Option 1: Install from PyPI (Recommended)
+
 The easiest way to install sortscore is directly from PyPI:
 ```bash
 pip install sortscore
 ```
+
+**After installation, you can run the SortScore pipeline directly from your shell using the `sortscore` command:**
+
+```bash
+sortscore -n EXPERIMENT -e path/to/experiment_setup.csv -c path/to/config.json
+```
+
+You do **not** need to use `python -m sortscore` or reference Python directly. The `sortscore` command will be available in the environment you installed it in via pip.
 
 ### Option 2: Install from Source
 Clone the repository and install dependencies:

@@ -33,17 +33,32 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 
 ```bash
 # After installation (recommended)
-sortscore --config path/to/config.json
+sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 
 # Without installation (from project root)
-python -m sortscore --config path/to/config.json
+python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
 ### CLI Arguments Reference
 
 | Argument | Short | Type | Description | Default |
 |----------|-------|------|-------------|---------|
-| `--config` | `-c` | str | Path to experiment config JSON file **(required)** | - |
+| `--experiment-name` | `-n` | str | Experiment name used for output file naming **(required unless `--batch`)** | - |
+| `--experiment-setup-file` | `-e` | str | Path to experiment setup CSV **(required unless `--batch`)** | - |
+| `--config` | `-c` | str | Optional experiment config JSON file (used as fallback defaults; CLI takes precedence) | - |
+| `--wt-seq` | `-w` | str | Wild-type sequence (required unless provided in `--config`) | - |
+| `--output-dir` | `-o` | str | Output directory | `.` |
+| `--bins-required` | - | int | Minimum number of bins required | from config |
+| `--reps-required` | - | int | Minimum number of replicates required | from config |
+| `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | from config |
+| `--minread-threshold` | - | int | Minimum read threshold | from config |
+| `--max-cv` | - | float | Maximum coefficient of variation allowed | from config |
+| `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | from config |
+| `--position-offset` | - | int | Offset for position numbering | from config |
+| `--biophysical-prop` / `--no-biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | from config |
+| `--position-type` | - | str | Position axis for plots: `aa` or `dna` | auto |
+| `--min-pos` | - | int | Minimum position (1-based) | from config / auto |
+| `--max-pos` | - | int | Maximum position (1-based) | from config / auto |
 | `--suffix` | `-s` | str | Custom suffix for all output files | Current date (YYYYMMDD) |
 | `--batch` | `-b` | flag | Enable batch processing mode | False |
 | `--pos-color` | `-p` | flag | Export positional averages with colors for protein structure visualization | False |
@@ -51,13 +66,12 @@ python -m sortscore --config path/to/config.json
 
 ### Parameter Organization
 
-**Experiment Configuration (JSON file):**
-- Core parameters that define the experiments
-- Examples: `experiment_name`, `wt_seq`, `avg_method`, `minread_threshold`, `bins_required`
+**CLI (highest precedence):**
+- Required: `-n/--experiment-name`, `-e/--experiment-setup-file`
+- Optional: pass any analysis parameters to override the config file.
 
-**Runtime Control (CLI arguments):**
-- Parameters that control how analysis runs and output formatting
-- Examples: `--suffix`, `--pos-color`, `--batch`
+**Optional JSON config (fallback defaults):**
+- Provide `-c/--config` to set defaults like `wt_seq`, thresholds, and plotting options.
 
 **Export Options:**
 - `--pos-color` / `-p`: Generates `{experiment_name}_positional_averages.csv` with position, average score, and hex color columns for protein structure visualization
@@ -69,7 +83,7 @@ python -m sortscore --config path/to/config.json
 # Score files
 scores/{experiment_name}_dna_scores_{suffix}.csv
 scores/{experiment_name}_aa_scores_{suffix}.csv
-# TODO: add SNV functionality and test
+# TODO: (later) add SNV functionality and test
 scores/{experiment_name}_dna_scores_snv_{suffix}.csv
 
 # Summary statistics
@@ -90,16 +104,16 @@ figures/{experiment_name}_positional_averages_{suffix}.csv   # when using --pos-
 
 ```bash
 # Basic analysis
-sortscore -c my_experiment.json
+sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json
 
 # With custom output suffix
-sortscore -c my_experiment.json -s "final_analysis" 
+sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -s "final_analysis"
 
 # Export positional averages for protein structure visualization
-sortscore -c my_experiment.json -p
+sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
 
 # Generate SVG figures
-sortscore -c my_experiment.json --fig-format svg
+sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
 
 # Batch processing multiple experiments
 sortscore -b -c batch_config.json

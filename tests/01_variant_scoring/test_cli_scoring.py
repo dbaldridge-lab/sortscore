@@ -5,8 +5,6 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from sortscore.analysis.variant_detection import detect_variant_type_from_experiment
-
 
 def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_outputs):
     """Test that sortscore CLI for scoring pipeline runs and produces expected outputs."""
@@ -25,7 +23,15 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
         env["XDG_CACHE_HOME"] = tmpdir
         env["HOME"] = tmpdir
         result = subprocess.run(
-            [str(sortscore_exe), "-c", config_path],
+            [
+                str(sortscore_exe),
+                "-n",
+                config_dict["experiment_name"],
+                "-e",
+                config_dict["experiment_setup_file"],
+                "-c",
+                config_path,
+            ],
             capture_output=True,
             text=True,
             env=env,
@@ -46,15 +52,9 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
     }
 
     # Add expected outputs based on variant type
-    variant_type = config_dict.get("variant_type") or detect_variant_type_from_experiment(
-        config_dict["experiment_setup_file"]
-    )
     expected["aa_scores_csv"] = any(name.endswith(".csv") and "_aa_scores_" in name for name in filenames)
     expected["aa_heatmap"] = any("_aa_heatmap_" in name for name in filenames)
-
-    if variant_type == "codon":
-        expected["codon_scores_csv"] = any(name.endswith(".csv") and "_codon_scores" in name for name in filenames)
-        expected["codon_heatmap"] = any("_codon_heatmap_" in name for name in filenames)
+    expected["dna_scores_csv"] = any(name.endswith(".csv") and "_dna_scores_" in name for name in filenames)
 
     missing = [k for k, v in expected.items() if not v]
     if missing:
