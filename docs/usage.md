@@ -43,23 +43,23 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 
 | Argument | Short | Type | Description | Default |
 |----------|-------|------|-------------|---------|
-| `--experiment-name` | `-n` | str | Experiment name used for output file naming **(required unless `--batch`)** | - |
-| `--experiment-setup-file` | `-e` | str | Path to experiment setup CSV **(required unless `--batch`)** | - |
+| `--experiment-name` | `-n` | str | Experiment name used for output file naming **(required)** | - |
+| `--experiment-setup-file` | `-e` | str | Path to experiment setup CSV **(required)** | - |
 | `--config` | `-c` | str | Optional experiment config JSON file (used as fallback defaults; CLI takes precedence) | - |
 | `--wt-seq` | `-w` | str | Wild-type sequence (required unless provided in `--config`) | - |
 | `--output-dir` | `-o` | str | Output directory | `.` |
-| `--bins-required` | - | int | Minimum number of bins required | from config |
-| `--reps-required` | - | int | Minimum number of replicates required | from config |
-| `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | from config |
-| `--minread-threshold` | - | int | Minimum read threshold | from config |
-| `--max-cv` | - | float | Maximum coefficient of variation allowed | from config |
-| `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | from config |
-| `--position-offset` | - | int | Offset for position numbering | from config |
-| `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | from config |
-| `--position-type` | - | str | Position axis for plots: `aa` or `dna` | auto |
-| `--min-pos` | - | int | Minimum position (1-based) | from config / auto |
-| `--max-pos` | - | int | Maximum position (1-based) | from config / auto |
-| `--suffix` | `-s` | str | Custom suffix for all output files | Current date (YYYYMMDD) |
+| `--bins-required` | - | int | Minimum number of bins required | 1 |
+| `--reps-required` | - | int | Minimum number of replicates required | 1 |
+| `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | rep-weighted |
+| `--minread-threshold` | - | int | Minimum read threshold | 0 |
+| `--max-cv` | - | float | Maximum coefficient of variation allowed | None |
+| `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | W,F,Y,P,M,I,L,V,A,G,C,S,T,Q,N,D,E,H,R,K,* |
+| `--position-offset` | - | int | Offset for position numbering | 0 |
+| `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | False |
+| `--position-type` | - | str | Position axis for plots: `aa` or `dna` | aa |
+| `--min-pos` | - | int | Minimum position (1-based) | 1 |
+| `--max-pos` | - | int | Maximum position (1-based) | None |
+| `--suffix` | `-s` | str | Custom suffix for all output files | YYYYMMDD (current date) |
 | `--batch` | `-b` | flag | Enable batch processing mode | False |
 | `--pos-color` | `-p` | flag | Export positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |

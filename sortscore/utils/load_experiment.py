@@ -204,7 +204,6 @@ class ExperimentConfig:
     avg_method: str = 'rep-weighted'
     max_cv: Optional[float] = None
     minread_threshold: int = 0
-    aa_pre_annotated: bool = False
     mutagenesis_variants: Optional[list] = None
     position_offset: int = 0  # Offset for position numbering (e.g., if data positions start from 1 but gene positions start from 51)
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
