@@ -71,9 +71,9 @@ def create_analysis_parser() -> argparse.ArgumentParser:
     parser.add_argument("--position-offset", type=int, required=False, help="Offset for position numbering.")
     parser.add_argument(
         "--biophysical-prop",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Show biophysical properties panel in heatmaps (tri-state; overrides config if provided).",
+        action="store_true",
+        default=False,
+        help="Show biophysical properties panel in heatmaps.",
     )
     parser.add_argument(
         "--position-type",

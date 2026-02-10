@@ -55,7 +55,7 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 | `--max-cv` | - | float | Maximum coefficient of variation allowed | from config |
 | `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | from config |
 | `--position-offset` | - | int | Offset for position numbering | from config |
-| `--biophysical-prop` / `--no-biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | from config |
+| `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | from config |
 | `--position-type` | - | str | Position axis for plots: `aa` or `dna` | auto |
 | `--min-pos` | - | int | Minimum position (1-based) | from config / auto |
 | `--max-pos` | - | int | Maximum position (1-based) | from config / auto |
