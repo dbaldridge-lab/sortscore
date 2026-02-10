@@ -9,7 +9,7 @@ import os
 import logging
 import pandas as pd
 from typing import Dict, Any, Optional
-from sortscore.analysis.data_processing import aggregate_synonymous_variants
+from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 
 def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -65,18 +65,7 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
         # WT stats from DNA level
         wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
         if len(wt_subset) > 0:
-            if hasattr(experiment, 'barcoded') and experiment.barcoded:
-                # For barcoded experiments, include avg, min, max
-                mean_val = wt_subset[score_col].mean()
-                min_val = wt_subset[score_col].min()
-                max_val = wt_subset[score_col].max()
-                stats['wt_dna_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-                stats['wt_dna_min'] = round(float(min_val)) if pd.notna(min_val) else None
-                stats['wt_dna_max'] = round(float(max_val)) if pd.notna(max_val) else None
-            else:
-                # For non-barcoded experiments, include only avg
-                mean_val = wt_subset[score_col].mean()
-                stats['wt_dna'] = round(float(mean_val)) if pd.notna(mean_val) else None
+            stats['wt_dna'] = round(float(mean_val)) if pd.notna(mean_val) else None
         
         # Synonymous (WT) stats from DNA level
         syn_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']

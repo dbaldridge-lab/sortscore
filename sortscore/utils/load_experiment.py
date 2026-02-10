@@ -34,8 +34,8 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 
-from sortscore.sequence_parsing import get_reference_sequence
-from sortscore.analysis.experiment_setup import load_experiment_setup
+from sortscore.utils.sequence_parsing import get_reference_sequence
+from sortscore.utils.experiment_setup import load_experiment_setup
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,6 @@ class ExperimentConfig:
     avg_method: str = 'rep-weighted'
     max_cv: Optional[float] = None
     minread_threshold: int = 0
-    barcoded: bool = False
     aa_pre_annotated: bool = False
     mutagenesis_variants: Optional[list] = None
     position_offset: int = 0  # Offset for position numbering (e.g., if data positions start from 1 but gene positions start from 51)
@@ -244,40 +243,64 @@ class ExperimentConfig:
         config : ExperimentConfig
             Loaded experiment configuration.
         """
-        with open(json_path, 'r') as f:
+        json_path_obj = Path(json_path).expanduser().resolve()
+        with open(json_path_obj, 'r') as f:
             data = json.load(f)
-        # Build kwargs only for fields that exist in JSON
-        args = {}
-        config_file_dir = Path(json_path).expanduser().resolve().parent
+        return ExperimentConfig.from_dict(data, config_file_dir=json_path_obj.parent)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any], config_file_dir: Optional[Path] = None) -> 'ExperimentConfig':
+        """
+        Load experiment configuration from an in-memory mapping.
+
+        Implements CLI-based configuration (merged from CLI args + optional JSON config).
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Mapping of configuration keys to values (e.g. parsed JSON).
+        config_file_dir : Optional[pathlib.Path]
+            Base directory for resolving relative paths found in `data`.
+            If None, relative paths are resolved from the current working directory.
+        """
+        # Build kwargs only for fields that exist in data
+        args: Dict[str, Any] = {}
+        base_dir = config_file_dir or Path.cwd()
 
         # Required fields
-        # TODO: make all fields optional with defaults or command line overrides
-        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq']:
-            if field in data:
-                value = data[field]
-                if field == 'experiment_setup_file':
-                    value = config_file_dir / Path(value).expanduser().resolve()
-                args[field] = value
-        
+        required_fields = ['experiment_name', 'experiment_setup_file', 'wt_seq']
+        missing_required = [field for field in required_fields if field not in data or data[field] in (None, "")]
+        if missing_required:
+            raise ValueError(
+                "Missing required configuration value(s): "
+                + ", ".join(missing_required)
+                + ". Provide them via CLI arguments or an optional JSON config (-c)."
+            )
+
+        for field in required_fields:
+            value = data[field]
+            if field == 'experiment_setup_file':
+                value = str((base_dir / Path(str(value)).expanduser()).resolve())
+            args[field] = value
+
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
         optional_fields = [
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
-            'minread_threshold', 'barcoded', 'max_cv',
+            'minread_threshold','max_cv',
             'mutagenesis_variants', 'position_offset', 'biophysical_prop',
             'position_type', 'min_pos', 'max_pos'
         ]
 
-        for field in optional_fields:
-            if field in data:
-                value = data[field]
+        for field, value in data.items():
+            if field in optional_fields:
                 if field == 'output_dir' and value is not None:
-                    value = config_file_dir / Path(value).expanduser().resolve()
+                    value = str((base_dir / Path(str(value)).expanduser()).resolve())
                 args[field] = value
         
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
-                       'minread_threshold', 'barcoded', 'max_cv', 'mutagenesis_variants', 
+                       'minread_threshold', 'max_cv', 'mutagenesis_variants', 
                        'position_offset', 'biophysical_prop', 'position_type'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
@@ -295,7 +318,7 @@ class ExperimentConfig:
         # Load counts once; variant type detection uses loaded sequences (no extra file reads).
         config.load_counts(detect_position_range=False)
 
-        from sortscore.analysis.variant_detection import detect_variant_type_from_counts
+        from sortscore.utils.variant_detection import detect_variant_type_from_counts
         try:
             config.variant_type = detect_variant_type_from_counts(config.counts)
             logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
@@ -585,7 +608,7 @@ class ExperimentConfig:
         This creates an aa_seq_diff column in the format 'ref.position.alt' for differences
         from the wild-type sequence, and uses the existing annotation function to determine annotation types.
         """
-        from sortscore.sequence_parsing import translate_dna
+        from sortscore.utils.sequence_parsing import translate_dna
         
         # Get the wild-type AA sequence for annotation
         wt_aa_seq = translate_dna(self.wt_seq)
@@ -681,7 +704,7 @@ class ExperimentConfig:
         variant_type : str
             'aa' for amino acid variants, 'codon' for multiple nucleotide changes in single frame, 'snv' for single nucleotide variants.
         """
-        from sortscore.sequence_parsing import compare_to_reference, translate_dna
+        from sortscore.utils.sequence_parsing import compare_to_reference, translate_dna
         
         # AA annotation
         if variant_type == 'aa':

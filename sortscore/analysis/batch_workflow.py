@@ -9,7 +9,7 @@ import sys
 from typing import Optional
 from sortscore.analysis.batch_config import BatchConfig
 from sortscore.analysis.batch_normalization import run_batch_analysis, save_batch_results, generate_batch_visualizations
-from sortscore.analysis.utils import cleanup_individual_experiment_files
+from sortscore.utils.file_utils import cleanup_individual_experiment_files
 
 
 def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:

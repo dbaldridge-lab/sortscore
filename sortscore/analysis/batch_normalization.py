@@ -21,7 +21,7 @@ import json
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
-from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.annotation import annotate_scores_dataframe
 
@@ -690,7 +690,7 @@ def generate_batch_visualizations(
     """
     from sortscore.analysis.batch_config import BatchConfig
     from sortscore.visualization.heatmaps import plot_tiled_heatmap
-    from sortscore.analysis.utils import ensure_output_subdirs
+    from sortscore.utils.file_utils import ensure_output_subdirs
     
     # Ensure figures directory exists
     ensure_output_subdirs(output_dir)
@@ -758,7 +758,7 @@ def save_batch_results(
     suffix : Optional[str]
         Optional suffix for output files
     """
-    from sortscore.analysis.utils import ensure_output_subdirs
+    from sortscore.utils.file_utils import ensure_output_subdirs
     
     # Ensure output directories exist
     ensure_output_subdirs(output_dir)

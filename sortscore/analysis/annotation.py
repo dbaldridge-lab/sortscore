@@ -11,7 +11,7 @@ Examples
 """
 import pandas as pd
 from typing import Optional
-from sortscore.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
+from sortscore.utils.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
 
 # TODO: redundant, see if we can remove
 def annotate_scores_dataframe(

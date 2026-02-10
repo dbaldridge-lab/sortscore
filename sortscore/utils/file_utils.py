@@ -101,7 +101,7 @@ def cleanup_individual_experiment_files(experiment_configs: List[str]) -> None:
     >>> config_files = ['exp1/config.json', 'exp2/config.json'] 
     >>> cleanup_individual_experiment_files(config_files)
     """
-    from sortscore.analysis.load_experiment import ExperimentConfig
+    from sortscore.utils.load_experiment import ExperimentConfig
     
     for config_path in experiment_configs:
         try:

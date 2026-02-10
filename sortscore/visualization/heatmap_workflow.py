@@ -13,8 +13,8 @@ from typing import Optional, Tuple, List
 
 import pandas as pd
 
-from sortscore.analysis.data_processing import aggregate_aa_data
-from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.analysis.variant_aggregation import aggregate_aa_data
+from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.visualization.heatmaps import plot_heatmap
 
 
@@ -31,7 +31,7 @@ def _build_aa_heatmap_config(experiment: ExperimentConfig) -> SimpleNamespace:
     # AA heatmaps always use AA coordinates and an AA wild-type sequence.
     # The plotting code expects an "experiment-like" object with the same
     # attributes as ExperimentConfig (including num_positions).
-    from sortscore.sequence_parsing import get_reference_sequence
+    from sortscore.utils.sequence_parsing import get_reference_sequence
 
     wt_aa_seq = get_reference_sequence(experiment.wt_seq, "aa")
     return SimpleNamespace(

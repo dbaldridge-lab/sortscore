@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from sortscore.analysis.experiment_setup import load_experiment_setup
+from sortscore.utils.experiment_setup import load_experiment_setup
 
 
 def test_load_experiment_setup_accepts_path_column(tmp_path):

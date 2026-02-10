@@ -10,7 +10,7 @@ import pandas as pd
 from typing import Optional, Tuple
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.annotation import annotate_scores_dataframe
-from sortscore.analysis.data_processing import aggregate_synonymous_variants
+from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 from sortscore.analysis.statistics import calculate_replicate_statistics, round_score_columns, get_replicate_score_columns
 from sortscore.analysis.summary_stats import calculate_summary_stats, save_summary_stats
 from sortscore.analysis.aa_scores import process_and_save_aa_scores

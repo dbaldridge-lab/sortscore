@@ -15,7 +15,7 @@ import sys
 import os
 from typing import List, Optional
 
-from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.analysis.batch_config import BatchConfig
 from sortscore.analysis.batch_normalization import run_batch_analysis, save_batch_results, generate_batch_visualizations
 

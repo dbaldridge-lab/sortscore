@@ -20,9 +20,9 @@ import seaborn as sns
 from typing import Optional, List
 from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
 from sortscore.visualization.plots import generate_position_avg_colors
-from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.analysis.batch_config import BatchConfig
-from sortscore.sequence_parsing import convert_aa_to_three_letter
+from sortscore.utils.sequence_parsing import convert_aa_to_three_letter
 
 
 def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_heatmap=False):

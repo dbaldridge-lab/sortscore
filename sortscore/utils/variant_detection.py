@@ -12,7 +12,7 @@ import re
 from typing import List, Tuple, Literal, Optional
 from pathlib import Path
 
-from sortscore.analysis.experiment_setup import load_experiment_setup
+from sortscore.utils.experiment_setup import load_experiment_setup
 
 
 def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa']:

@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import re
 from typing import List, Optional
-from sortscore.sequence_parsing import translate_dna, convert_aa_to_three_letter
+from sortscore.utils.sequence_parsing import translate_dna, convert_aa_to_three_letter
 
 def extract_position(sequence_diff: str):
     """Extract variant and position from standardized sequence difference format 'ref.position.alt'."""

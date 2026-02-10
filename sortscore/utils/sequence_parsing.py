@@ -188,7 +188,7 @@ def get_reference_sequence(wt_seq: str, target_format: str) -> str:
     >>> get_reference_sequence('MKVL', 'aa')
     'MKVL'
     """
-    from sortscore.analysis.variant_detection import detect_sequence_format
+    from sortscore.utils.variant_detection import detect_sequence_format
     
     wt_seq_format = detect_sequence_format([wt_seq])
     
