@@ -42,8 +42,7 @@ def _build_aa_heatmap_config(experiment: ExperimentConfig) -> SimpleNamespace:
         max_pos=experiment.max_pos,
         wt_seq=wt_aa_seq,
         variant_type='aa',
-        mutagenesis_variants=experiment.mutagenesis_variants,
-        position_type='aa',
+        mutagenesis_variants=experiment.mutagenesis_variants
     )
 
 

@@ -191,7 +191,6 @@ class ExperimentConfig:
     mfi: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
-    position_type: str = 'aa'  # Controls heatmap x-axis ('aa' or 'dna')
 
     # Auto-detected properties (set during loading)
     variant_type: Optional[str] = None  # Auto-detected: 'aa', 'codon', 'snv'"
@@ -287,7 +286,7 @@ class ExperimentConfig:
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold','max_cv',
             'mutagenesis_variants', 'position_offset', 'biophysical_prop',
-            'position_type', 'min_pos', 'max_pos'
+            'min_pos', 'max_pos'
         ]
 
         for field, value in data.items():
@@ -300,7 +299,7 @@ class ExperimentConfig:
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
                        'minread_threshold', 'max_cv', 'mutagenesis_variants', 
-                       'position_offset', 'biophysical_prop', 'position_type'}
+                       'position_offset', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -324,16 +323,7 @@ class ExperimentConfig:
         except Exception as e:
             raise ValueError(f"Failed to auto-detect variant_type from loaded counts: {e}") from e
 
-        # Set default position_type when not provided: SNV analyses default to DNA coordinates
-        position_type = data.get('position_type')
-        if position_type is None:
-            config.position_type = 'dna' if config.variant_type == 'snv' else 'aa'
-        elif position_type not in {'aa', 'dna'}:
-            raise ValueError("position_type must be 'aa' or 'dna'")
-        else:
-            config.position_type = position_type
-
-        # Now that variant_type/position_type are set, detect position range from loaded data.
+        # Detect position range from loaded data.
         config._detect_position_range()
         
         return config
@@ -677,7 +667,7 @@ class ExperimentConfig:
             self.min_pos = 1
         if self.max_pos is None:
             # TODO: will this work with variant IDs that are not full sequences? May need to edit ref_seq
-            if self.variant_type in {'codon', 'snv', 'dna'} and self.position_type == 'dna':
+            if self.variant_type in {'snv', 'dna'}:
                 self.max_pos = len(ref_seq)
             else:
                 aa_len = len(get_reference_sequence(ref_seq, 'aa')) if ref_seq else 0

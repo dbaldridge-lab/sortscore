@@ -65,14 +65,8 @@ def generate_codon_labels(three_letter_aa: bool = False) -> List[str]:
     else:
         return [f'{aa}({codon})' for aa, codon in codon_data]
 
-def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesis_variants: list = None, position_type: str = 'aa', three_letter_aa: bool = False) -> pd.DataFrame:
-    # Column values depend on position_type
-    if position_type == 'dna':
-        # For DNA positions, use 1-based indexing for each nucleotide position
-        column_values = list(range(1, num_positions + 1))
-    else:
-        # For AA positions, use 1-based indexing for amino acid positions  
-        column_values = list(range(1, num_positions + 1))
+def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesis_variants: list = None, three_letter_aa: bool = False) -> pd.DataFrame:
+    column_values = list(range(1, num_positions + 1))
     
     # Row labels depend on variant_type and mutagenesis_variants
     if variant_type == 'aa':
@@ -100,24 +94,23 @@ def make_dms_matrix(
     wt_seq: str,
     variant_type: str = 'aa',
     mutagenesis_variants: list = None,
-    position_type: str = 'aa',
     three_letter_aa: bool = False
 ) -> pd.DataFrame:
-    data = data.dropna(subset=[score_col])
-    matrix = dms_matrix_template(num_positions, variant_type, mutagenesis_variants, position_type, three_letter_aa)
     
-    # Choose the appropriate difference column based on position_type
-    if position_type == 'dna':
+    data = data.dropna(subset=[score_col])
+    matrix = dms_matrix_template(num_positions, variant_type, mutagenesis_variants, three_letter_aa)
+    
+    if variant_type == 'dna':
         diff_col = 'dna_seq_diff'
     else:
-        diff_col = 'aa_seq_diff' if variant_type == 'aa' else 'codon_diff'
+        diff_col = 'aa_seq_diff'
     
     for _, row in data.iterrows():
         char, col = extract_position(row[diff_col])
         if char in matrix.index and col in matrix.columns:
             matrix.at[char, col] = row[score_col]
-    # Mark WT positions based on position_type and variant_type
-    if position_type == 'dna':
+    # Mark WT positions
+    if variant_type == 'dna':
         # For DNA positions, mark WT bases at each nucleotide position
         for index, base in enumerate(wt_seq, start=1):
             if base in matrix.index and index in matrix.columns:

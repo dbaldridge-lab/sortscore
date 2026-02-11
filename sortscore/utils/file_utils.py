@@ -72,6 +72,8 @@ def ensure_output_subdirs(output_dir: str, subdirs: list[str] = ["scores", "figu
         If directory creation fails due to permissions or other errors.
     """
     try:
+        # Ensure the base output directory exists
+        os.makedirs(output_dir, exist_ok=True)
         for subdir in subdirs:
             path = os.path.join(output_dir, subdir)
             os.makedirs(path, exist_ok=True)

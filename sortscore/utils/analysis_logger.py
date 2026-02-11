@@ -119,6 +119,7 @@ class AnalysisLogger:
         self.log_file = os.path.join(output_dir, f"{experiment.experiment_name}_analysis_{output_suffix}.log.json")
         
         # Extract and set request parameters automatically
+        # TODO: resolve to experiment/execution parameters instead of CLI args
         cli_args = {
             'config': args.config,
             'suffix': args.suffix,
@@ -136,8 +137,7 @@ class AnalysisLogger:
             'minread_threshold': experiment.minread_threshold,
             'max_cv': experiment.max_cv,
             'min_pos': experiment.min_pos,
-            'max_pos': experiment.max_pos,
-            'position_type': experiment.position_type
+            'max_pos': experiment.max_pos
         }
         
         self.request = AnalysisRequest(

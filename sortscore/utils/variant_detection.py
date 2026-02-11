@@ -216,10 +216,7 @@ def _classify_single_sequence(seq: str) -> Optional[Literal['dna', 'aa']]:
 # TODO: Pass filename to detect_sequence_format
 def detect_variant_type_from_counts(counts) -> str:
     """
-    Detect variant type by examining already-loaded count DataFrames.
-
-    This is intended to avoid re-reading count files when counts have already
-    been loaded via ExperimentConfig.load_counts().
+    Detect variant type by examining loaded count DataFrames.
 
     Parameters
     ----------

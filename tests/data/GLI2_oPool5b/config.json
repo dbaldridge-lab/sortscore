@@ -1,5 +1,4 @@
 {
-  "experiment_name": "oPool5",
   "bins_required": 3,
   "reps_required": 1,
   "avg_method": "rep-weighted", 
@@ -8,6 +7,5 @@
   "min_pos": 551,
   "max_pos": 583,
   "output_dir": "/Users/c.chitwood/code/sortscore/tests/scratch/_test_output",
-  "experiment_setup_file": "/Users/c.chitwood/code/sortscore/tests/data/GLI2_oPool5b/experiment_setup.csv",
   "biophysical_prop": true
 }

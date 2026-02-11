@@ -82,7 +82,7 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 # Score files
 scores/{experiment_name}_dna_scores_{suffix}.csv
 scores/{experiment_name}_aa_scores_{suffix}.csv
-# TODO: (later) add SNV functionality and test
+# TODO: #31 add SNV functionality and test
 scores/{experiment_name}_dna_scores_snv_{suffix}.csv
 
 # Summary statistics

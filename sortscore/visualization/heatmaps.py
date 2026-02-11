@@ -115,7 +115,7 @@ def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_he
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-
+#TODO: troubleshoot wt_score not being updates for AA heatmaps
 def plot_heatmap(
     data: pd.DataFrame,
     score_col: str,
@@ -202,8 +202,7 @@ def plot_heatmap(
         experiment.num_positions,
         experiment.wt_seq,
         experiment.variant_type,
-        experiment.mutagenesis_variants,
-        experiment.position_type
+        experiment.mutagenesis_variants
     )
     dropout_num, dropout_percent = get_dropout(dms_matrix, experiment.mutagenesis_variants)
     heatmap_df = fill_wt(dms_matrix, wt_score)
@@ -379,7 +378,7 @@ def plot_heatmap(
         cbar = plt.colorbar(sm, cax=cax)
 
     # Configure axes labels and ticks
-    if experiment.position_type == 'dna':
+    if experiment.variant_type == 'dna':
         x_labels = [str(i) for i in range(1, experiment.num_positions + 1)]
     else:
         x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
@@ -411,8 +410,8 @@ def plot_heatmap(
     ax1.set_xticks([])
     ax1.set_yticks([])
     
-    # X-axis label depends on position_type
-    if experiment.position_type == 'dna':
+    #TODO: instead, have DNA and AA heatmap mode options
+    if experiment.variant_type == 'dna':
         ax2.set_xlabel('DNA Position', fontsize=28)
     else:
         ax2.set_xlabel('Residue Sequence Number', fontsize=28)
@@ -632,17 +631,6 @@ def plot_tiled_heatmap(
     ax_heatmap.set_xticklabels(position_labels, rotation=45, ha='right')
     ax_heatmap.set_yticks(range(len(mutagenesis_variants)))
     ax_heatmap.set_yticklabels(mutagenesis_variants)
-    
-    # Add experiment boundaries as vertical lines if multiple experiments
-    if len(experiments) > 1 and batch_config.allow_position_breaks:
-        for i, batch_name in enumerate(position_mapping.keys()):
-            if i > 0:  # Don't add line before first experiment
-                exp_mapping = position_mapping[batch_name]
-                # Find the boundary position in the plot
-                boundary_pos = exp_mapping['min_pos']
-                if boundary_pos in position_labels:
-                    boundary_idx = position_labels.index(boundary_pos) - 0.5
-                    ax_heatmap.axvline(x=boundary_idx, color='white', linewidth=2)
     
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax_heatmap, shrink=0.8)
