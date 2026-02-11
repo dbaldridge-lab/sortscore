@@ -72,13 +72,16 @@ def main():
     if args.max_cv is not None:
         merged["max_cv"] = args.max_cv
     if args.mutagenesis_variants is not None:
-        merged["mutagenesis_variants"] = [v.strip() for v in args.mutagenesis_variants.split(",") if v.strip()]
+        if isinstance(args.mutagenesis_variants, str):
+            merged["mutagenesis_variants"] = [v.strip() for v in args.mutagenesis_variants.split(",") if v.strip()]
+        elif isinstance(args.mutagenesis_variants, list):
+            merged["mutagenesis_variants"] = args.mutagenesis_variants
+        else:
+            merged["mutagenesis_variants"] = list(args.mutagenesis_variants)
     if args.position_offset is not None:
         merged["position_offset"] = args.position_offset
     if args.biophysical_prop is not None:
         merged["biophysical_prop"] = bool(args.biophysical_prop)
-    if args.position_type is not None:
-        merged["position_type"] = args.position_type
     if args.min_pos is not None:
         merged["min_pos"] = args.min_pos
     if args.max_pos is not None:
@@ -92,7 +95,7 @@ def main():
         sys.exit(1)
 
     output_dir = experiment.output_dir or '.'
-    # Ensure output subdirectories exist
+    # Ensure output directory and subdirectories exist
     ensure_output_subdirs(output_dir)
 
     logging.info(f"Loaded counts for {len(experiment.counts)} replicates.")
@@ -107,6 +110,13 @@ def main():
     else:
         output_suffix = generate_date_suffix()
         logging.info(f"Using date-based output suffix: {output_suffix}")
+
+    # Ensure fig_format is valid
+    fig_format = getattr(args, 'fig_format', None)
+    if not fig_format:
+        fig_format = getattr(experiment, 'fig_format', None)
+    if not fig_format:
+        fig_format = 'png'
 
     # Initialize analysis logger with automatic parameter extraction
     analysis_logger = AnalysisLogger(experiment, args, output_suffix, output_dir)
