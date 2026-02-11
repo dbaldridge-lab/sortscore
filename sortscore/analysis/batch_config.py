@@ -25,8 +25,6 @@ class BatchConfig:
     
     Attributes
     ----------
-    experiment_configs : List[str]
-        List of paths to individual experiment configuration files
     batch_normalization_method : str, optional
         Normalization method to use ('zscore_2pole', '2pole', or 'zscore_center'), default 'zscore_2pole'
     pathogenic_control_type : str, optional
@@ -39,20 +37,13 @@ class BatchConfig:
         Overall minimum position across all experiments (for tiled heatmaps)
     global_max_pos : Optional[int], optional
         Overall maximum position across all experiments (for tiled heatmaps)
-    allow_position_breaks : bool, optional
-        Whether to allow gaps/breaks in tiled position display, default True
-    cleanup_individual_files : bool, optional
-        Whether to delete individual experiment output files after combination, default True
     """
-    experiment_configs: List[str]
     batch_normalization_method: str = 'zscore_2pole'
     pathogenic_control_type: str = 'nonsense'
     pathogenic_variants: Optional[List[str]] = None
-    combined_output_dir: str = '.'
+    combined_output_dir: str = './normalized'
     global_min_pos: Optional[int] = None
     global_max_pos: Optional[int] = None
-    allow_position_breaks: bool = True
-    cleanup_individual_files: bool = True
     
     @staticmethod
     def from_json(json_path: str) -> 'BatchConfig':
@@ -68,27 +59,6 @@ class BatchConfig:
         -------
         config : BatchConfig
             Loaded batch configuration
-            
-        Examples
-        --------
-        Example JSON structure:
-        
-        .. code-block:: json
-        
-            {
-                "experiment_configs": [
-                    "/path/to/experiment1/config.json",
-                    "/path/to/experiment2/config.json",
-                    "/path/to/experiment3/config.json"
-                ],
-                "batch_normalization_method": "zscore_2pole",
-                "pathogenic_control_type": "nonsense",
-                "combined_output_dir": "/path/to/combined/results",
-                "global_min_pos": 1,
-                "global_max_pos": 500,
-                "allow_position_breaks": true,
-                "cleanup_individual_files": true
-            }
         """
         with open(json_path, 'r') as f:
             data = json.load(f)

@@ -70,8 +70,9 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     for i, experiment in enumerate(experiments, 1):
         logger.info(f"Processing experiment {i}: {experiment.experiment_name}")
         
-        # Load counts
-        experiment.load_counts()
+        # Load counts. Avoid re-reading files.
+        if experiment.counts is None:
+            experiment.load_counts()
         
         # Calculate activity scores
         merged_df = experiment.get_merged_counts()
