@@ -26,9 +26,9 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
             [
                 str(sortscore_exe),
                 "-n",
-                config_dict["experiment_name"],
+                "test_experiment",
                 "-e",
-                config_dict["experiment_setup_file"],
+                "tests/data/GLI2_oPool5b/experiment_setup.csv",
                 "-c",
                 config_path,
             ],
