@@ -5,7 +5,6 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 ## 1. Prepare Your Experiment Configuration
 - Create your experiment configuration JSON (see `config/example_experiment.json`) and experiment setup CSV.
 - Edit these files to match your experiment's parameters and data file locations. You can place them anywhere; just provide the correct path when running the analysis.
-  - `variant_type` is not a config option; it is auto-detected from your count files. Current supported mutagenesis schemes are AA, codon, and SNV.
 
 ### Variant Type Auto-Detection (Accepted Nomenclature)
 
@@ -59,7 +58,7 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 | `--position-type` | - | str | Position axis for plots: `aa` or `dna` | aa |
 | `--min-pos` | - | int | Minimum position (1-based) | 1 |
 | `--max-pos` | - | int | Maximum position (1-based) | None |
-| `--suffix` | `-s` | str | Custom suffix for all output files | YYYYMMDD (current date) |
+| `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
 | `--batch` | `-b` | flag | Enable batch processing mode | False |
 | `--pos-color` | `-p` | flag | Export positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
@@ -124,11 +123,10 @@ sortscore -b -c batch_config.json
 For tiled experimental designs where different sequencing datasets cover different regions of the same protein, sortscore supports automatic batch processing with cross-tile normalization:
 
 ```bash
-# Run tiled analysis with automatic tile detection
-sortscore --config experiment_config.json
+# Run tiled batch analysis (requires a `tile` column in the setup CSV)
+sortscore -b -n tiled_experiment -e experiment_setup.csv -c experiment_config.json
 
-# With custom suffix for combined results
-sortscore --config experiment_config.json --suffix "tiled_analysis"
+
 ```
 
 ### Tiled Experimental Setup
@@ -158,15 +156,12 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 
 | Key                        | Type      | Description                                                              |
 |---------------------------|-----------|--------------------------------------------------------------------------|
-| experiment_configs        | list      | Paths to individual experiment JSON configuration files                   |
 | batch_normalization_method| str       | "zscore_2pole" (default), "2pole", or "zscore_center"                |
 | pathogenic_control_type   | str       | "nonsense" (default) or "custom"                                       |
 | pathogenic_variants       | list      | Custom pathogenic variants (required when using "custom")              |
 | combined_output_dir       | str       | Directory for final combined results                                     |
-| global_min_pos            | int       | Overall minimum position across all experiments (for tiled heatmaps)    |
-| global_max_pos            | int       | Overall maximum position across all experiments (for tiled heatmaps)    |
-| allow_position_breaks     | bool      | Whether to allow gaps/breaks in tiled position display (default: true) |
-| cleanup_individual_files  | bool      | Remove individual experiment outputs after combination (default: true)  |
+| global_min_pos            | int       | Overall minimum position across all experiments (updates tiled heatmaps axis)    |
+| global_max_pos            | int       | Overall maximum position across all experiments (updates tiled heatmaps axis)    |
 
 ### Batch Normalization Methods
 
@@ -233,14 +228,13 @@ from sortscore.visualization.heatmaps import plot_heatmap
 
 # Load your data and experiment config
 config = ExperimentConfig.from_json('config.json')
-# ... load and process data ...
 
 # Generate heatmap with transparent background (default)
 plot_heatmap(
     data=scores_df,
     score_col='avgscore', 
     experiment=config,
-    transparent=True,          # Transparent background
+    transparent=True,
     fig_format='png',
     export_heatmap=True,
     output='output/figures'
@@ -252,26 +246,11 @@ plot_heatmap(
     score_col='avgscore',
     experiment=config, 
     transparent=False,         # White background
-    fig_format='pdf',          # PDF works better with white backgrounds
+    fig_format='pdf',
     export_heatmap=True,
     output='output/figures'
 )
 ```
-
-**Transparency Options:**
-- `transparent=True` (default): Creates transparent background, ideal for presentations and overlays
-- `transparent=False`: Creates white background, better for PDF output and traditional publications
-
-**Format Recommendations:**
-- PNG and SVG: Work excellently with transparent backgrounds
-- PDF: Use `transparent=False` for better compatibility with PDF viewers
-
-## 4. Output
-- Results and plots will be saved to the `output_dir` specified in your config.
-
-## 5. Input Requirements
-- All count files listed in your experiment setup CSV must have barcodes already mapped to their correct sequences. The Sort-seq pipeline does not perform barcode-to-sequence mapping; it assumes all input files are pre-processed in this way.
-- See `config/example_experiment.json` and `config/experiment_setup.csv` for configuration and file manifest examples.
 
 ## Experiment Configuration JSON Reference
 Note:
@@ -382,10 +361,6 @@ The pipeline assumes all input files are pre-processed and formatted as above.
 The package supports flexible heatmap generation with customizable axes for different experimental designs.
 
 ### Controlling Heatmap Axes
-
-# TODO: check if this is still valid after updating config docs
-**X-Axis (Positions)** - Controlled by `position_type`:
-- `"aa"` (default): Amino acid positions using `min_pos` to `max_pos` range
 # TODO: make position offset apply to DNA plots
 - `"dna"`: DNA nucleotide positions (1 to length of `wt_seq`)
 
@@ -399,7 +374,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 #### Standard Deep Mutational Scanning (Default)
 ```json
 {
-  "experiment_name": "MyProtein_DMS",
   "wt_seq": "MKVLIVAG...",
   "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
 }
@@ -407,47 +381,6 @@ The package supports flexible heatmap generation with customizable axes for diff
 - **X-axis**: Amino acid positions (auto-detected from data)
 - **Y-axis**: All 20 amino acids + stop codon
 - **Matrix size**: 21 × (detected position range)
-
-#### GCTA (Single Nucleotide Scanning)
-```json
-{
-  "experiment_name": "MyGene_GCTA",
-  "mutagenesis_variants": ["G", "C", "T", "A"],
-  "wt_seq": "ATGCGTAAC..."
-}
-```
-- **X-axis**: DNA positions (1, 2, 3... up to DNA sequence length)
-- **Y-axis**: Four DNA bases (G, C, T, A)
-- **Matrix size**: 4 × DNA sequence length
-
-#### Hydrophobic Amino Acid Screen
-```json
-{
-  "experiment_name": "Hydrophobic_Screen",
-  "wt_seq": "MKVLIVAG...",
-  "position_offset": 50,
-  "mutagenesis_variants": ["M", "I", "L", "V", "F", "W", "Y", "A"]
-}
-```
-- **X-axis**: Amino acid positions (auto-detected, with offset so position 1 becomes 50)
-- **Y-axis**: Only hydrophobic amino acids
-- **Matrix size**: 8 × (detected position range)
-
-#### Custom DNA Base Subset
-```json
-{
-  "experiment_name": "GC_Content_Study",
-  "mutagenesis_variants": ["G", "C"],
-  "wt_seq": "ATGCGTAAC..."
-}
-```
-- **X-axis**: DNA positions
-- **Y-axis**: Only G and C bases
-- **Matrix size**: 2 × DNA sequence length
-
-### Impact on Analysis
-
-- **Dropout Calculation**: Automatically adjusts based on actual variants studied
 
 ---
 For more details, see the docstrings in each module and the example configuration files in the `config/` directory.
