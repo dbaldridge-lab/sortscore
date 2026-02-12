@@ -89,7 +89,6 @@ For dependency conflicts, consider using a virtual environment `python -m venv .
 flowchart TB
     %% Entry Points
     CLI(("CLI: run_analysis.py")):::entry
-    API(("API: sortscore")):::entry
 
     %% Data Stores
     Config(("Config Files<br/>(JSON/CSV)")):::data
@@ -120,7 +119,6 @@ flowchart TB
 
     %% Main Flow
     CLI -->|"run_analysis.main()"| EL
-    API -->|"sortscore API"| EL
     EL -->|"load_experiment_data"| DP
     DP -->|"filter_variants"| FL
     FL -->|"normalize_read_depth"| NM

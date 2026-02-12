@@ -76,13 +76,6 @@ print("Current directory:", os.getcwd())
 !sortscore --config tests/fixtures/GLI2_oPool5b/config.json
 ```
 
-# Cell 4: Use the Python API
-```
-from pathlib import Path
-from sortscore.analysis.load_experiment import ExperimentConfig
-from sortscore.analysis.score import calculate_full_activity_scores
-```
-
 # Load experiment configuration
 ```
 config_path = Path("tests/fixtures/GLI2_oPool5b/config.json")

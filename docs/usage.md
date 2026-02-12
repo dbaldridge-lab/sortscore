@@ -208,49 +208,6 @@ Batch processing automatically generates tiled heatmaps with:
 - **Unified scaling**: All data on same normalized scale
 - **Automatic sizing**: Figure dimensions adjust to position range
 
-## 3. Python API Usage
-
-### Basic Analysis
-You can import and use the package directly in your own scripts or notebooks:
-
-```python
-from sortscore.analysis.load_experiment import ExperimentConfig
-config = ExperimentConfig.from_json('config.json')
-# ...proceed with analysis using the loaded config...
-```
-
-### Heatmap Visualization Customization
-
-The package provides direct control over heatmap background transparency through the Python API:
-
-```python
-from sortscore.visualization.heatmaps import plot_heatmap
-
-# Load your data and experiment config
-config = ExperimentConfig.from_json('config.json')
-
-# Generate heatmap with transparent background (default)
-plot_heatmap(
-    data=scores_df,
-    score_col='avgscore', 
-    experiment=config,
-    transparent=True,
-    fig_format='png',
-    export_heatmap=True,
-    output='output/figures'
-)
-
-# Generate heatmap with white background
-plot_heatmap(
-    data=scores_df,
-    score_col='avgscore',
-    experiment=config, 
-    transparent=False,         # White background
-    fig_format='pdf',
-    export_heatmap=True,
-    output='output/figures'
-)
-```
 ## Running the Scoring Workflow
 
 The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided on the command line. 
