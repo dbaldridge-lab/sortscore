@@ -14,12 +14,9 @@ from typing import Optional, List, Any, Dict, Tuple, Union
 from pathlib import Path
 
 # Import functions from specialized modules for backward compatibility
-from sortscore.visualization.heatmaps import plot_heatmap
-from sortscore.visualization.distributions import plot_activity_score_distribution
-from sortscore.visualization.beeswarms import plot_beeswarm
 from sortscore.visualization.histograms import plot_histogram
+from sortscore.visualization.correlations import plot_replicate_correlation, plot_correlation_matrix
 
-# Standard font sizes for consistent plotting
 FONT_SIZES = {
     'title': 18,
     'subtitle': 16, 
@@ -30,7 +27,6 @@ FONT_SIZES = {
     'small': 8
 }
 
-# Standard figure sizes
 FIG_SIZES = {
     'small': (8, 6),
     'medium': (12, 8),
@@ -85,64 +81,6 @@ def get_color_palette(
     else:
         # Fallback to seaborn palette
         return sns.color_palette("husl", n_colors).as_hex()
-
-
-def save_plot(
-    filename: str,
-    output_dir: str = '.',
-    formats: List[str] = ['png'],
-    dpi: int = 300,
-    bbox_inches: str = 'tight',
-    transparent: bool = False
-) -> List[str]:
-    """
-    Save plot in multiple formats with consistent settings.
-    
-    Parameters
-    ----------
-    filename : str
-        Base filename without extension.
-    output_dir : str, default '.'
-        Output directory path.
-    formats : list of str, default ['png']
-        List of file formats ('png', 'svg', 'pdf', 'eps').
-    dpi : int, default 300
-        Resolution for raster formats.
-    bbox_inches : str, default 'tight'
-        Bounding box setting for saving.
-    transparent : bool, default False
-        Whether to use transparent background.
-        
-    Returns
-    -------
-    list of str
-        List of saved file paths.
-    """
-    logger = logging.getLogger(__name__)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    saved_files = []
-    for fmt in formats:
-        filepath = output_dir / f"{filename}.{fmt}"
-        
-        save_kwargs = {
-            'dpi': dpi if fmt in ['png', 'jpg', 'tiff'] else None,
-            'bbox_inches': bbox_inches,
-            'transparent': transparent,
-            'facecolor': 'white' if not transparent else 'none',
-            'edgecolor': 'none'
-        }
-        
-        # Remove None values
-        save_kwargs = {k: v for k, v in save_kwargs.items() if v is not None}
-        
-        plt.savefig(filepath, format=fmt, **save_kwargs)
-        saved_files.append(str(filepath))
-        logger.info(f"Plot saved: {filepath}")
-    
-    return saved_files
-
 
 def setup_plot_style(
     style: str = 'default',
@@ -244,7 +182,7 @@ def create_color_legend(
     title: Optional[str] = None,
     loc: str = 'upper right',
     bbox_to_anchor: Optional[Tuple[float, float]] = None
-) -> plt.Legend:
+) -> Any:
     """
     Create a custom color legend.
     
@@ -282,6 +220,87 @@ def create_color_legend(
         legend_kwargs['bbox_to_anchor'] = bbox_to_anchor
     
     return plt.legend(**legend_kwargs)
+
+
+def generate_position_avg_colors(
+    heatmap_df: pd.DataFrame,
+    colormap: str = 'magma',
+    norm: Optional[object] = None,
+    cmap: Optional[object] = None
+) -> pd.DataFrame:
+    """
+    Generate positional averages with hex colors matching the heatmap colorscale.
+    This ensures color consistency when overlaying functional data on protein structures.
+    
+    Parameters
+    ----------
+    heatmap_df : pd.DataFrame
+        Heatmap matrix with variants as rows and positions as columns.
+    colormap : str, default 'magma'
+        Matplotlib colormap name.
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns:
+        - position: Position identifiers from heatmap columns
+        - average: Average activity scores per position
+        - hex_color: Hex color codes matching heatmap colorscale
+        - rgb_color: RGB color codes in CSS format
+        
+    Examples
+    --------
+    Generate averages with colors for protein structure visualization:
+    
+    >>> averages_df = generate_position_avg_colors(
+    ...     heatmap_df=heatmap_df,
+    ...     colormap='viridis'
+    ... )
+    """
+    import matplotlib.colors as mcolors
+    
+    logger = logging.getLogger(__name__)
+    
+    averages = heatmap_df.mean(axis=0)
+    
+    # Use provided normalization and colormap if available, otherwise create new ones
+    if norm is None or cmap is None:
+        # Use the same colorscale as the heatmap (min/max across entire matrix)
+        vmin = heatmap_df.min().min()
+        vmax = heatmap_df.max().max()
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        
+        try:
+            cmap = plt.cm.get_cmap(colormap)
+        except ValueError:
+            logger.warning(f"Colormap '{colormap}' not found, using 'magma'")
+            cmap = plt.cm.magma
+    
+    # Generate colors with higher precision
+    colors_hex = []
+    colors_rgb = []
+    
+    for value in averages:
+        # Use matplotlib's exact color conversion process
+        hex_color = mcolors.to_hex(cmap(norm(value)), keep_alpha=False)
+        
+        # Convert hex to RGB for the rgb() format
+        rgb_vals = mcolors.hex2color(hex_color)
+        rgb = tuple(int(round(255 * c)) for c in rgb_vals)
+        
+        colors_hex.append(hex_color)
+        colors_rgb.append(f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})")
+    
+    result_df = pd.DataFrame({
+        'position': averages.index,
+        'average': averages.round(2),
+        'hex_color': colors_hex,
+        'rgb_color': colors_rgb
+    })
+    
+    logger.info(f"Generated positional averages with colors for {len(result_df)} positions")
+    
+    return result_df
 
 
 def create_subplot_grid(

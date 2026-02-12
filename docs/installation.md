@@ -40,11 +40,17 @@ Ensure you're using Python 3.10 or higher: `python --version`
 Try updating pip: `pip install --upgrade pip`
 For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`
 
+## Troubleshooting
+If you encounter any issues during installation:
+
+Ensure you're using Python 3.10 or higher: `python --version`
+Try updating pip: `pip install --upgrade pip`
+For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`
+
 ---
 For usage instructions, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/usage.md).
 
 For contributing to sortscore development, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/contributing.md).
-
 
 
 

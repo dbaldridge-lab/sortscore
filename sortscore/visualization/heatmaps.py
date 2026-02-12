@@ -19,35 +19,38 @@ import numpy as np
 import seaborn as sns
 from typing import Optional, List
 from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
-from sortscore.analysis.load_experiment import ExperimentConfig
+from sortscore.visualization.plots import generate_position_avg_colors
+from sortscore.utils.load_experiment import ExperimentConfig
+from sortscore.analysis.batch_config import BatchConfig
+from sortscore.utils.sequence_parsing import convert_aa_to_three_letter
 
 
 def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_heatmap=False):
     """Add biophysical properties heatmap panel for amino acid groups in codon heatmaps."""
     
-    # Amino acid properties with numeric encoding for heatmap (only type, no separate charge)
+    # Amino acid properties with numeric encoding for heatmap (both single and three-letter codes)
     aa_properties = {
-        'W': {'type': 4},  # Aromatic
-        'F': {'type': 4},  # Aromatic  
-        'Y': {'type': 4},  # Aromatic
-        'P': {'type': 5},  # Special
-        'M': {'type': 3},  # Sulfur
-        'I': {'type': 2},  # Branched
-        'L': {'type': 2},  # Branched
-        'V': {'type': 2},  # Branched
-        'A': {'type': 0},  # Small
-        'G': {'type': 0},  # Small
-        'C': {'type': 3},  # Sulfur
-        'S': {'type': 1},  # Polar
-        'T': {'type': 1},  # Polar
-        'Q': {'type': 1},  # Polar
-        'N': {'type': 1},  # Polar
-        'D': {'type': 6},  # Acidic
-        'E': {'type': 6},  # Acidic
-        'H': {'type': 7},  # Basic
-        'R': {'type': 7},  # Basic
-        'K': {'type': 7},  # Basic
-        '*': {'type': 8}   # Stop
+        'W': {'type': 4}, 'Trp': {'type': 4},  # Aromatic
+        'F': {'type': 4}, 'Phe': {'type': 4},  # Aromatic  
+        'Y': {'type': 4}, 'Tyr': {'type': 4},  # Aromatic
+        'P': {'type': 5}, 'Pro': {'type': 5},  # Special
+        'M': {'type': 3}, 'Met': {'type': 3},  # Sulfur
+        'I': {'type': 2}, 'Ile': {'type': 2},  # Branched
+        'L': {'type': 2}, 'Leu': {'type': 2},  # Branched
+        'V': {'type': 2}, 'Val': {'type': 2},  # Branched
+        'A': {'type': 0}, 'Ala': {'type': 0},  # Small
+        'G': {'type': 0}, 'Gly': {'type': 0},  # Small
+        'C': {'type': 3}, 'Cys': {'type': 3},  # Sulfur
+        'S': {'type': 1}, 'Ser': {'type': 1},  # Polar
+        'T': {'type': 1}, 'Thr': {'type': 1},  # Polar
+        'Q': {'type': 1}, 'Gln': {'type': 1},  # Polar
+        'N': {'type': 1}, 'Asn': {'type': 1},  # Polar
+        'D': {'type': 6}, 'Asp': {'type': 6},  # Acidic
+        'E': {'type': 6}, 'Glu': {'type': 6},  # Acidic
+        'H': {'type': 7}, 'His': {'type': 7},  # Basic
+        'R': {'type': 7}, 'Arg': {'type': 7},  # Basic
+        'K': {'type': 7}, 'Lys': {'type': 7},  # Basic
+        '*': {'type': 8}, 'Ter': {'type': 8}   # Stop
     }
 
     # Pastel color mappings (only for type now) - Start uses same color as Sulfur
@@ -112,16 +115,16 @@ def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_he
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-
+#TODO: troubleshoot wt_score not being updates for AA heatmaps
 def plot_heatmap(
     data: pd.DataFrame,
     score_col: str,
     experiment: ExperimentConfig,
     wt_score: float = 1.0,
     fig_size: str = 'small',
-    export: bool = False,
+    export_heatmap: bool = True,
     output: Optional[str] = None,
-    format: str = 'png',
+    fig_format: str = 'png',
     dpi: int = 300,
     tick_values: Optional[List[float]] = None,
     tick_labels: Optional[List[str]] = None,
@@ -129,7 +132,12 @@ def plot_heatmap(
     row_avg: bool = False,
     title: Optional[str] = None,
     export_matrix: bool = False,
-    show_biophysical_properties: bool = False
+    show_biophysical_properties: bool = False,
+    export_positional_averages: bool = False,
+    suffix: Optional[str] = None,
+    heatmap_basename: str = "heatmap",
+    matrix_basename: str = "heatmap_matrix",
+    transparent: bool = True
 ) -> None:
     """
     Plot a MAVE heatmap using a matrix of activity scores.
@@ -146,12 +154,12 @@ def plot_heatmap(
         Score to assign to WT positions.
     fig_size : str, default 'small'
         Figure size ('small', 'large', 'long').
-    export : bool, default False
+    export_heatmap : bool, default True
         If True, save the plot to file.
     output : str, optional
-        Output file path if export is True.
-    format : str, default 'png'
-        Output format ('png' or 'svg').
+        Output directory for all exported files.
+    fig_format : str, default 'png'
+        Figure output format ('png' or 'svg').
     dpi : int, default 300
         Resolution for saved plot.
     tick_values : list of float, optional
@@ -168,8 +176,24 @@ def plot_heatmap(
         If True, export the heatmap matrix data to CSV.
     show_biophysical_properties : bool, default False
         If True, show biophysical properties panel beside the heatmap.
+    export_positional_averages : bool, default False
+        If True, export positional averages with hex colors to CSV for protein structure visualization.
+    suffix : str, optional
+        Suffix to append to output filenames for consistent naming.
+    heatmap_basename : str, optional
+        Base name for exported heatmap image (default: ``"heatmap"``).
+    matrix_basename : str, optional
+        Base name for exported heatmap matrix CSV (default: ``"heatmap_matrix"``).
+    transparent : bool, default True
+        If True, save plot with transparent background. If False, use white background.
     """
     logger = logging.getLogger(__name__)
+    
+    # Build output prefix once for all exports
+    if output:
+        output_prefix = f"{output}/{experiment.experiment_name}"
+    else:
+        output_prefix = experiment.experiment_name
     
     # Create DMS matrix and prepare data
     dms_matrix = make_dms_matrix(
@@ -178,25 +202,42 @@ def plot_heatmap(
         experiment.num_positions,
         experiment.wt_seq,
         experiment.variant_type,
-        experiment.mutagenesis_variants,
-        experiment.position_type
+        experiment.mutagenesis_variants
     )
     dropout_num, dropout_percent = get_dropout(dms_matrix, experiment.mutagenesis_variants)
     heatmap_df = fill_wt(dms_matrix, wt_score)
     col_avg_df = make_col_avg_df(heatmap_df)
     
-    # Export matrix data if requested
-    if export_matrix and export and output:
-        # Create matrix with proper column headers (using experiment.min_pos)
+    # Set up colormap and normalization (needed for exports)
+    min_val = heatmap_df.min().min()
+    max_val = heatmap_df.max().max()
+    norm = plt.Normalize(vmin=min_val, vmax=max_val)
+    cmap = plt.cm.magma
+    
+    # Export heatmap score matrix
+    if export_matrix:
         matrix_for_export = heatmap_df.copy()
         # Update column names to reflect true residue positions
         new_columns = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
         matrix_for_export.columns = new_columns
-        
-        # Generate matrix output filename from plot output
-        matrix_output = output.replace('.png', '_matrix.csv').replace('.svg', '_matrix.csv')
+
+        if suffix:
+            matrix_output = f"{output_prefix}_{matrix_basename}_{suffix}.csv"
+        else:
+            matrix_output = f"{output_prefix}_{matrix_basename}.csv"
         matrix_for_export.to_csv(matrix_output)
         logger.info(f"Heatmap matrix saved to {matrix_output}")
+    
+    # Export positional averages with colors for protein structure visualizations
+    if export_positional_averages:
+        # Use the same normalization and colormap as the main heatmap for exact color matching
+        averages_colors = generate_position_avg_colors(heatmap_df, colormap='magma', norm=norm, cmap=cmap)
+        if suffix:
+            averages_output = f"{output_prefix}_positional_averages_{suffix}.csv"
+        else:
+            averages_output = f"{output_prefix}_positional_averages.csv"
+        averages_colors.to_csv(averages_output, index=False)
+        logger.info(f"Positional averages with colors saved to {averages_output}")
 
     # Set up masks and figure parameters
     nan_mask = dms_matrix.isnull()
@@ -212,17 +253,20 @@ def plot_heatmap(
     if fig_size == 'small':
         width = max(16.5, experiment.num_aa * 0.15)
         height = 30 if is_codon_heatmap else 12
-        fig = plt.figure(figsize=(width, height), facecolor='white')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 15)
     elif fig_size == 'large':
         width = max(30, experiment.num_aa * 0.25)
         height = 35 if is_codon_heatmap else 10
-        fig = plt.figure(figsize=(width, height), facecolor='white')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 25)
     elif fig_size == 'long':
         width = max(30, experiment.num_aa * 0.3)
         height = 45 if is_codon_heatmap else 25
-        fig = plt.figure(figsize=(width, height), facecolor='white')
+        facecolor = 'none' if transparent else 'white'
+        fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 40)
 
     # Set up subplot layout based on row_avg and biophysical properties
@@ -272,12 +316,6 @@ def plot_heatmap(
             cax = fig.add_subplot(gs[1, 1])
             ax_props = None
 
-    # Set up colormap and normalization
-    min_val = heatmap_df.min().min()
-    max_val = heatmap_df.max().max()
-    norm = plt.Normalize(vmin=min_val, vmax=max_val)
-    cmap = plt.cm.magma
-    
     # Create heatmaps
     sns.heatmap(col_avg_df, annot=False, cmap=cmap, cbar=False, ax=ax1, norm=norm)
     ax = sns.heatmap(heatmap_df, cmap=cmap, cbar=False, ax=ax2, norm=norm)
@@ -305,9 +343,10 @@ def plot_heatmap(
         # Add horizontal white lines at amino acid boundaries (only for codon heatmaps)
         if is_codon_heatmap:
             for boundary in aa_boundaries:
-                ax2.axhline(y=boundary, color='white', linewidth=1)
+                # Position lines at amino acid boundaries (between different amino acid groups)
+                ax2.axhline(y=boundary, color='white', linewidth=2, solid_capstyle='butt')
                 if row_avg:
-                    ax3.axhline(y=boundary, color='white', linewidth=1)
+                    ax3.axhline(y=boundary, color='white', linewidth=2, solid_capstyle='butt')
 
 
         # Add biophysical properties panel when requested
@@ -321,7 +360,8 @@ def plot_heatmap(
                 ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, hatch='//', edgecolor='lightgray', facecolor='white'))
     
     wt_indices = np.where(wt_mask)
-    ax2.scatter(wt_indices[1] + 0.5, wt_indices[0] + 0.5, color='white', s=30, alpha=0.5)
+    ax2.scatter(wt_indices[1] + 0.5, wt_indices[0] + 0.5, color='white', s=50, alpha=1.0, 
+                edgecolors='lightgray', linewidths=0.5)
     
     if motif_indices:
         pass  # Motif highlighting logic would go here
@@ -338,7 +378,7 @@ def plot_heatmap(
         cbar = plt.colorbar(sm, cax=cax)
 
     # Configure axes labels and ticks
-    if experiment.position_type == 'dna':
+    if experiment.variant_type == 'dna':
         x_labels = [str(i) for i in range(1, experiment.num_positions + 1)]
     else:
         x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
@@ -370,8 +410,8 @@ def plot_heatmap(
     ax1.set_xticks([])
     ax1.set_yticks([])
     
-    # X-axis label depends on position_type
-    if experiment.position_type == 'dna':
+    #TODO: instead, have DNA and AA heatmap mode options
+    if experiment.variant_type == 'dna':
         ax2.set_xlabel('DNA Position', fontsize=28)
     else:
         ax2.set_xlabel('Residue Sequence Number', fontsize=28)
@@ -391,10 +431,245 @@ def plot_heatmap(
         ax3.set_xticks([])
 
     # Save or show plot
-    if export and output:
-        plt.savefig(output, dpi=dpi, format=format, facecolor='white', edgecolor='none')
-        logger.info(f"Heatmap plot saved to {output}")
+    if export_heatmap:
+        if suffix:
+            heatmap_output = f"{output_prefix}_{heatmap_basename}_{suffix}.{fig_format}"
+        else:
+            heatmap_output = f"{output_prefix}_{heatmap_basename}.{fig_format}"
+        facecolor = 'none' if transparent else 'white'
+        plt.savefig(heatmap_output, dpi=dpi, format=fig_format, facecolor=facecolor, edgecolor='none')
+        logger.info(f"Heatmap plot saved to {heatmap_output}")
     else:
         plt.show()
+        
+    plt.close()
+
+
+def plot_tiled_heatmap(
+    batch_data: pd.DataFrame,
+    score_col: str,
+    batch_config: BatchConfig,
+    experiments: List[ExperimentConfig],
+    wt_score: Optional[float] = None,
+    fig_size: str = 'large',
+    export: bool = False,
+    output: Optional[str] = None,
+    format: str = 'png',
+    dpi: int = 300,
+    tick_values: Optional[List[float]] = None,
+    tick_labels: Optional[List[str]] = None,
+    title: Optional[str] = None,
+    export_matrix: bool = False,
+    show_biophysical_properties: bool = False,
+    transparent: bool = True
+) -> None:
+    """
+    Plot a tiled heatmap combining data from multiple experiments with proper position mapping.
+    
+    This function creates a unified heatmap visualization for batch-processed experiments,
+    handling position gaps and proper coordinate mapping for tiled experimental designs.
+    
+    Parameters
+    ----------
+    batch_data : pd.DataFrame
+        Combined normalized data from all experiments with 'batch' column
+    score_col : str
+        Name of the score column to visualize
+    batch_config : BatchConfig
+        Batch configuration containing global position parameters
+    experiments : List[ExperimentConfig]
+        List of individual experiment configurations for position mapping
+    wt_score : Optional[float]
+        Wild-type reference score for visualization reference
+    fig_size : str, optional
+        Size preset ('small', 'medium', 'large'), default 'large'
+    export : bool, optional
+        Whether to save the heatmap to file, default False
+    output : Optional[str]
+        Output file path if exporting
+    format : str, optional
+        Export format ('png', 'pdf', 'svg'), default 'png'
+    dpi : int, optional
+        Resolution for exported image, default 300
+    tick_values : Optional[List[float]]
+        Custom colorbar tick values
+    tick_labels : Optional[List[str]]
+        Custom colorbar tick labels
+    title : Optional[str]
+        Custom heatmap title
+    export_matrix : bool, optional
+        Whether to export the underlying matrix data, default False
+    show_biophysical_properties : bool, optional
+        Whether to show biophysical properties panel, default False
+    transparent : bool, default True
+        If True, save plot with transparent background. If False, use white background.
+        
+    Examples
+    --------
+    Plot combined heatmap from batch analysis results:
+    
+    >>> plot_tiled_heatmap(
+    ...     batch_data=normalized_scores,
+    ...     score_col='avgscore',
+    ...     batch_config=config,
+    ...     experiments=experiment_list,
+    ...     export=True,
+    ...     output='combined_heatmap.png'
+    ... )
+    """
+    logging.info(f"Creating tiled heatmap for {len(experiments)} experiments")
+    
+    # Determine global position range
+    if batch_config.global_min_pos is not None and batch_config.global_max_pos is not None:
+        global_min_pos = batch_config.global_min_pos
+        global_max_pos = batch_config.global_max_pos
+    else:
+        # Calculate from experiment configs
+        global_min_pos = min(exp.min_pos for exp in experiments)
+        global_max_pos = max(exp.max_pos for exp in experiments)
+    
+    # Create position mapping for each experiment
+    position_mapping = {}
+    experiment_ranges = {}
+    
+    for i, experiment in enumerate(experiments, 1):
+        batch_name = f'experiment{i}'
+        position_mapping[batch_name] = {
+            'min_pos': experiment.min_pos,
+            'max_pos': experiment.max_pos,
+            'global_offset': experiment.min_pos - global_min_pos
+        }
+        experiment_ranges[batch_name] = list(range(experiment.min_pos, experiment.max_pos + 1))
+    
+    # Get mutagenesis variants from first experiment (assume consistent across experiments)
+    mutagenesis_variants = experiments[0].mutagenesis_variants
+    if mutagenesis_variants is None:
+        mutagenesis_variants = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
+    
+    # Create global matrix with NaN values
+    global_positions = list(range(global_min_pos, global_max_pos + 1))
+    global_matrix = pd.DataFrame(
+        index=mutagenesis_variants,
+        columns=global_positions,
+        dtype=float
+    )
+    global_matrix.iloc[:, :] = np.nan
+    
+    # Fill matrix with data from each experiment
+    for batch_name, batch_df in batch_data.groupby('batch'):
+        if batch_name in position_mapping:
+            exp_mapping = position_mapping[batch_name]
+            exp_positions = experiment_ranges[batch_name]
+            
+            # Create matrix for this experiment
+            exp_matrix = make_dms_matrix(
+                batch_df, 
+                score_col, 
+                exp_positions, 
+                mutagenesis_variants,
+                fill_na=True
+            )
+            
+            # Map experiment matrix to global matrix
+            for pos in exp_positions:
+                if pos in exp_matrix.columns and pos in global_matrix.columns:
+                    global_matrix[pos] = exp_matrix[pos]
+    
+    # Handle position breaks if requested
+    if batch_config.allow_position_breaks:
+        # Find gaps in data coverage
+        data_coverage = ~global_matrix.isna().all(axis=0)
+        covered_positions = global_matrix.columns[data_coverage].tolist()
+        
+        if len(covered_positions) > 0:
+            # Use only covered positions for visualization
+            plot_matrix = global_matrix[covered_positions]
+            position_labels = covered_positions
+        else:
+            plot_matrix = global_matrix
+            position_labels = global_positions
+    else:
+        # Use full global range
+        plot_matrix = global_matrix
+        position_labels = global_positions
+    
+    # Set figure size based on matrix dimensions
+    size_presets = {
+        'small': (12, 8),
+        'medium': (16, 10),
+        'large': (20, 12)
+    }
+    figsize = size_presets.get(fig_size, size_presets['large'])
+    
+    # Adjust figure width based on number of positions
+    n_positions = len(position_labels)
+    if n_positions > 100:
+        figsize = (max(20, n_positions * 0.2), figsize[1])
+    
+    # Create figure
+    facecolor = 'none' if transparent else 'white'
+    fig = plt.figure(figsize=figsize, facecolor=facecolor)
+    
+    if show_biophysical_properties:
+        # Create gridspec with biophysical properties panel
+        gs = GridSpec(1, 2, figure=fig, width_ratios=[0.98, 0.02], wspace=0.01)
+        ax_heatmap = fig.add_subplot(gs[0, 0])
+        ax_props = fig.add_subplot(gs[0, 1])
+    else:
+        ax_heatmap = fig.add_subplot(111)
+    
+    # Create heatmap
+    im = ax_heatmap.imshow(
+        plot_matrix.values,
+        aspect='auto',
+        cmap='RdBu_r',
+        interpolation='nearest'
+    )
+    
+    # Set ticks and labels
+    ax_heatmap.set_xticks(range(len(position_labels)))
+    ax_heatmap.set_xticklabels(position_labels, rotation=45, ha='right')
+    ax_heatmap.set_yticks(range(len(mutagenesis_variants)))
+    ax_heatmap.set_yticklabels(mutagenesis_variants)
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax_heatmap, shrink=0.8)
+    if tick_values and tick_labels:
+        cbar.set_ticks(tick_values)
+        cbar.set_ticklabels(tick_labels)
+    
+    # Add biophysical properties panel if requested
+    if show_biophysical_properties:
+        _add_biophysical_properties_panel(
+            ax_props, 
+            mutagenesis_variants, 
+            None,  # No boundaries needed for simple panel
+            is_small_heatmap=fig_size == 'small'
+        )
+    
+    # Set title
+    if title:
+        ax_heatmap.set_title(title)
+    else:
+        method = batch_config.batch_normalization_method
+        n_exp = len(experiments)
+        ax_heatmap.set_title(f'Combined Activity Scores ({method} normalization, {n_exp} experiments)')
+    
+    # Set axis labels
+    ax_heatmap.set_xlabel('Position')
+    ax_heatmap.set_ylabel('Amino Acid')
+    
+    # Export matrix data if requested
+    if export_matrix and output:
+        matrix_output = output.replace(f'.{format}', '_matrix.csv')
+        plot_matrix.to_csv(matrix_output)
+        logging.info(f"Exported matrix data to {matrix_output}")
+    
+    # Export figure if requested
+    if export and output:
+        plt.tight_layout()
+        facecolor = 'none' if transparent else 'white'
+        plt.savefig(output, dpi=dpi, bbox_inches='tight', format=format, facecolor=facecolor, edgecolor='none')
+        logging.info(f"Exported tiled heatmap to {output}")
         
     plt.close()

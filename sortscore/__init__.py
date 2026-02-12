@@ -10,7 +10,7 @@ __author__ = "Caitlyn Chitwood"
 __email__ = "c.chitwood@wustl.edu"
 
 # Import main classes for convenience
-from .analysis.load_experiment import ExperimentConfig
+from .utils.load_experiment import ExperimentConfig
 from .analysis.score import calculate_full_activity_scores
 
 __all__ = [

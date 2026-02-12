@@ -1,59 +1,163 @@
 # sortscore
+[Documentation Index](docs/index.md)
 
-## Quickstart
+## Installation
+#TODO: Update this when released on PYPI #1
+**Option 1: Using a virtual environment (recommended)**
 
-## Scoring Analysis Pipeline
-### Configuration
-- See `config.json` and `experiment_setup.csv` for configuration file templates.
-### Usage
+The following are bash commands:
 ```bash
-sortscore -c config.json
-```
-### Example usage
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-## Tile Normalization Pipeline
-### Configuration
-- See `batch_config.json` for configuration file template.
-### Usage
+# Install sortscore
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
+```
+
+**Option 2: Using conda/anaconda**
+
 ```bash
-sortscore -cb batch_config.json
-```
-### Example usage
+# Activate your conda environment
+conda activate your-env-name
 
-## Python API
-- All public functions use NumPy-style docstrings. See module docstrings and examples for API details.
-### TODO: test these example workflows
-### Loading Counts
-   ```python
-      import pandas as pd
-      # Load your data
-      df = pd.read_csv('your_data.csv')
-   ```
+# Verify you're using conda's pip
+which pip  # Should show path to conda environment
 
-### Calculating Activity scores
-   ```python
-   from sortscore.analysis.score import calculate_activity_scores
-
-   # Calculate activity scores. Average over replicates using a simple average, instead of default averaging weighted by variant read count.
-   scores = calculate_activity_scores([df], method='simple-avg')
+# Install sortscore
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
 ```
 
-### Plotting
-#### Histogram
-   ```python
-   from sortscore.visualization.plots import plot_activity_score_distribution
-   plot_activity_score_distribution(scores, score_col='avgscore')
-   ```
+**Option 3: Install directly (may require adding scripts directory to PATH)**
 
-## Further Documentation
-- For detailed installation, configuration, and usage instructions, see the [docs/](docs/) folder:
-  - [Installation Guide](docs/installation.md)
-  - [Usage Guide](docs/usage.md)
-  - [Documentation Index](docs/index.md)
+```bash
+# Install sortscore
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
+```
+
+## Usage
+### Scoring
+With virtual environment or conda environment activated:
+```bash
+# only required arguements
+sortscore -n EXPERIMENT_NAME -e experiment_config.csv -w WT_SEQ
+```
+
+Otherwise, add `python -m` before the sortscore command (or `python3 -m`, depending on your python installation).
+
+```bash
+python -m sortscore ...
+```
+
+### Tile Normalization
+
+```bash
+# Including optional -c option and batch config file
+sortscore -b -n EXPERIMENT_NAME -e experiment_config.csv -c batch_config.json
+```
+
+## Config Templates
+
+[config.json](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/config.json)
+- define additional parameters impacting the analysis execution and outputs
+
+[experiment_setup.csv](https://github.com/dbaldridge-lab/sortscore/blob/main/tests/fixtures/GLI2_oPool5b/experiment_setup.csv)
+- define replicates and bins for each sample
+- provide parameters for each sample (MFI, cell counts, etc.)
+
+`batch_config.json`
 
 ## System Requirements
+
 - Python 3.10+
-- Bash shell
+- See `requirements.txt` for dependencies
+
+## Troubleshooting
+If you encounter any issues during installation:
+
+Ensure you're using Python 3.10 or higher: `python --version`
+Try updating pip: `pip install --upgrade pip`
+For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`.
+
+```mermaid
+flowchart TB
+    %% Entry Points
+    CLI(("CLI: run_analysis.py")):::entry
+    API(("API: sortscore")):::entry
+
+    %% Data Stores
+    Config(("Config Files<br/>(JSON/CSV)")):::data
+    RawData(("Counts Files<br/>(CSV/Parquet)")):::data
+    
+    %% Pipeline Stages
+    subgraph "Pipeline Stages"
+        direction TB
+        EL["Experiment Loader"]:::pipelineStage
+        DP["Data Processing"]:::pipelineStage
+        FL["Filtering"]:::pipelineStage
+        NM["Normalization"]:::pipelineStage
+        AN["Annotation"]:::pipelineStage
+        SC["Scoring"]:::pipelineStage
+        EX["Export"]:::pipelineStage
+        Utils["Utils"]:::pipelineStage
+    end
+
+    %% Visualization
+    subgraph "Visualization" 
+        direction TB
+        VH["Heatmap generate_heatmap_matrix()"]:::viz
+    end
+
+    %% Outputs
+    OF(("Output Figures<br/>(PNG/SVG)")):::entry
+    OT(("Output Tables<br/>(CSV/DataFrame)")):::entry
+
+    %% Main Flow
+    CLI -->|"run_analysis.main()"| EL
+    API -->|"sortscore API"| EL
+    EL -->|"load_experiment_data"| DP
+    DP -->|"filter_variants"| FL
+    FL -->|"normalize_read_depth"| NM
+    NM -->|"annotate_sequences"| AN
+    AN --> SC
+    SC -->|"calculate_full_activity_scores"| EX
+    EX -->|"export_results"| VH
+  
+    VH -->|"generate_heatmap_matrix"| OF
+    EX -->|"export_results"| OT
+
+    %% Data Inputs
+    Config --> EL
+    RawData --> EL
+
+    %% Click Events
+    click CLI "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/run_analysis.py"
+    click EL "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/load_experiment.py"
+    click AN "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/annotation.py"
+    click DP "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/data_processing.py"
+    click FL "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/filtering.py"
+    click NM "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/normalize_read_depth.py"
+    click SC "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/score.py"
+    click EX "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/export.py"
+    click VD "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/visualization/plots.py"
+    click VH "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/visualization/heatmap_matrix.py"
+    click Utils "https://github.com/dbaldridge-lab/sortscore/blob/main/sortscore/analysis/utils.py"
+
+    %% Styles
+    classDef entry fill:#cccccc,stroke:#333,stroke-width:1px
+    classDef pipeline fill:#bbeeff,stroke:#333,stroke-width:1px
+    classDef pipelineStage fill:#bbeeff,stroke:#333,stroke-width:1px,font-size:22px
+    classDef viz fill:#bbeecc,stroke:#333,stroke-width:1px
+    classDef data fill:#ffeb99,stroke:#333,stroke-width:1px
+    classDef ext fill:none,stroke-dasharray: 5 5,stroke:#666,stroke-width:1px
+    classDef test fill:#f9d5e5,stroke:#333,stroke-width:1px
+```
 
 ## License
 MIT

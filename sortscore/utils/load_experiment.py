@@ -6,34 +6,36 @@ It includes automatic detection and conversion of pre-annotated amino acid chang
 
 Supported Variant Formats
 -------------------------
-The system automatically detects and handles multiple formats for variant sequences:
-
-1. **Full Sequences**: Complete DNA or amino acid sequences
-   - DNA: Full nucleotide sequences for variant_type="dna"
+1. **Full Sequences**: DNA or protein sequences to be compared against the wild-type sequence.
+   - DNA: Full nucleotide sequences for variant_type="codon" or "snv"
    - AA: Full amino acid sequences for variant_type="aa"
 
-2. **Pre-annotated Amino Acid Changes** (Auto-detected):
+TODO: Add HGVS c. notation support
+2. **Pre-annotated Variants** (Auto-detected):
    - Single-letter codes: "M1M", "R98C", "P171X"
    - Three-letter codes: "Met1Met", "Arg98Cys", "Pro171Ter"
    - HGVS p. notation: "p.M1M", "p.Arg98Cys", "p.Pro171Ter"
-   - With separators: "M.1.M", "R-98-C", "P_171_X"
+   - Other delimiters: "M.1.M", "R-98-C", "P_171_X"
 
-The system automatically detects pre-annotated formats and converts them to the 
-internal annotation format for downstream analysis.
+Variants are converted to a consistent internal annotation format for downstream analysis.
 
 Examples
 --------
 >>> from sortscore.analysis.load_experiment import ExperimentConfig
 >>> config = ExperimentConfig.from_json('config.json')
 >>> config.load_counts()  # Automatically detects and converts pre-annotated formats
->>> df = config.counts[1][2]  # Access replicate 1, bin 2
+>>> df = config.counts[1][2]  # Access replicate 1, bin 2 read counts
 """
+from pathlib import Path
 import json
 import logging
 import pandas as pd
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Any, Optional
+
+from sortscore.utils.sequence_parsing import get_reference_sequence
+from sortscore.utils.experiment_setup import load_experiment_setup
 
 logger = logging.getLogger(__name__)
 
@@ -183,43 +185,46 @@ class ExperimentConfig:
     experiment_name: str
     experiment_setup_file: str
     wt_seq: str
-    variant_type: str
-    max_pos: int
-    min_pos: int
     output_dir: Optional[str] = None
     other_params: Optional[Dict[str, Any]] = None
     counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
-    median_gfp: Optional[Dict[int, Dict[int, float]]] = None
+    mfi: Optional[Dict[int, Dict[int, float]]] = None
     total_reads: Optional[Dict[int, Dict[int, int]]] = None
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
-    
+
+    # Auto-detected properties (set during loading)
+    variant_type: Optional[str] = None  # Auto-detected: 'aa', 'codon', 'snv'"
+    min_pos: Optional[int] = None  # Auto-detected from data
+    max_pos: Optional[int] = None  # Auto-detected from data
+
     # Analysis parameters with defaults
     bins_required: int = 1
     reps_required: int = 1  
     avg_method: str = 'rep-weighted'
     max_cv: Optional[float] = None
     minread_threshold: int = 0
-    barcoded: bool = False
-    aa_pre_annotated: bool = False
-    transcript_id: Optional[str] = None
     mutagenesis_variants: Optional[list] = None
-    position_type: str = 'aa'  # 'aa' for amino acid positions, 'dna' for DNA positions
+    position_offset: int = 0  # Offset for position numbering (e.g., if data positions start from 1 but gene positions start from 51)
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
     
     @property
     def num_aa(self) -> int:
-        """Calculate number of amino acids from min_pos and max_pos."""
+        """Calculate number of amino acids from detected position range."""
+        if self.min_pos is None or self.max_pos is None:
+            self._detect_position_range()
         return self.max_pos - self.min_pos + 1
     
     @property 
     def num_positions(self) -> int:
-        """Calculate number of positions based on position_type."""
-        if self.position_type == 'dna':
+        """Calculate number of positions based on variant_type."""
+        if self.variant_type == 'snv':
             # For DNA positions, use the full DNA sequence length
             return len(self.wt_seq)
-        else:
-            # For AA positions, use the AA range
-            return self.max_pos - self.min_pos + 1
+        if self.variant_type == 'codon':
+            return len(self.wt_seq) // 3
+        if self.min_pos is None or self.max_pos is None:
+            self._detect_position_range()
+        return self.max_pos - self.min_pos + 1
 
     @staticmethod
     def from_json(json_path: str) -> 'ExperimentConfig':
@@ -236,69 +241,137 @@ class ExperimentConfig:
         config : ExperimentConfig
             Loaded experiment configuration.
         """
-        with open(json_path, 'r') as f:
+        json_path_obj = Path(json_path).expanduser().resolve()
+        with open(json_path_obj, 'r') as f:
             data = json.load(f)
-        # Build kwargs only for fields that exist in JSON
-        args = {}
-        
+        return ExperimentConfig.from_dict(data, config_file_dir=json_path_obj.parent)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any], config_file_dir: Optional[Path] = None) -> 'ExperimentConfig':
+        """
+        Load experiment configuration from an in-memory mapping.
+
+        Implements CLI-based configuration (merged from CLI args + optional JSON config).
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Mapping of configuration keys to values (e.g. parsed JSON).
+        config_file_dir : Optional[pathlib.Path]
+            Base directory for resolving relative paths found in `data`.
+            If None, relative paths are resolved from the current working directory.
+        """
+        # Build kwargs only for fields that exist in data
+        args: Dict[str, Any] = {}
+        base_dir = config_file_dir or Path.cwd()
+
         # Required fields
-        for field in ['experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos']:
-            if field in data:
-                args[field] = data[field]
-        
+        required_fields = ['experiment_name', 'experiment_setup_file', 'wt_seq']
+        missing_required = [field for field in required_fields if field not in data or data[field] in (None, "")]
+        if missing_required:
+            raise ValueError(
+                "Missing required configuration value(s): "
+                + ", ".join(missing_required)
+                + ". Provide them via CLI arguments or an optional JSON config (-c)."
+            )
+
+        for field in required_fields:
+            value = data[field]
+            if field == 'experiment_setup_file':
+                value = str((base_dir / Path(str(value)).expanduser()).resolve())
+            args[field] = value
+
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
-        for field in ['output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop']:
-            if field in data:
-                args[field] = data[field]
+        optional_fields = [
+            'output_dir', 'bins_required', 'reps_required', 'avg_method',
+            'minread_threshold','max_cv',
+            'mutagenesis_variants', 'position_offset', 'biophysical_prop',
+            'min_pos', 'max_pos'
+        ]
+
+        for field, value in data.items():
+            if field in optional_fields:
+                if field == 'output_dir' and value is not None:
+                    value = str((base_dir / Path(str(value)).expanduser()).resolve())
+                args[field] = value
         
         # Other parameters
-        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 'variant_type', 'max_pos', 'min_pos',
-                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 'minread_threshold', 'barcoded', 'max_cv', 'transcript_id', 'mutagenesis_variants', 'position_type', 'biophysical_prop'}
+        handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
+                       'output_dir', 'bins_required', 'reps_required', 'avg_method', 
+                       'minread_threshold', 'max_cv', 'mutagenesis_variants', 
+                       'position_offset', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
         
-        return ExperimentConfig(**args)
+        # Create config instance
+        config = ExperimentConfig(**args)
 
-    def load_counts(self) -> None:
+        # Validate experiment setup CSV early for clearer errors
+        try:
+            load_experiment_setup(config.experiment_setup_file)
+        except Exception as e:
+            raise ValueError(f"Invalid experiment setup CSV '{config.experiment_setup_file}': {e}") from e
+
+        # Load counts once; variant type detection uses loaded sequences (no extra file reads).
+        config.load_counts(detect_position_range=False)
+
+        from sortscore.utils.variant_detection import detect_variant_type_from_counts
+        try:
+            config.variant_type = detect_variant_type_from_counts(config.counts)
+            logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
+        except Exception as e:
+            raise ValueError(f"Failed to auto-detect variant_type from loaded counts: {e}") from e
+
+        # Detect position range from loaded data.
+        config._detect_position_range()
+        
+        return config
+
+    def load_counts(self, detect_position_range: bool = True) -> None:
         """
         Load count DataFrames for all replicates and bins as specified in the experiment setup file.
 
         This populates the `counts` attribute as a nested dictionary: counts[rep][bin] = DataFrame.
-        Also populates the `median_gfp` attribute as a nested dictionary: median_gfp[rep][bin] = float.
+        Also populates the `mfi` attribute as a nested dictionary: mfi[rep][bin] = float.
 
         Returns
         -------
         None
         """
-        import pandas as pd
         try:
-            setup_df = pd.read_csv(self.experiment_setup_file)
+            setup_df, setup_cols = load_experiment_setup(self.experiment_setup_file)
         except Exception as e:
-            raise RuntimeError(f"Failed to load experiment setup file: {e}")
+            raise RuntimeError(f"Failed to load experiment setup file: {e}") from e
         counts = {}
-        median_gfp = {}
+        mfi = {}
         total_reads = {}
         cell_prop = {}
+        config_file_dir = Path(self.experiment_setup_file).expanduser().resolve().parent
         
         for _, row in setup_df.iterrows():
-            rep = int(row['Replicate'])
-            bin_ = str(row['Bin']).strip()
-            count_file = str(row['Path']).strip()
-            if 'Read Counts (CSV)' in row:
-                count_file = str(row['Read Counts (CSV)']).strip()
-                
-            gfp = float(row['Median GFP'])
+            rep = int(row[setup_cols.replicate])
+            bin_ = str(row[setup_cols.bin]).strip()
+            count_file = str(row[setup_cols.count_file]).strip()
+            count_file = config_file_dir / Path(count_file).expanduser()
+            count_file = count_file.resolve()
+            count_file = str(count_file)
+            
+            mfi_val = float(row[setup_cols.mfi])
             
             # Load total reads if available (for sample read depth normalization)
-            if 'Read Count' in row:
-                total_read_count = int(row['Read Count'])
-                total_reads.setdefault(rep, {})[bin_] = total_read_count
+            if setup_cols.read_count is not None:
+                read_count_val = row[setup_cols.read_count]
+                if pd.notna(read_count_val):
+                    total_read_count = int(read_count_val)
+                    total_reads.setdefault(rep, {})[bin_] = total_read_count
             
             # Load cell proportions if available (for cell distribution normalization)
-            if 'Proportion of Cells' in row:
-                cell_proportion = float(row['Proportion of Cells'])
-                cell_prop.setdefault(rep, {})[bin_] = cell_proportion
+            if setup_cols.proportion_of_cells is not None:
+                cell_prop_val = row[setup_cols.proportion_of_cells]
+                if pd.notna(cell_prop_val):
+                    cell_proportion = float(cell_prop_val)
+                    cell_prop.setdefault(rep, {})[bin_] = cell_proportion
             
             try:
                 # Check if file is parquet format
@@ -319,10 +392,26 @@ class ExperimentConfig:
                 logging.error(f"Failed to load count file {count_file}: {e}")
                 continue
             counts.setdefault(rep, {})[bin_] = df
-            median_gfp.setdefault(rep, {})[bin_] = gfp
+            mfi.setdefault(rep, {})[bin_] = mfi_val
             
+        # Fail fast if nothing usable was loaded (prevents later redundant errors in variant detection).
+        has_any_sequences = False
+        for rep_dict in counts.values():
+            for df in rep_dict.values():
+                if df is None or df.empty or 'variant_seq' not in df.columns:
+                    continue
+                if df['variant_seq'].dropna().astype(str).str.strip().ne('').any():
+                    has_any_sequences = True
+                    break
+            if has_any_sequences:
+                break
+        if not has_any_sequences:
+            raise ValueError(
+                f"Could not read any sequences from count files listed in setup file: {self.experiment_setup_file}"
+            )
+
         self.counts = counts
-        self.median_gfp = median_gfp
+        self.mfi = mfi
         
         # Auto-detect variant format and convert pre-annotated AA changes if needed
         if counts:
@@ -338,6 +427,10 @@ class ExperimentConfig:
         # Set cell_prop if we loaded any
         if cell_prop:
             self.cell_prop = cell_prop
+        
+        # Auto-detect position range from loaded data
+        if detect_position_range:
+            self._detect_position_range()
     
     def set_total_reads(self, total_reads: Dict[int, Dict[int, int]]) -> None:
         """
@@ -504,7 +597,7 @@ class ExperimentConfig:
         This creates an aa_seq_diff column in the format 'ref.position.alt' for differences
         from the wild-type sequence, and uses the existing annotation function to determine annotation types.
         """
-        from sortscore.sequence_parsing import translate_dna
+        from sortscore.utils.sequence_parsing import translate_dna
         
         # Get the wild-type AA sequence for annotation
         wt_aa_seq = translate_dna(self.wt_seq)
@@ -541,33 +634,53 @@ class ExperimentConfig:
                 # Add annotation categories
                 from sortscore.analysis.annotation import add_variant_categories
                 df = add_variant_categories(df)
-
-    def annotate_counts(self, wt_ref_seq: str) -> None:
-        """
-        Annotate all counts DataFrames with DNA sequence differences and difference counts if variant_type is 'dna'.
-
-        Parameters
-        ----------
-        wt_ref_seq : str
-            Wild-type DNA sequence to compare against.
-        """
-        from sortscore.sequence_parsing import compare_to_reference, compare_codon_lists
-        if self.variant_type != 'dna' or not self.counts:
+    
+    def _detect_position_range(self) -> None:
+        """Auto-detect min_pos and max_pos from loaded variant data using sequence comparison."""
+        # If both values are already set (e.g., provided in config), keep them
+        if self.min_pos is not None and self.max_pos is not None:
             return
-        for rep_dict in self.counts.values():
-            for df in rep_dict.values():
-                df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
-                df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
-                df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
-                
-                # Add codon diff for DNA variant types
-                df['codon_diff'] = df['variant_seq'].apply(lambda x: compare_codon_lists(wt_ref_seq, x))
-                df['codon_diff'] = df['codon_diff'].fillna('')
-                df['codon_diff_count'] = df['codon_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+
+        if not self.counts:
+            logging.warning("No counts loaded, cannot detect position range")
+            # Fallback to sequence length so downstream code has usable values
+            try:
+                ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
+                seq_len = len(ref_seq)
+            except Exception:
+                seq_len = len(self.wt_seq)
+            self.min_pos = self.min_pos or 1
+            self.max_pos = self.max_pos or seq_len
+            return
+            
+        min_pos = float('inf')
+        max_pos = float('-inf')
+        
+        try:
+            ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
+        except ValueError as e:
+            logging.error(f"Cannot get reference wild-type sequence: {e}")
+            ref_seq = self.wt_seq
+
+        # If no variant annotations are available, fall back to full sequence length
+        if self.min_pos is None:
+            self.min_pos = 1
+        if self.max_pos is None:
+            # TODO: will this work with variant IDs that are not full sequences? May need to edit ref_seq
+            if self.variant_type in {'snv', 'dna'}:
+                self.max_pos = len(ref_seq)
+            else:
+                aa_len = len(get_reference_sequence(ref_seq, 'aa')) if ref_seq else 0
+                self.max_pos = aa_len
+        # If values were partially provided (one missing), fill the other based on sequence length
+        if self.min_pos is None:
+            self.min_pos = 1
+        if self.max_pos is None:
+            self.max_pos = len(ref_seq)
 
     def annotate_variants(self, df, wt_ref_seq: str, wt_aa_seq: str, variant_type: str) -> None:
         """
-        Annotate a variant count DataFrame with sequence difference columns based on variant type.
+        Annotate a variant count DataFrame with sequence difference from WT.
 
         Parameters
         ----------
@@ -578,22 +691,21 @@ class ExperimentConfig:
         wt_aa_seq : str
             Wild-type amino acid sequence.
         variant_type : str
-            'aa' for amino acid, 'dna' for nucleotide/codon. If 'dna', all annotations are added.
+            'aa' for amino acid variants, 'codon' for multiple nucleotide changes in single frame, 'snv' for single nucleotide variants.
         """
-        from sortscore.sequence_parsing import compare_to_reference, translate_dna
+        from sortscore.utils.sequence_parsing import compare_to_reference, translate_dna
         
-        # AA annotation (always added)
+        # AA annotation
         if variant_type == 'aa':
             df['aa_seq'] = df['variant_seq']  # AA sequences provided directly
-        else:  # variant_type == 'dna'
+        # TODO: will this work with variant IDs that are not full sequences?
+        elif variant_type in {'codon', 'snv', 'dna'}:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
+            # DNA annotation
+            df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
+            df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
+            df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
             
         df['aa_seq_diff'] = df['aa_seq'].apply(lambda x: compare_to_reference(wt_aa_seq, x))
         df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         df['aa_diff_count'] = df['aa_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
-        
-        # DNA annotation (only for DNA variant type)
-        if variant_type == 'dna':
-            df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
-            df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
-            df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
