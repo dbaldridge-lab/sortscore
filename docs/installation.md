@@ -17,7 +17,7 @@ Bash is used to run the default scoring pipeline. This has not been tested with 
 ---
 
 ## Install Options 
-### TODO: Do a test release on PyPI. Use option 2 for now.
+### TODO: #1 Do a test release on PyPI. Use option 2 for now.
 ### Option 1: Install from PyPI (Recommended)
 The easiest way to install sortscore is directly from PyPI:
 ```bash

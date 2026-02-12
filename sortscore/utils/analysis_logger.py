@@ -119,7 +119,7 @@ class AnalysisLogger:
         self.log_file = os.path.join(output_dir, f"{experiment.experiment_name}_analysis_{output_suffix}.log.json")
         
         # Extract and set request parameters automatically
-        # TODO: resolve to experiment/execution parameters instead of CLI args
+        # TODO: #36 resolve to experiment/execution parameters instead of CLI args
         cli_args = {
             'config': args.config,
             'suffix': args.suffix,

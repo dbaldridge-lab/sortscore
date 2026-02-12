@@ -78,8 +78,6 @@ def main():
             merged["mutagenesis_variants"] = args.mutagenesis_variants
         else:
             merged["mutagenesis_variants"] = list(args.mutagenesis_variants)
-    if args.position_offset is not None:
-        merged["position_offset"] = args.position_offset
     if args.biophysical_prop is not None:
         merged["biophysical_prop"] = bool(args.biophysical_prop)
     if args.min_pos is not None:

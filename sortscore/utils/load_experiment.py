@@ -10,7 +10,7 @@ Supported Variant Formats
    - DNA: Full nucleotide sequences for variant_type="codon" or "snv"
    - AA: Full amino acid sequences for variant_type="aa"
 
-TODO: Add HGVS c. notation support
+TODO: #35 Add HGVS c. notation support
 2. **Pre-annotated Variants** (Auto-detected):
    - Single-letter codes: "M1M", "R98C", "P171X"
    - Three-letter codes: "Met1Met", "Arg98Cys", "Pro171Ter"
@@ -204,7 +204,6 @@ class ExperimentConfig:
     max_cv: Optional[float] = None
     minread_threshold: int = 0
     mutagenesis_variants: Optional[list] = None
-    position_offset: int = 0  # Offset for position numbering (e.g., if data positions start from 1 but gene positions start from 51)
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
     
     @property
@@ -285,7 +284,7 @@ class ExperimentConfig:
         optional_fields = [
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold','max_cv',
-            'mutagenesis_variants', 'position_offset', 'biophysical_prop',
+            'mutagenesis_variants', 'biophysical_prop',
             'min_pos', 'max_pos'
         ]
 
@@ -298,8 +297,7 @@ class ExperimentConfig:
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
-                       'minread_threshold', 'max_cv', 'mutagenesis_variants', 
-                       'position_offset', 'biophysical_prop'}
+                       'minread_threshold', 'max_cv', 'mutagenesis_variants', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -666,7 +664,7 @@ class ExperimentConfig:
         if self.min_pos is None:
             self.min_pos = 1
         if self.max_pos is None:
-            # TODO: will this work with variant IDs that are not full sequences? May need to edit ref_seq
+            # TODO: #33 will this work with variant IDs that are not full sequences? May need to edit ref_seq
             if self.variant_type in {'snv', 'dna'}:
                 self.max_pos = len(ref_seq)
             else:
@@ -698,7 +696,7 @@ class ExperimentConfig:
         # AA annotation
         if variant_type == 'aa':
             df['aa_seq'] = df['variant_seq']  # AA sequences provided directly
-        # TODO: will this work with variant IDs that are not full sequences?
+        # TODO: #33 will this work with variant IDs that are not full sequences?
         elif variant_type in {'codon', 'snv', 'dna'}:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
             # DNA annotation

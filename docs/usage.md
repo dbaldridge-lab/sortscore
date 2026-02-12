@@ -15,7 +15,7 @@ This guide provides detailed instructions for running Sort-seq variant analysis 
 - The detector samples variants for classification.
 
 **Accepted DNA variant formats**
-# TODO: test this
+# TODO: #38 test ambiguous bases support, or throw errors as needed
 - Full DNA sequences using `A`, `T`, `C`, `G` (ambiguous IUPAC bases like `N`, `R`, `Y`, etc. are also treated as DNA).
 - Simple substitutions: `A123T` (also accepts `A.123.T`, `A-123-T`, `A_123_T`).
 - HGVS DNA notation like `c.123A>T`, `g.123A>T`, `n.123A>T` (supported when `mavehgvs` is installed).
@@ -257,7 +257,7 @@ Note:
 Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
 The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
-# TODO: Update this with latest config updates
+# TODO: Update this with latest config updates (see supported arguements)
 | Key                   | Type    | Required | Description                                                                                 |
 |-----------------------|---------|----------|---------------------------------------------------------------------------------------------|
 | **Required Parameters** | | | |
@@ -273,7 +273,8 @@ The main configuration file (JSON) defines all parameters for your Sort-seq anal
 | read_count            | list    | No       | List of demultiplexed read counts for each sample/bin.                                      |
 | output_dir            | str     | No       | Directory where all results and figures will be saved. Default: current directory.                                       |
 | mutagenesis_variants  | list    | No       | Custom list of variants for heatmap y-axis. Default: all 20 AAs + stop codon.               |
-| position_offset       | int     | No       | What position 1 of wt_seq becomes (e.g., position_offset=50 means position 1 → 50). Default: 0. |
+| min_pos       | int     | No       | Minimum position (1-based). Default: 1. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
+| max_pos       | int     | No       | Maximum position (1-based). Default: 1 + length of wild-type sequence. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 
 See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
 
@@ -298,22 +299,9 @@ The system automatically detects the input variant format from your count files.
 All positions are relative to the provided `wt_seq` unless otherwise specified:
 
 - **Default**: Position 1 corresponds to the first character of `wt_seq`
-- **With position_offset**: Position 1 of `wt_seq` becomes the offset value
-  (e.g., `position_offset=50` means position 1 → position 50, position 2 → position 51)
 - **Pre-annotated data**: If count files contain position annotations (e.g., "K.2.E"),
   those positions are used as-is, with optional offset adjustment applied
 - **Sequence flexibility**: `wt_seq` can be DNA or amino acid sequence - the system auto-detects the type and handles accordingly
-
-**Examples**:
-```json
-// Default: positions relative to wt_seq
-{"wt_seq": "MKVLIVAG", "position_offset": 0}
-// Position 1 = M, Position 2 = K, etc.
-
-// With offset: position 1 of wt_seq becomes position 50  
-{"wt_seq": "MKVLIVAG", "position_offset": 50}
-// Position 1 → 50, Position 2 → 51, Position 8 → 57
-```
 
 ### Common Mutagenesis Libraries
 
@@ -381,6 +369,3 @@ The package supports flexible heatmap generation with customizable axes for diff
 - **X-axis**: Amino acid positions (auto-detected from data)
 - **Y-axis**: All 20 amino acids + stop codon
 - **Matrix size**: 21 × (detected position range)
-
----
-For more details, see the docstrings in each module and the example configuration files in the `config/` directory.

@@ -13,7 +13,7 @@ import pandas as pd
 from typing import Optional
 from sortscore.utils.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
 
-# TODO: redundant, see if we can remove
+# TODO: #37 redundant, see if we can remove
 def annotate_scores_dataframe(
     scores_df: pd.DataFrame, 
     wt_dna_seq: str, 
@@ -87,7 +87,7 @@ def annotate_scores_dataframe(
     
     return df
 
-# TODO: isn't this redundant with similar functions
+# TODO: #37 isn't this redundant with similar functions
 def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: str = 'aa') -> pd.DataFrame:
     """
     Add sequence difference columns to a DataFrame.

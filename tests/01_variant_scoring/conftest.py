@@ -71,9 +71,7 @@ PARAMS_TO_TEST = [
     ("read_count", []),
     ("read_count", [10000] * 10),
     ("output_dir", "tests/scratch/_test_output"),
-    ("mutagenesis_variants", ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K"]),
-    ("position_offset", 0),
-    ("position_offset", 1000)
+    ("mutagenesis_variants", ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K"])
 ]
 
 @pytest.mark.parametrize("param,value", PARAMS_TO_TEST)
@@ -83,4 +81,4 @@ def test_config_single_param_boundary(config_dict, param, value):
     config[param] = value
     # Basic checks
     assert config[param] == value
-    # TODO: add more assertions for each param
+    # TODO: #21 add more assertions for each param
