@@ -251,30 +251,37 @@ plot_heatmap(
     output='output/figures'
 )
 ```
+## Running the Scoring Workflow
 
-## Experiment Configuration JSON Reference
-Note:
-Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
+The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided on the command line. 
 
-The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
+**Required CLI Arguements**
 
-| Key                   | Type  | Description                                                                                                                                         |
+| Key                   | Type  | Description |
 |------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Required Fields**    |       |                                                                                                                                                     |
-| `experiment_name`      | str   | Name/ID of the experiment or submission.                                                                                                            |
-| `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below).                                                                                                  |
-| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed.                                                                           |
-| **Optional Fields**    |       |                                                                                                                                                     |
-| `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`.                                                             |
-| `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`.                                                                     |
-| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`.                                                          |
-| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`.                                                                                       |
-| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out.                                           |
-| `read_count`           | list  | List of demultiplexed read counts for each sample/bin.                                                                                              |
-| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`.                                                                  |
-| `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`.                                                                    |
+| `experiment_name`      | str   | Name/ID of the experiment or submission. |
+| `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below). |
+| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed. |
+
+Additional optional fields can be used to customize the analysis. These can be selected by providing a JSON configuration with the `-c` option, or through CLI flags. If a parameter is provided both in the CLI and the config file, the CLI value takes precedence.
+
+**Optional Fields (CLI or Config File)**
+
+| Key                   | Type  | Description |
+|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
+| `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
+| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
+| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
+| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
+| `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
+| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. |
+| `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
 | `min_pos`              | int   | Minimum position (1-based). **Default:** `1`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 | `max_pos`              | int   | Maximum position (1-based). **Default:** `1 + length of wild-type sequence`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
+
+Note:
+Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
 ### Automatic Variant Format Detection
 

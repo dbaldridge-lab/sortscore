@@ -62,3 +62,6 @@ tests/scratch/
 eln/
 .obsidian/
 docs/usage_files/
+
+# Previewing md files
+*.html
