@@ -8,7 +8,6 @@ Welcome to the documentation for the `sortscore` package.
 - [Usage Guide](usage.md)
 - [Batch Processing Guide](batch_processing.md)
 - [Configuration File Reference](../config/example_experiment.json)
-- [API Reference](../sortscore/)
 - [Testing](../tests/)
 - [Contributing](../CONTRIBUTING.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)

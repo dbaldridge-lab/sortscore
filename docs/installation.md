@@ -12,8 +12,6 @@ Bash is used to run the default scoring pipeline. This has not been tested with 
 - **macOS:** Bash available (run `bash` to switch from default Zsh)
 - **Windows:** [Git Bash](https://git-scm.com/downloads) (included with Git for Windows). We do not consider Windows supported at this time.
 
-**Python API for incorporating scoring functionality into your scripts:**
-- You can use public functions directly in Python scripts or notebooks after importing sortscore
 ---
 
 ## Install Options 

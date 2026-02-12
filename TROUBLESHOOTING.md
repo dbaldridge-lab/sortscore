@@ -204,10 +204,6 @@ rm -rf sortscore-env
 # In a Jupyter Python cell, prefix shell commands with !
 !pip install git+https://github.com/dbaldridge-lab/sortscore.git
 !sortscore --config path/to/config.json
-
-# Or use Python API directly
-from sortscore.analysis.load_experiment import ExperimentConfig
-experiment = ExperimentConfig.from_json("path/to/config.json")
 ```
 
 ### Kernel doesn't see installed package
