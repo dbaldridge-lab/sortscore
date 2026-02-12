@@ -2,18 +2,19 @@
 [Documentation Index](docs/index.md)
 
 ## Installation
-
+#TODO: Update this when released on PYPI #1
 **Option 1: Using a virtual environment (recommended)**
 
-Note: these are bash commands
-
+The following are bash commands:
 ```bash
 # Create and activate a virtual environment
-python -m venv sortscore-env
-source sortscore-env/bin/activate  # On Windows: sortscore-env\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install sortscore
-pip install git+https://github.com/dbaldridge-lab/sortscore.git
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
 ```
 
 **Option 2: Using conda/anaconda**
@@ -26,38 +27,40 @@ conda activate your-env-name
 which pip  # Should show path to conda environment
 
 # Install sortscore
-pip install git+https://github.com/dbaldridge-lab/sortscore.git
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
 ```
 
 **Option 3: Install directly (may require adding scripts directory to PATH)**
 
 ```bash
-pip install git+https://github.com/dbaldridge-lab/sortscore.git
+# Install sortscore
+git clone git+https://github.com/dbaldridge-lab/sortscore.git
+cd sortscore
+pip install -e .
 ```
 
 ## Usage
-
+### Scoring
 With virtual environment or conda environment activated:
 ```bash
-sortscore --config path/to/config.json
+# only required arguements
+sortscore -n EXPERIMENT_NAME -e experiment_config.csv -w WT_SEQ
 ```
 
-Otherwise:
+Otherwise, add `python -m` before the sortscore command (or `python3 -m`, depending on your python installation).
+
 ```bash
-python -m sortscore --config path/to/config.json
+python -m sortscore ...
 ```
 
-## Testing and Development
+### Tile Normalization
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on:
-- Installing from a cloned repository
-- Running tests with example fixtures
-- Using the package in Jupyter notebooks
-- Python API examples
-
-## Troubleshooting
-
-Having installation or usage issues? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to common problems.
+```bash
+# Including optional -c option and batch config file
+sortscore -b -n EXPERIMENT_NAME -e experiment_config.csv -c batch_config.json
+```
 
 ## Config Templates
 
@@ -68,10 +71,19 @@ Having installation or usage issues? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md
 - define replicates and bins for each sample
 - provide parameters for each sample (MFI, cell counts, etc.)
 
+`batch_config.json`
+
 ## System Requirements
 
 - Python 3.10+
 - See `requirements.txt` for dependencies
+
+## Troubleshooting
+If you encounter any issues during installation:
+
+Ensure you're using Python 3.10 or higher: `python --version`
+Try updating pip: `pip install --upgrade pip`
+For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`.
 
 ```mermaid
 flowchart TB

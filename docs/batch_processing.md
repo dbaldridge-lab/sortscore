@@ -1,6 +1,6 @@
 # Batch Processing Guide
 
-This guide provides detailed instructions for combining and normalizing multiple Sort-seq experiments using the batch processing functionality in `sortscore`.
+This guide provides detailed instructions for combining and normalizing multiple Sort-seq experiments using the batch processing functionality in sortscore.
 
 ## Overview
 
