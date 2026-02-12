@@ -257,26 +257,24 @@ Note:
 Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
 The main configuration file (JSON) defines all parameters for your Sort-seq analysis. Below are the standard keys and their meanings:
-# TODO: Update this with latest config updates (see supported arguements)
-| Key                   | Type    | Required | Description                                                                                 |
-|-----------------------|---------|----------|---------------------------------------------------------------------------------------------|
-| **Required Parameters** | | | |
-| experiment_name       | str     | Yes      | Name/ID of the experiment or submission.                                                    |
-| experiment_setup_file | str     | Yes      | Path to the experiment setup CSV file (see below).                                          |
-| wt_seq                | str     | Yes      | Wild-type reference sequence (DNA or amino acid) for the region analyzed.                                     |
-| **Optional Parameters** | | | |
-| bins_required         | int     | No       | Minimum number of bins per replicate a variant must appear in to be scored. Default: 1.                               |
-| reps_required         | int     | No       | Minimum number of replicates a variant must appear in to be scored. Default: 1.                         |
-| avg_method            | str     | No       | Method for averaging scores (e.g., 'rep-weighted', 'simple-avg'). Default: 'rep-weighted'.         |
-| minread_threshold     | int     | No       | Minimum reads per bin for a variant to be scored. Default: 0.                                |
-| max_cv                | float   | No       | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
-| read_count            | list    | No       | List of demultiplexed read counts for each sample/bin.                                      |
-| output_dir            | str     | No       | Directory where all results and figures will be saved. Default: current directory.                                       |
-| mutagenesis_variants  | list    | No       | Custom list of variants for heatmap y-axis. Default: all 20 AAs + stop codon.               |
-| min_pos       | int     | No       | Minimum position (1-based). Default: 1. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
-| max_pos       | int     | No       | Maximum position (1-based). Default: 1 + length of wild-type sequence. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 
-See also the [experiment setup CSV reference](#experiment-setup-csv-reference) for details on the CSV file format.
+| Key                   | Type  | Description                                                                                                                                         |
+|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Required Fields**    |       |                                                                                                                                                     |
+| `experiment_name`      | str   | Name/ID of the experiment or submission.                                                                                                            |
+| `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below).                                                                                                  |
+| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed.                                                                           |
+| **Optional Fields**    |       |                                                                                                                                                     |
+| `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`.                                                             |
+| `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`.                                                                     |
+| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`.                                                          |
+| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`.                                                                                       |
+| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out.                                           |
+| `read_count`           | list  | List of demultiplexed read counts for each sample/bin.                                                                                              |
+| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`.                                                                  |
+| `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`.                                                                    |
+| `min_pos`              | int   | Minimum position (1-based). **Default:** `1`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
+| `max_pos`              | int   | Maximum position (1-based). **Default:** `1 + length of wild-type sequence`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 
 ### Automatic Variant Format Detection
 
