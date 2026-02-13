@@ -2,13 +2,13 @@
 
 This guide provides detailed instructions for running Sort-seq variant analysis using the `sortscore` package.
 
-## 1. Prepare Your Experiment Configuration
-- Create your experiment configuration JSON (see `config/example_experiment.json`) and experiment setup CSV.
-- Edit these files to match your experiment's parameters and data file locations. You can place them anywhere; just provide the correct path when running the analysis.
+## 1. Prepare Experiment Configuration File
+- Create your (see `config/experimental_setup.csv`) experiment setup CSV.
+- Edit this file to match your experiment's parameters and data file locations. Relative paths resolve relative to `experimental_setup.csv`.
 
 ### Variant Type Auto-Detection (Accepted Nomenclature)
 
-`sortscore` auto-detects whether your inputs are **DNA variants** or **amino-acid (AA) variants** by sampling the **first column** of the count files referenced by your experiment setup CSV.
+`sortscore` auto-detects whether your inputs are DNA sequences or protein sequences by sampling the `seq` column of the count files listed in `experiment_setup.csv`
 
 **Count file expectations**
 - The **first column** is treated as the variant identifier/sequence.
@@ -277,24 +277,18 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
 
-#### Single Nucleotide Variant Analysis (in development)
-- **Input**: DNA sequences (required)  
-- **Output**: Position-by-nucleotide heatmap, SNV-specific statistics
-- **Use for**: Saturation genome editing (SGE), base editing, nucleotide-level screens
-
 
 ## Experiment Setup CSV Reference
 
 The experiment setup CSV must contain the following columns:
-- `Replicate`: Replicate number (integer)
-- `Bin`: Bin number (integer)
-- `Read Counts (CSV)`: Path to the variant count file for this replicate/bin
-- `MFI`: Median fluorescence value for this replicate/bin
+- `Tile`: Used for normalization across experiments. Set to 1 if your experiment isn't tiled.
+- `Replicate`: Technical replicate number. Set to 1 if your experiment doesn't have technical replicates.
+- `Bin`: Bin number. Label from 1 up to the number of tubes that cells were sorted into. The order does not matter, so long as MFI is mapped to the correct bin in this file.
+- `Read Counts (CSV)`: Path to the variant count file for this replicate/bin.
+- `MFI`: Median fluorescence value for this replicate/bin.
 
 ### Input Variant Count File Format
-Each input variant count file must:
-- Have the first column named `seq` containing the variant sequences.
-- Have the second column containing the unique counts for each variant (column name can be anything, but must be the second column).
+Each input variant count file must have the first column named `seq` containing the variant sequences. It expects the second column to contain the unique counts for each variant (column name can be anything, but must be the second column). Any additional annotations can be listed in additional columns, which will be ignored by `sortscore`.
 
 Example (TSV):
 ```
@@ -303,31 +297,16 @@ ATGCGT...	123
 GCTTAA...	45
 ...
 ```
-
 The pipeline assumes all input files are pre-processed and formatted as above.
 
 ## Heatmap Customization
-
 The package supports flexible heatmap generation with customizable axes for different experimental designs.
 
-### Controlling Heatmap Axes
-# TODO: make position offset apply to DNA plots
-- `"dna"`: DNA nucleotide positions (1 to length of `wt_seq`)
+**X-Axis (Positions)**:
+- Set `min_pos` and `max_pos` to restrict or expand the range of positions shown on the x-axis of heatmaps.
+- `min_pos` and `max_pos` are optional. By default, the package will set `min_pos` to 1 and use the length of the wild-type sequence or the maximum position found in your data to determine `max_pos`.
+- Use `position_offset` to relabel the x-axis so that the first variant position matches the actual position in your protein or DNA sequence (e.g., set `position_offset` to 99 if your first variant is position 100).
 
-**Y-Axis (Variants)** - Controlled by `mutagenesis_variants`:
+**Y-Axis (Mutagenesis Variants)**:
 # TODO: test that changing this doesn't break the codon heatmap
-- Default: All 20 amino acids + stop codon `["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]`
-- Custom: Any subset or reordering of variants
-
-### Example Configurations
-
-#### Standard Deep Mutational Scanning (Default)
-```json
-{
-  "wt_seq": "MKVLIVAG...",
-  "mutagenesis_variants": ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]
-}
-```
-- **X-axis**: Amino acid positions (auto-detected from data)
-- **Y-axis**: All 20 amino acids + stop codon
-- **Matrix size**: 21 × (detected position range)
+By default, `mutagenesis_variants` is set to all 20 amino acids + stop codon `["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]` This can be customize to a subset or reordering of variants.
