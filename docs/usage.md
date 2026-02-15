@@ -2,31 +2,71 @@
 
 This guide provides detailed instructions for running Sort-seq variant analysis using the `sortscore` package.
 
-## 1. Prepare Experiment Configuration File
+For visualization options, see [docs/visualization.md](docs/visualization.md).
+
+
+## 1. Confirm Count File Formatting (TSV or Parquet)
+
+The first column of input variant count files must contain the variant sequences. 
+
+The second column must contain the unique counts for each variant.
+
+Column names and the presence of a header row are flexible. Only this ordering of columns is strictly required. Any additional annotations may be listed in the remaining columns, which will be ignored by `sortscore`.
+
+Example:
+
+| seq      | count |
+|----------|-------|
+| ATGCGT...|  123  |
+| GCTTAA...|   45  |
+
+Note: At this time, `sortscore` requires full variant sequences (DNA or protein). Work to include additional variant nomenclatures is ongoing.
+
+## 2. Prepare Experiment Configuration File
 - Create your (see `config/experimental_setup.csv`) experiment setup CSV.
 - Edit this file to match your experiment's parameters and data file locations. Relative paths resolve relative to `experimental_setup.csv`.
+- 
+### Experiment Setup Expected Columns
 
-### Variant Type Auto-Detection (Accepted Nomenclature)
+The experiment setup CSV must contain the following columns:
+- `Tile`: Used for normalization across experiments. Set to 1 if your experiment isn't tiled.
+- `Replicate`: Technical replicate number. Set to 1 if your experiment doesn't have technical replicates.
+- `Bin`: Bin number. Label from 1 up to the number of tubes that cells were sorted into. The order does not matter, so long as MFI is mapped to the correct bin in this file.
+- `Read Counts (CSV)`: Path to the variant count file for this replicate/bin.
+- `MFI`: Median fluorescence value for this replicate/bin.
 
-`sortscore` auto-detects whether your inputs are DNA sequences or protein sequences by sampling the `seq` column of the count files listed in `experiment_setup.csv`
+## 3. Running the Scoring Workflow
 
-**Count file expectations**
-- The **first column** is treated as the variant identifier/sequence.
-- The detector samples variants for classification.
+# TODO: can be provided in config?
+The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided on the command line. 
 
-**Accepted DNA variant formats**
-# TODO: #38 test ambiguous bases support, or throw errors as needed
-- Full DNA sequences using `A`, `T`, `C`, `G` (ambiguous IUPAC bases like `N`, `R`, `Y`, etc. are also treated as DNA).
-- Simple substitutions: `A123T` (also accepts `A.123.T`, `A-123-T`, `A_123_T`).
-- HGVS DNA notation like `c.123A>T`, `g.123A>T`, `n.123A>T` (supported when `mavehgvs` is installed).
+**Required CLI Arguements**
 
-**Accepted AA variant formats**
-- Full AA sequences using the 20 one-letter amino acids plus `*` (stop).
-- One-letter substitutions: `M1V`, `R98*` (also accepts `M.1.V`, `M-1-V`, `M_1_V`).
-- Three-letter substitutions: `Ala123Val`, and `Ter` for stop.
-- HGVS protein notation like `p.Arg97Cys` (supported when `mavehgvs` is installed).
+| Key                   | Type  | Description |
+|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `experiment_name`      | str   | Name/ID of the experiment or submission. |
+| `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below). |
+| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed. |
 
-## 2. Command Line Interface (CLI)
+Additional optional fields can be used to customize the analysis. These can be selected by providing a JSON configuration with the `-c` option, or through CLI flags. If a parameter is provided both in the CLI and the config file, the CLI value takes precedence.
+
+**Optional Fields (CLI or Config File)**
+
+| Key                   | Type  | Description |
+|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
+| `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
+| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
+| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
+| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
+| `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
+| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. |
+| `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
+| `min_pos`              | int   | Minimum position (1-based). **Default:** `1`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
+| `max_pos`              | int   | Maximum position (1-based). **Default:** `1 + length of wild-type sequence`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
+
+Note:
+Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
 ### Basic Usage
 
@@ -38,30 +78,10 @@ sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.j
 python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
+
 ### CLI Arguments Reference
 
-| Argument | Short | Type | Description | Default |
-|----------|-------|------|-------------|---------|
-| `--experiment-name` | `-n` | str | Experiment name used for output file naming **(required)** | - |
-| `--experiment-setup-file` | `-e` | str | Path to experiment setup CSV **(required)** | - |
-| `--config` | `-c` | str | Optional experiment config JSON file (used as fallback defaults; CLI takes precedence) | - |
-| `--wt-seq` | `-w` | str | Wild-type sequence (required unless provided in `--config`) | - |
-| `--output-dir` | `-o` | str | Output directory | `.` |
-| `--bins-required` | - | int | Minimum number of bins required | 1 |
-| `--reps-required` | - | int | Minimum number of replicates required | 1 |
-| `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | rep-weighted |
-| `--minread-threshold` | - | int | Minimum read threshold | 0 |
-| `--max-cv` | - | float | Maximum coefficient of variation allowed | None |
-| `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | W,F,Y,P,M,I,L,V,A,G,C,S,T,Q,N,D,E,H,R,K,* |
-| `--position-offset` | - | int | Offset for position numbering | 0 |
-| `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | False |
-| `--position-type` | - | str | Position axis for plots: `aa` or `dna` | aa |
-| `--min-pos` | - | int | Minimum position (1-based) | 1 |
-| `--max-pos` | - | int | Maximum position (1-based) | None |
-| `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
-| `--batch` | `-b` | flag | Enable batch processing mode | False |
-| `--pos-color` | `-p` | flag | Export positional averages with colors for protein structure visualization | False |
-| `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
+See [docs/cli_arguments.md](cli_arguments.md) for a complete list of command line arguments.
 
 ### Parameter Organization
 
@@ -73,7 +93,7 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 - Provide `-c/--config` to set defaults like `wt_seq`, thresholds, and plotting options.
 
 **Export Options:**
-- `--pos-color` / `-p`: Generates `{experiment_name}_positional_averages.csv` with position, average score, and hex color columns for protein structure visualization
+
 
 ### File Naming Conventions
 
@@ -89,12 +109,7 @@ scores/{experiment_name}_dna_scores_snv_{suffix}.csv
 scores/{experiment_name}_dna_stats_{suffix}.json         # when DNA scores are produced
 scores/{experiment_name}_aa_stats_{suffix}.json
 
-# Visualization files
-figures/{experiment_name}_aa_heatmap_{suffix}.{png|svg|pdf}
-figures/{experiment_name}_aa_heatmap_matrix_{suffix}.csv
-figures/{experiment_name}_codon_heatmap_{suffix}.{png|svg|pdf}         # when plotting DNA-level scores
-figures/{experiment_name}_codon_heatmap_matrix_{suffix}.csv            # when plotting DNA-level scores
-figures/{experiment_name}_positional_averages_{suffix}.csv   # when using --pos-color
+# For a list of all visualization output files, see [docs/visualization.md](docs/visualization.md).
 ```
 
 **Auto-generated suffix format:** `YYYYMMDD` (current date)
@@ -104,16 +119,16 @@ figures/{experiment_name}_positional_averages_{suffix}.csv   # when using --pos-
 ```bash
 # Basic analysis
 sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json
-
+```
+```bash
 # With custom output suffix
 sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -s "final_analysis"
-
-# Export positional averages for protein structure visualization
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
-
+```
+```bash
 # Generate SVG figures
 sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
-
+```
+```bash
 # Batch processing multiple experiments
 sortscore -b -c batch_config.json
 ```
@@ -191,58 +206,17 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 
 ### Batch Processing Workflow
 
-1. **Individual Analysis**: Each experiment analyzed separately to generate raw scores
-2. **Data Combination**: Raw scores and statistics combined across experiments  
-3. **Global Calculations**: Reference values computed from combined data
-4. **Normalization**: Selected method applied to standardize scores
-5. **Statistics Recalculation**: Final statistics computed from normalized data
-6. **Visualization**: Combined tiled heatmaps generated with position mapping
-7. **Output**: Combined results saved, individual files cleaned up (if requested)
-
-### Tiled Heatmap Features
-
-Batch processing automatically generates tiled heatmaps with:
-- **Position mapping**: Experiments mapped to global coordinate system
-- **Gap handling**: Visualization of non-contiguous coverage
-- **Boundary markers**: Visual indicators of experiment transitions  
-- **Unified scaling**: All data on same normalized scale
-- **Automatic sizing**: Figure dimensions adjust to position range
-
-## Running the Scoring Workflow
-
-The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided on the command line. 
-
-**Required CLI Arguements**
-
-| Key                   | Type  | Description |
-|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `experiment_name`      | str   | Name/ID of the experiment or submission. |
-| `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below). |
-| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed. |
-
-Additional optional fields can be used to customize the analysis. These can be selected by providing a JSON configuration with the `-c` option, or through CLI flags. If a parameter is provided both in the CLI and the config file, the CLI value takes precedence.
-
-**Optional Fields (CLI or Config File)**
-
-| Key                   | Type  | Description |
-|------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
-| `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
-| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
-| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
-| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
-| `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
-| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. |
-| `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
-| `min_pos`              | int   | Minimum position (1-based). **Default:** `1`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
-| `max_pos`              | int   | Maximum position (1-based). **Default:** `1 + length of wild-type sequence`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
-
-Note:
-Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
+1. Individual Analysis: Each experiment analyzed separately to generate raw scores
+2. Data Combination: Raw scores and statistics combined across experiments  
+3. Global Calculations: Reference values computed from combined data
+4. Normalization: Selected method applied to standardize scores
+5. Statistics Recalculation: Final statistics computed from normalized data
+6. Visualization: Combined tiled heatmaps generated with position mapping
+7. Output: Combined results saved, individual files cleaned up (if requested)
 
 ### Automatic Variant Format Detection
 
-The system automatically detects the input variant format from your count files.
+`sortscore` auto-detects whether your inputs are DNA sequences or protein sequences by sampling the `seq` column of the count files listed in `experiment_setup.csv`
 
 **DNA Formats Detected:**
 - Full DNA sequences: `ATGCGTAAC...`
@@ -257,7 +231,6 @@ The system automatically detects the input variant format from your count files.
 
 
 ### Position Numbering Convention
-
 All positions are relative to the provided `wt_seq` unless otherwise specified:
 
 - **Default**: Position 1 corresponds to the first character of `wt_seq`
@@ -278,35 +251,6 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
 
 
-## Experiment Setup CSV Reference
 
-The experiment setup CSV must contain the following columns:
-- `Tile`: Used for normalization across experiments. Set to 1 if your experiment isn't tiled.
-- `Replicate`: Technical replicate number. Set to 1 if your experiment doesn't have technical replicates.
-- `Bin`: Bin number. Label from 1 up to the number of tubes that cells were sorted into. The order does not matter, so long as MFI is mapped to the correct bin in this file.
-- `Read Counts (CSV)`: Path to the variant count file for this replicate/bin.
-- `MFI`: Median fluorescence value for this replicate/bin.
 
-### Input Variant Count File Format
-Each input variant count file must have the first column named `seq` containing the variant sequences. It expects the second column to contain the unique counts for each variant (column name can be anything, but must be the second column). Any additional annotations can be listed in additional columns, which will be ignored by `sortscore`.
 
-Example (TSV):
-```
-seq	count
-ATGCGT...	123
-GCTTAA...	45
-...
-```
-The pipeline assumes all input files are pre-processed and formatted as above.
-
-## Heatmap Customization
-The package supports flexible heatmap generation with customizable axes for different experimental designs.
-
-**X-Axis (Positions)**:
-- Set `min_pos` and `max_pos` to restrict or expand the range of positions shown on the x-axis of heatmaps.
-- `min_pos` and `max_pos` are optional. By default, the package will set `min_pos` to 1 and use the length of the wild-type sequence or the maximum position found in your data to determine `max_pos`.
-- Use `position_offset` to relabel the x-axis so that the first variant position matches the actual position in your protein or DNA sequence (e.g., set `position_offset` to 99 if your first variant is position 100).
-
-**Y-Axis (Mutagenesis Variants)**:
-# TODO: test that changing this doesn't break the codon heatmap
-By default, `mutagenesis_variants` is set to all 20 amino acids + stop codon `["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K", "*"]` This can be customize to a subset or reordering of variants.
