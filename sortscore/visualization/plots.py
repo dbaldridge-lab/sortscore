@@ -13,10 +13,6 @@ import seaborn as sns
 from typing import Optional, List, Any, Dict, Tuple, Union
 from pathlib import Path
 
-# Import functions from specialized modules for backward compatibility
-from sortscore.visualization.histograms import plot_histogram
-from sortscore.visualization.correlations import plot_replicate_correlation, plot_correlation_matrix
-
 FONT_SIZES = {
     'title': 18,
     'subtitle': 16, 
