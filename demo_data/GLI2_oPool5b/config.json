@@ -1,0 +1,11 @@
+{
+  "bins_required": 3,
+  "reps_required": 1,
+  "avg_method": "rep-weighted", 
+  "minread_threshold": 0,
+  "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
+  "min_pos": 551,
+  "max_pos": 583,
+  "output_dir": "output",
+  "biophysical_prop": true
+}
