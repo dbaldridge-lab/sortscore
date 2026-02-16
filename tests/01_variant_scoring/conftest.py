@@ -12,7 +12,7 @@ DEFAULT_CONFIG_DICT = {
     "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
     "min_pos": 551,
     "max_pos": 583,
-    "output_dir": '/Users/c.chitwood/code/sortscore/tests/scratch/_test_output',
+    "output_dir": '/Users/c.chitwood/code/sortscore/scratch/_test_output',
     "biophysical_prop": True
 }
 
@@ -70,7 +70,7 @@ PARAMS_TO_TEST = [
     ("max_cv", 100.0),
     ("read_count", []),
     ("read_count", [10000] * 10),
-    ("output_dir", "tests/scratch/_test_output"),
+    ("output_dir", "scratch/_test_output"),
     ("mutagenesis_variants", ["W", "F", "Y", "P", "M", "I", "L", "V", "A", "G", "C", "S", "T", "Q", "N", "D", "E", "H", "R", "K"])
 ]
 

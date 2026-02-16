@@ -52,7 +52,7 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
-tests/scratch/
+scratch/
 
 # Context files
 .claude/
