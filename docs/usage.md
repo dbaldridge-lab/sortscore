@@ -37,8 +37,7 @@ The experiment setup CSV must contain the following columns:
 
 ## 3. Running the Scoring Workflow
 
-# TODO: can be provided in config?
-The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided on the command line. 
+The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided in the bash shell (terminal) command line.
 
 **Required CLI Arguements**
 

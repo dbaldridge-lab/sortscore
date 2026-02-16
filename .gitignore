@@ -53,6 +53,7 @@ dist/
 .coverage
 htmlcov/
 scratch/
+_test_outputs/
 
 # Context files
 .claude/

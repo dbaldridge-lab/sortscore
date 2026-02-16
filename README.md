@@ -2,7 +2,7 @@
 [Documentation Index](docs/index.md)
 
 ## Installation
-#TODO: Update this when released on PYPI #1
+#TODO: #1 Update this when released on PYPI
 **Option 1: Using a virtual environment (recommended)**
 
 The following are bash commands:

@@ -633,6 +633,7 @@ class ExperimentConfig:
                 from sortscore.analysis.annotation import add_variant_categories
                 df = add_variant_categories(df)
     
+    # TODO: #11 Check this logic when min or max position is not provided.
     def _detect_position_range(self) -> None:
         """Auto-detect min_pos and max_pos from loaded variant data using sequence comparison."""
         # If both values are already set (e.g., provided in config), keep them

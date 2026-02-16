@@ -43,15 +43,11 @@ python -m sortscore --help
 
 **Having issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common problems and solutions.
 
-## Running Tests with Fixtures
-
-Test fixtures are included in the repository under `tests/fixtures/`. You can use these to verify the package works correctly.
-
 ### Command Line Testing
 
 ```bash
 # From the repository root directory (sortscore/)
-sortscore --config tests/fixtures/GLI2_oPool5b/config.json
+sortscore --config demo_data/GLI2_oPool5b/config.json
 ```
 
 This will run the analysis on the GLI2 example dataset and generate outputs in the fixture directory.
@@ -73,12 +69,12 @@ print("Current directory:", os.getcwd())
 
 # Cell 3: Run analysis on test fixtures
 ```
-!sortscore --config tests/fixtures/GLI2_oPool5b/config.json
+!sortscore --config demo_data/GLI2_oPool5b/config.json
 ```
 
 # Load experiment configuration
 ```
-config_path = Path("tests/fixtures/GLI2_oPool5b/config.json")
+config_path = Path("demo_data/GLI2_oPool5b/config.json")
 experiment = ExperimentConfig.from_json(config_path)
 ```
 
@@ -112,7 +108,7 @@ sortscore --help
 
 ```
 # Run analysis
-sortscore --config tests/fixtures/GLI2_oPool5b/config.json
+sortscore --config demo_data/GLI2_oPool5b/config.json
 ```
 
 ## Running Unit Tests
@@ -133,10 +129,10 @@ pytest sortscore/visualization/tests/
 
 ## Available Test Fixtures
 
-The repository includes example datasets in `tests/fixtures/`:
+The repository includes example datasets in `demo_data/`:
 
 - `GLI2_oPool5b/` - Example Sort-seq experiment for GLI2 TF DNA binding domain
-  - Config file: `tests/fixtures/GLI2_oPool5b/config.json`
+  - Config file: `demo_data/GLI2_oPool5b/config.json`
   - Includes compressed count files (.tsv.gz) and experiment setup CSV
 
 ### Making Changes to Code
@@ -154,5 +150,5 @@ This creates a link to the source code, so any changes are immediately available
 If you encounter issues:
 1. Check that you're in the correct directory (`pwd` should show `.../sortscore`)
 2. Verify the package is installed (`pip show sortscore`)
-3. Make sure test fixtures exist (`ls tests/fixtures/GLI2_oPool5b/`)
+3. Make sure test fixtures exist (`ls demo_data/GLI2_oPool5b/`)
 4. Report issues at https://github.com/dbaldridge-lab/sortscore/issues
