@@ -2,7 +2,7 @@
 
 This guide provides detailed instructions for running Sort-seq variant analysis using the `sortscore` package.
 
-For visualization options, see [docs/visualization.md](docs/visualization.md).
+For visualization options, see [visualization.md](visualization.md).
 
 
 ## 1. Confirm Count File Formatting (TSV or Parquet)
@@ -39,7 +39,7 @@ The experiment setup CSV must contain the following columns:
 
 The entry point for running the Sort-seq scoring workflow is the `sortscore` command. The required arguments are listed below and must be provided in the bash shell (terminal) command line.
 
-**Required CLI Arguements**
+**Required CLI Arguments**
 
 | Key                   | Type  | Description |
 |------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -108,7 +108,7 @@ scores/{experiment_name}_dna_scores_snv_{suffix}.csv
 scores/{experiment_name}_dna_stats_{suffix}.json         # when DNA scores are produced
 scores/{experiment_name}_aa_stats_{suffix}.json
 
-# For a list of all visualization output files, see [docs/visualization.md](docs/visualization.md).
+# For a list of all visualization output files, see [visualization.md](visualization.md).
 ```
 
 **Auto-generated suffix format:** `YYYYMMDD` (current date)
@@ -248,7 +248,6 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Input**: DNA sequences (required)
 - **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
-
 
 
 

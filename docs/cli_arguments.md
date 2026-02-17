@@ -22,5 +22,5 @@ This document lists all command line arguments available for the `sortscore` too
 | `--max-pos` | - | int | Maximum position (1-based) | None |
 | `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
 | `--batch` | `-b` | flag | Enable batch processing mode | False |
-| `--pos-color` | `-p` | flag | See [docs/visualization.md](docs/visualization.md) for exporting positional averages with colors for protein structure visualization | False |
+| `--pos-color` | `-p` | flag | See [visualization.md](visualization.md) for exporting positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
