@@ -24,14 +24,12 @@ Run a standard analysis:
 
 ```bash
 sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
-sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
 If you did not install the CLI entry point, run:
 If you did not install the CLI entry point, run:
 
 ```bash
-python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
