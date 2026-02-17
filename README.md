@@ -11,7 +11,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
-Run a standard analysis:
+Run a standard variant scoring analysis:
 
 ```bash
 sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
