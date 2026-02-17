@@ -33,6 +33,6 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 
 ## Demo
 
-- [Notebook demo](demo_data/GLI2_oPool5b/demo.ipynb)
+- [Notebook demo](demo_data/demo.ipynb)
 - [Example config](demo_data/GLI2_oPool5b/config.json)
 - [Example experiment setup](demo_data/GLI2_oPool5b/experiment_setup.csv)
