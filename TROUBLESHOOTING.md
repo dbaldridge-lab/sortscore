@@ -5,7 +5,7 @@ This guide helps resolve common installation and usage issues with sortscore.
 
 Ensure you're using Python 3.10 or higher.
 ```
- python --version 
+ python --version
 ```
  Try updating pip: 
  ```
@@ -16,8 +16,8 @@ Ensure you're using Python 3.10 or higher.
  # Create virtual environment (do this once)
  python -m venv .venv
 
- # Activate prior to running sortscore in a terminal
- source .venv/bin/activate.
+ # Activate environment prior to installing and running sortscore
+ source .venv/bin/activate
 ```
 
 ## Diagnostic Commands

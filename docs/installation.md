@@ -2,28 +2,18 @@
 
 ## Requirements
 
-### Core Requirements
 - Python 3.10 or higher
-- Python package dependencies (see [requirements.txt](https://github.com/dbaldridge-lab/sortscore/blob/main/requirements.txt))
+- Python package dependencies in [`requirements.txt`](../requirements.txt)
+- Bash-compatible shell for the default CLI workflow
 
-**Variant scoring pipeline:**
-Bash is used to run the default scoring pipeline. This has not been tested with other shells (e.g., Zsh, Fish).
-- **Linux:** Bash (default on most distributions)
-- **macOS:** Bash available (run `bash` to switch from default Zsh)
-- **Windows:** [Git Bash](https://git-scm.com/downloads) (included with Git for Windows). We do not consider Windows supported at this time.
+Platform notes:
+- Linux: supported
+- macOS: supported
+- Windows: not officially supported; Git Bash is recommended if needed
 
----
+## Install Options
 
-## Install Options 
-### TODO: #1 Do a test release on PyPI. Use option 2 for now.
-### Option 1: Install from PyPI (Recommended)
-The easiest way to install sortscore is directly from PyPI:
-```bash
-pip install sortscore
-```
-
-### Option 2: Install from Source
-Clone the repository and install dependencies:
+### Option 1: Install from Source (current recommended path)
 
 ```bash
 git clone https://github.com/dbaldridge-lab/sortscore
@@ -31,26 +21,27 @@ cd sortscore
 pip install -e .
 ```
 
+### Option 2: Install from PyPI
+
+```bash
+pip install sortscore
+```
+
+Use this option only if your required package version is available on PyPI.
+
+## Verify Installation
+
+```bash
+python -m sortscore --help
+sortscore --help
+```
+
+If `sortscore` is not found, use the module form (`python -m sortscore`) or confirm your environment is activated.
+
 ## Troubleshooting
-If you encounter any issues during installation:
 
-Ensure you're using Python 3.10 or higher: `python --version`
-Try updating pip: `pip install --upgrade pip`
-For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`
+See [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) for diagnostic commands and common environment issues.
 
-## Troubleshooting
-If you encounter any issues during installation:
+## Next Step
 
-Ensure you're using Python 3.10 or higher: `python --version`
-Try updating pip: `pip install --upgrade pip`
-For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`
-
----
-For usage instructions, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/usage.md).
-
-For contributing to sortscore development, see [here](https://github.com/dbaldridge-lab/sortscore/edit/main/docs/contributing.md).
-
-
-
-
-
+Continue with the [Usage Guide](usage.md).

@@ -29,12 +29,12 @@ Batch processing enables you to:
 ## Batch Configuration
 
 ### Example Config
-Example batch config options are shown below. This template uses default options (besides global_min and global_max, which have no default). This may be added to the same config used for scoring or to a new, seperate config. The options will only be read during batch procesing initiated by the -b option.
+Example batch config options are shown below. This template uses default options (besides global_min and global_max, which have no default). This may be added to the same config used for scoring or to a new, separate config. The options will only be read during batch processing initiated by the `-b` option.
 ```json
 {
     "batch_normalization_method": "zscore_2pole",
     "pathogenic_control_type": "nonsense",
-    "pathogenic_variants": ,
+    "pathogenic_variants": ["E501K"],
     "combined_output_dir": "/path/to/combined_results",
     "global_min_pos": 1,
     "global_max_pos": 500
