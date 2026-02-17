@@ -4,9 +4,7 @@
 - [Usage Guide](docs/usage.md)
 - [Visualization Guide](docs/visualization.md)
 - [Batch Processing Guide](docs/batch_processing.md)
-- [Configuration Templates](config/)
-- [Testing](tests/)
-- [Contributing](CONTRIBUTING.md)
+- [Configuration Templates](demo_data/GLI2_oPool5b/)
 - [Troubleshooting](TROUBLESHOOTING.md)
 
 
