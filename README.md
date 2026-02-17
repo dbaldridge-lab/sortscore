@@ -4,9 +4,7 @@
 - [Usage Guide](docs/usage.md)
 - [Visualization Guide](docs/visualization.md)
 - [Batch Processing Guide](docs/batch_processing.md)
-- [Configuration Templates](config/)
-- [Testing](tests/)
-- [Contributing](CONTRIBUTING.md)
+- [Configuration Templates](demo_data/GLI2_oPool5b/)
 - [Troubleshooting](TROUBLESHOOTING.md)
 
 
@@ -86,13 +84,6 @@ sortscore -b -n EXPERIMENT_NAME -e experiment_config.csv -c batch_config.json
 
 - Python 3.10+
 - See `requirements.txt` for dependencies
-
-## Troubleshooting
-If you encounter any issues during installation:
-
-Ensure you're using Python 3.10 or higher: `python --version`
-Try updating pip: `pip install --upgrade pip`
-For dependency conflicts, consider using a virtual environment `python -m venv .venv && source .venv/bin/activate`.
 
 ```mermaid
 flowchart TB
