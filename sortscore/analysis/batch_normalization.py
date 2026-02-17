@@ -734,7 +734,7 @@ def generate_batch_visualizations(
             export=True,
             output=heatmap_file,
             export_matrix=True,
-            show_biophysical_properties=True  # Enable biophysical properties panel
+            biophysical_properties=True  # Enable biophysical properties panel
         )
         logger.info(f"Generated tiled heatmap: {heatmap_file}")
         

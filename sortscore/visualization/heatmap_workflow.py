@@ -169,7 +169,7 @@ def generate_heatmap_visualizations(
             fig_format=fig_format,
             export_matrix=True,
             export_positional_averages=export_positional_averages,
-            show_biophysical_properties=experiment.biophysical_prop,
+            biophysical_properties=experiment.biophysical_prop,
             suffix=output_suffix,
         )
 
@@ -212,7 +212,7 @@ def generate_heatmap_visualizations(
             fig_format=fig_format,
             export_matrix=True,
             export_positional_averages=export_positional_averages,
-            show_biophysical_properties=experiment.biophysical_prop,
+            biophysical_properties=experiment.biophysical_prop,
             suffix=output_suffix,
         )
 

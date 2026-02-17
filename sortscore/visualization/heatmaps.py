@@ -132,7 +132,7 @@ def plot_heatmap(
     row_avg: bool = False,
     title: Optional[str] = None,
     export_matrix: bool = False,
-    show_biophysical_properties: bool = False,
+    biophysical_properties: bool = False,
     export_positional_averages: bool = False,
     suffix: Optional[str] = None,
     heatmap_basename: str = "heatmap",
@@ -174,7 +174,7 @@ def plot_heatmap(
         Plot title.
     export_matrix : bool, default False
         If True, export the heatmap matrix data to CSV.
-    show_biophysical_properties : bool, default False
+    biophysical_properties : bool, default False
         If True, show biophysical properties panel beside the heatmap.
     export_positional_averages : bool, default False
         If True, export positional averages with hex colors to CSV for protein structure visualization.
@@ -247,7 +247,7 @@ def plot_heatmap(
     num_rows = len(dms_matrix.index)
     is_codon_heatmap = num_rows > 21  # More than 21 rows = codon heatmap
     is_small_aa_heatmap = num_rows == 21  # Exactly 21 rows = standard AA heatmap
-    show_props = show_biophysical_properties and (is_codon_heatmap or is_small_aa_heatmap)
+    show_props = biophysical_properties and (is_codon_heatmap or is_small_aa_heatmap)
     
     # Configure figure size
     if fig_size == 'small':
@@ -460,7 +460,7 @@ def plot_tiled_heatmap(
     tick_labels: Optional[List[str]] = None,
     title: Optional[str] = None,
     export_matrix: bool = False,
-    show_biophysical_properties: bool = False,
+    biophysical_properties: bool = False,
     transparent: bool = True
 ) -> None:
     """
@@ -499,7 +499,7 @@ def plot_tiled_heatmap(
         Custom heatmap title
     export_matrix : bool, optional
         Whether to export the underlying matrix data, default False
-    show_biophysical_properties : bool, optional
+    biophysical_properties : bool, optional
         Whether to show biophysical properties panel, default False
     transparent : bool, default True
         If True, save plot with transparent background. If False, use white background.
@@ -597,7 +597,7 @@ def plot_tiled_heatmap(
     facecolor = 'none' if transparent else 'white'
     fig = plt.figure(figsize=figsize, facecolor=facecolor)
     
-    if show_biophysical_properties:
+    if biophysical_properties:
         # Create gridspec with biophysical properties panel
         gs = GridSpec(1, 2, figure=fig, width_ratios=[0.98, 0.02], wspace=0.01)
         ax_heatmap = fig.add_subplot(gs[0, 0])
@@ -626,7 +626,7 @@ def plot_tiled_heatmap(
         cbar.set_ticklabels(tick_labels)
     
     # Add biophysical properties panel if requested
-    if show_biophysical_properties:
+    if biophysical_properties:
         _add_biophysical_properties_panel(
             ax_props, 
             mutagenesis_variants, 
