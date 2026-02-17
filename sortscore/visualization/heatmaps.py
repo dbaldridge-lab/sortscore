@@ -115,12 +115,12 @@ def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_he
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-#TODO: troubleshoot wt_score not being updates for AA heatmaps
+#TODO: #25 troubleshoot wt_score not being updates for AA heatmaps
 def plot_heatmap(
     data: pd.DataFrame,
     score_col: str,
     experiment: ExperimentConfig,
-    wt_score: float = 1.0,
+    wt_score: float,
     fig_size: str = 'small',
     export_heatmap: bool = True,
     output: Optional[str] = None,
@@ -150,7 +150,7 @@ def plot_heatmap(
         Column name for the activity score.
     experiment : ExperimentConfig
         Experiment configuration dataclass instance.
-    wt_score : float, default 1.0
+    wt_score : float
         Score to assign to WT positions.
     fig_size : str, default 'small'
         Figure size ('small', 'large', 'long').
@@ -410,7 +410,7 @@ def plot_heatmap(
     ax1.set_xticks([])
     ax1.set_yticks([])
     
-    #TODO: instead, have DNA and AA heatmap mode options
+    #TODO: #34 instead, have DNA and AA heatmap mode options
     if experiment.variant_type == 'dna':
         ax2.set_xlabel('DNA Position', fontsize=28)
     else:
@@ -575,23 +575,10 @@ def plot_tiled_heatmap(
                 if pos in exp_matrix.columns and pos in global_matrix.columns:
                     global_matrix[pos] = exp_matrix[pos]
     
-    # Handle position breaks if requested
-    if batch_config.allow_position_breaks:
-        # Find gaps in data coverage
-        data_coverage = ~global_matrix.isna().all(axis=0)
-        covered_positions = global_matrix.columns[data_coverage].tolist()
-        
-        if len(covered_positions) > 0:
-            # Use only covered positions for visualization
-            plot_matrix = global_matrix[covered_positions]
-            position_labels = covered_positions
-        else:
-            plot_matrix = global_matrix
-            position_labels = global_positions
-    else:
-        # Use full global range
-        plot_matrix = global_matrix
-        position_labels = global_positions
+
+    # Use full global range
+    plot_matrix = global_matrix
+    position_labels = global_positions
     
     # Set figure size based on matrix dimensions
     size_presets = {

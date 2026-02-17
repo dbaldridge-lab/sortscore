@@ -152,7 +152,7 @@ def main():
                 experiment=experiment,
                 output_dir=output_dir,
                 output_suffix=output_suffix,
-                fig_format=args.fig_format,
+                fig_format=fig_format,
                 export_positional_averages=args.pos_color,
             )
         if aa_scores_df is not None:
@@ -161,7 +161,7 @@ def main():
                 experiment=experiment,
                 output_dir=output_dir,
                 output_suffix=output_suffix,
-                fig_format=args.fig_format,
+                fig_format=fig_format,
                 export_positional_averages=args.pos_color,
             )
     except Exception as e:
