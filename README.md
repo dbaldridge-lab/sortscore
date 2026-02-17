@@ -1,5 +1,14 @@
 # sortscore
-[Documentation Index](docs/index.md)
+`sortscore` is a Python package for Sort-seq variant analysis, supporting variant scoring, normalization, and visualization.
+- [Installation Guide](installation.md)
+- [Usage Guide](usage.md)
+- [Visualization Guide](visualization.md)
+- [Batch Processing Guide](batch_processing.md)
+- [Configuration Templates](../config)
+- [Testing](../tests/)
+- [Contributing](../CONTRIBUTING.md)
+- [Troubleshooting](../TROUBLESHOOTING.md)
+
 
 ## Installation
 #TODO: #1 Update this when released on PYPI
