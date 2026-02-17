@@ -27,8 +27,6 @@ pip install -e .
 pip install sortscore
 ```
 
-Use this option only if your required package version is available on PyPI.
-
 ## Verify Installation
 
 ```bash
