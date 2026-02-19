@@ -78,10 +78,10 @@ Any relative file paths specified in the experiment setup file are resolved rela
 
 ```bash
 # After installation (recommended)
-sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
+sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 
 # Without installation (from project root)
-python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
+python -m sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
 
@@ -124,23 +124,23 @@ scores/{experiment_name}_aa_stats_{suffix}.json
 
 ```bash
 # Basic analysis
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json
 ```
 ```bash
 # DNA codon-level analysis
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --mutagenesis-type codon
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json --mutagenesis-type codon
 ```
 ```bash
 # With custom output suffix
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -s "final_analysis"
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -s "final_analysis"
 ```
 ```bash
 # Generate SVG figures
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
 ```
 ```bash
 # Batch processing multiple experiments
-sortscore -b -c batch_config.json
+sortscore norm -c batch_config.json
 ```
 
 ## Tiled Mutagenesis Batch Processing
@@ -149,7 +149,7 @@ For tiled experimental designs where different sequencing datasets cover differe
 
 ```bash
 # Run tiled batch analysis (requires a `tile` column in the setup CSV)
-sortscore -b -n tiled_experiment -e experiment_setup.csv -c experiment_config.json
+sortscore norm -c batch_config.json
 
 
 ```
@@ -253,4 +253,3 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Input**: DNA sequences (required)
 - **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
-

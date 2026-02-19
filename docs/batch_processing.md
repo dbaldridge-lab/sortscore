@@ -23,13 +23,13 @@ Batch processing enables you to:
 2. List 2 or more tiles in experimental_setup file
 3. Run batch analysis:
    ```bash
-   sortscore -b -e experimental_setup.csv
+   sortscore norm -c batch_config.json
    ```
 
 ## Batch Configuration
 
 ### Example Config
-Example batch config options are shown below. This template uses default options (besides global_min and global_max, which have no default). This may be added to the same config used for scoring or to a new, separate config. The options will only be read during batch processing initiated by the `-b` option.
+Example batch config options are shown below. This template uses default options (besides global_min and global_max, which have no default). This may be added to the same config used for scoring or to a new, separate config. The options will be read during batch processing initiated by the `norm` command.
 ```json
 {
     "batch_normalization_method": "zscore_2pole",

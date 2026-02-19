@@ -19,7 +19,7 @@ def create_analysis_parser() -> argparse.ArgumentParser:
         Configured argument parser for the main analysis CLI.
     """
     parser = argparse.ArgumentParser(
-        description="Run Sort-seq variant analysis. Supports scoring and a batch normalization mode with -b (for combining tiled experiments).",
+        description="Run Sort-seq variant analysis (single-experiment scoring).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("-n", "--experiment-name",
@@ -37,11 +37,6 @@ def create_analysis_parser() -> argparse.ArgumentParser:
                         required=False,
                         help="Optional JSON config file. CLI options take precedence over config values."
     )
-    parser.add_argument('-b', '--batch', 
-                        action='store_true', 
-                        required=False,
-                        help='Run batch processing mode for combining multiple experiments. If not provided, uses config value or default (False).'
-                        )
     parser.add_argument("-w","--wt-seq",
                         type=str,
                         required=False,

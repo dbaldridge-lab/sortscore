@@ -121,11 +121,11 @@ class AnalysisLogger:
         # Extract and set request parameters automatically
         # TODO: #36 resolve to experiment/execution parameters instead of CLI args
         cli_args = {
-            'config': args.config,
-            'suffix': args.suffix,
-            'batch': args.batch,
-            'pos_color': args.pos_color,
-            'fig_format': args.fig_format
+            'config': getattr(args, 'config', None),
+            'suffix': getattr(args, 'suffix', None),
+            'batch': getattr(args, 'batch', False),
+            'pos_color': getattr(args, 'pos_color', False),
+            'fig_format': getattr(args, 'fig_format', None)
         }
         
         analysis_params = {
@@ -141,7 +141,7 @@ class AnalysisLogger:
         }
         
         self.request = AnalysisRequest(
-            config_file=args.config,
+            config_file=getattr(args, 'config', None),
             cli_args=cli_args,
             analysis_params=analysis_params
         )

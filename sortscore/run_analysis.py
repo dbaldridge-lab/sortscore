@@ -4,7 +4,7 @@ Main entry point for Sort-seq variant scoring.
 This script loads the experiment configuration and orchestrates the analysis workflow.
 
 Usage:
-sortscore -n EXPERIMENT -e path/to/experiment_setup.csv -c path/to/config.json
+sortscore score -n EXPERIMENT -e path/to/experiment_setup.csv -c path/to/config.json
 """
 import logging
 import sys
@@ -12,7 +12,6 @@ import os
 import pandas as pd
 from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.utils.file_utils import ensure_output_subdirs
-from sortscore.analysis.batch_workflow import run_batch_mode
 from sortscore.utils.analysis_logger import AnalysisLogger, generate_date_suffix
 from sortscore.analysis.workflows import run_variant_analysis_workflow
 from sortscore.visualization.heatmap_workflow import generate_heatmap_visualizations
@@ -24,14 +23,6 @@ def main():
     
     args = parse_analysis_args()
     
-    # Handle batch processing mode for tiled experiments (e.g. multiple oligo pools)
-    if args.batch:
-        if not args.config:
-            logging.error("Batch mode requires -c/--config to be set to a batch config JSON file.")
-            sys.exit(1)
-        run_batch_mode(args.config, args.suffix)
-        return
-
     if not args.experiment_name:
         logging.error("Missing -n/--experiment-name (required).")
         sys.exit(1)

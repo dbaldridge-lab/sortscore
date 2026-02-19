@@ -8,7 +8,7 @@ figures/{experiment_name}_codon_heatmap_matrix_{suffix}.csv            # when pl
 To export positional averages with hex color codes for protein structure visualization, use the `--pos-color` (or `-p`) flag:
 
 ```bash
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
 ```
 
 This generates a file:
@@ -69,7 +69,7 @@ Position interpretation depends on detected variant type and parsed variant iden
 Example:
 
 ```bash
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -v "W,F,Y,P,M,I,L,V,A,G,C,S,T,Q,N,D,E,H,R,K,*"
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -v "W,F,Y,P,M,I,L,V,A,G,C,S,T,Q,N,D,E,H,R,K,*"
 ```
 
 You can provide a subset or a different ordering as needed.
@@ -93,17 +93,17 @@ Use batch config keys to control global axis range:
 Generate SVG figures:
 
 ```bash
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json --fig-format svg
 ```
 
 Export positional averages with colors:
 
 ```bash
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -p
 ```
 
 Constrain plotted region and relabel positions:
 
 ```bash
-sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --min-pos 10 --max-pos 120 -O 99
+sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json --min-pos 10 --max-pos 120 -O 99
 ```

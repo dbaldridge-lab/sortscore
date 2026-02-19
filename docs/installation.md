@@ -30,8 +30,8 @@ pip install sortscore
 ## Verify Installation
 
 ```bash
-python -m sortscore --help
-sortscore --help
+python -m sortscore score --help
+sortscore score --help
 ```
 
 If `sortscore` is not found, use the module form (`python -m sortscore`) or confirm your environment is activated.

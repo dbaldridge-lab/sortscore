@@ -1,20 +1,14 @@
 import subprocess
 import os
-import sys
 import tempfile
 from pathlib import Path
-import pytest
 
 
 def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_outputs):
     """Test that sortscore CLI for scoring pipeline runs and produces expected outputs."""
     data_dir = config_dict["output_dir"]
-    
-    # Verify that the console script was installed from setup.py
-    sortscore_exe = Path(sys.executable).with_name("sortscore")
-    assert sortscore_exe.exists(), f"Expected console script to exist at {sortscore_exe}"
-    
-    # Run the sortscore CLI with the provided config file
+
+    # Run the sortscore CLI via module entrypoint to avoid installer coupling in tests.
     with tempfile.TemporaryDirectory(prefix="sortscore_test_") as tmpdir:
         # Set environment variables to isolate matplotlib and cache directories
         env = os.environ.copy()
@@ -24,7 +18,10 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
         env["HOME"] = tmpdir
         result = subprocess.run(
             [
-                str(sortscore_exe),
+                "python",
+                "-m",
+                "sortscore",
+                "score",
                 "-n",
                 "test_experiment",
                 "-e",

@@ -5,6 +5,7 @@ This script loads batch configuration, orchestrates normalization across multipl
 and generates combined outputs with proper cleanup.
 
 Usage:
+    sortscore norm --config path/to/batch_config.json
     python -m sortscore.run_batch_analysis --config path/to/batch_config.json
 """
 

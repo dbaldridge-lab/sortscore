@@ -26,7 +26,7 @@ setup(
     python_requires='>=3.10',
     entry_points={
         'console_scripts': [
-            'sortscore=sortscore.run_analysis:main',
+            'sortscore=sortscore.cli:main',
         ],
     },
     classifiers=[

@@ -1,6 +1,10 @@
 # Command Line Arguments Reference for sortscore
 
-This document lists all command line arguments available for the `sortscore` tool.
+This document lists command line arguments for the scoring command:
+
+```bash
+sortscore score [options]
+```
 
 | Argument | Short | Type | Description | Default |
 |----------|-------|------|-------------|---------|
@@ -21,6 +25,11 @@ This document lists all command line arguments available for the `sortscore` too
 | `--min-pos` | - | int | Minimum position (1-based) | 1 |
 | `--max-pos` | - | int | Maximum position (1-based) | None |
 | `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
-| `--batch` | `-b` | flag | Enable batch processing mode | False |
 | `--pos-color` | `-p` | flag | See [visualization.md](visualization.md) for exporting positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
+
+Batch normalization is routed through:
+
+```bash
+sortscore norm -c batch_config.json
+```
