@@ -29,6 +29,7 @@ def load_experiment_setup(
     experiment_setup_file: str,
     *,
     validate_count_files: bool = False,
+    require_tile: bool = False,
 ) -> Tuple[pd.DataFrame, ExperimentSetupColumns]:
     """
     Load and validate an experiment setup CSV.
@@ -40,6 +41,8 @@ def load_experiment_setup(
     validate_count_files : bool
         If True, checks that every referenced count file exists on disk (after
         resolving paths relative to the setup file directory).
+    require_tile : bool
+        If True, requires a tile column and validates it as integer-like.
 
     Returns
     -------
@@ -66,9 +69,14 @@ def load_experiment_setup(
     if setup_df.empty:
         raise ValueError(f"Experiment setup CSV is empty: {experiment_setup_file}")
 
-    cols = _resolve_setup_columns(setup_df.columns)
+    cols = _resolve_setup_columns(setup_df.columns, require_tile=require_tile)
 
-    _validate_required_values(setup_df, cols, experiment_setup_file)
+    _validate_required_values(
+        setup_df,
+        cols,
+        experiment_setup_file,
+        require_tile=require_tile,
+    )
 
     if validate_count_files:
         _validate_count_files_exist(setup_df, cols, experiment_setup_file)
@@ -76,7 +84,11 @@ def load_experiment_setup(
     return setup_df, cols
 
 
-def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
+def _resolve_setup_columns(
+    df_columns: Iterable[str],
+    *,
+    require_tile: bool = False,
+) -> ExperimentSetupColumns:
     columns = list(df_columns)
 
     def find_one(
@@ -186,7 +198,7 @@ def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
         "cell_fraction"], required=False
     )
 
-    tile = find_one(["tile", "oligo"], required=False)
+    tile = find_one(["tile", "oligo"], required=require_tile)
     
     # replicate/bin/mfi are required
     missing = []
@@ -196,6 +208,8 @@ def _resolve_setup_columns(df_columns: Iterable[str]) -> ExperimentSetupColumns:
         missing.append("Bin")
     if mfi is None:
         missing.append("MFI")
+    if require_tile and tile is None:
+        missing.append("Tile")
     if missing: 
         raise ValueError(f"Experiment setup CSV missing required column(s): {', '.join(missing)}")
 
@@ -214,6 +228,8 @@ def _validate_required_values(
     setup_df: pd.DataFrame,
     cols: ExperimentSetupColumns,
     experiment_setup_file: str,
+    *,
+    require_tile: bool = False,
 ) -> None:
     # Replicate must be int-like
     replicate_series = setup_df[cols.replicate]
@@ -258,6 +274,21 @@ def _validate_required_values(
         raise ValueError(
             f"MFI column '{cols.mfi}' must contain numeric values in {experiment_setup_file}"
         ) from e
+
+    if require_tile:
+        if cols.tile is None:
+            raise ValueError(
+                f"Tile column is required in batch mode for {experiment_setup_file}"
+            )
+        tile_series = setup_df[cols.tile]
+        if tile_series.isna().any():
+            raise ValueError(f"Missing tile values in experiment setup CSV: {experiment_setup_file}")
+        try:
+            tile_series.astype(int)
+        except Exception as e:
+            raise ValueError(
+                f"Tile column '{cols.tile}' must contain integers in {experiment_setup_file}"
+            ) from e
 
 
 def _validate_count_files_exist(

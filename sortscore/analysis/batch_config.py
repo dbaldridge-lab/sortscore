@@ -7,8 +7,10 @@ Sort-seq experiments in batch processing workflows.
 
 import json
 import os
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
+from sortscore.utils.experiment_setup import load_experiment_setup
 
 
 @dataclass
@@ -97,6 +99,22 @@ class BatchConfig:
         for config_path in self.experiment_configs:
             if not os.path.exists(config_path):
                 raise FileNotFoundError(f"Experiment config file not found: {config_path}")
+            # Batch mode requires Tile column with integer-like values.
+            try:
+                config_path_obj = Path(config_path).expanduser().resolve()
+                with open(config_path_obj, 'r') as f:
+                    experiment_cfg = json.load(f)
+                if 'experiment_setup_file' not in experiment_cfg:
+                    raise ValueError(
+                        f"Missing 'experiment_setup_file' in experiment config: {config_path}"
+                    )
+                setup_rel = Path(str(experiment_cfg['experiment_setup_file'])).expanduser()
+                setup_path = (config_path_obj.parent / setup_rel).resolve()
+                load_experiment_setup(str(setup_path), require_tile=True)
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid experiment setup for batch mode in '{config_path}': {e}"
+                ) from e
         
         # Validate normalization method
         valid_methods = ['zscore_2pole', '2pole', 'zscore_center']

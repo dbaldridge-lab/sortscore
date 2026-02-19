@@ -52,3 +52,35 @@ def test_load_experiment_setup_validates_numeric_fields(tmp_path):
     with pytest.raises(ValueError, match=r"Replicate column"):
         load_experiment_setup(str(setup_csv))
 
+
+def test_load_experiment_setup_requires_tile_in_batch_mode(tmp_path):
+    setup_csv = tmp_path / "experiment_setup.csv"
+    setup_csv.write_text(
+        "Replicate,Bin,Path,MFI\n"
+        "1,1,counts.tsv,123.4\n"
+    )
+
+    with pytest.raises(ValueError, match=r"Tile"):
+        load_experiment_setup(str(setup_csv), require_tile=True)
+
+
+def test_load_experiment_setup_validates_tile_as_integer(tmp_path):
+    setup_csv = tmp_path / "experiment_setup.csv"
+    setup_csv.write_text(
+        "Tile,Replicate,Bin,Path,MFI\n"
+        "not_int,1,1,counts.tsv,123.4\n"
+    )
+
+    with pytest.raises(ValueError, match=r"Tile column"):
+        load_experiment_setup(str(setup_csv), require_tile=True)
+
+
+def test_load_experiment_setup_accepts_integer_tile_in_batch_mode(tmp_path):
+    setup_csv = tmp_path / "experiment_setup.csv"
+    setup_csv.write_text(
+        "Tile,Replicate,Bin,Path,MFI\n"
+        "1,1,1,counts.tsv,123.4\n"
+    )
+
+    _, cols = load_experiment_setup(str(setup_csv), require_tile=True)
+    assert cols.tile == "Tile"
