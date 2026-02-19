@@ -22,7 +22,6 @@ def test_sortscore_cli_runs_and_outputs(config_path, config_dict, cleanup_output
         env["MPLCONFIGDIR"] = tmpdir
         env["XDG_CACHE_HOME"] = tmpdir
         env["HOME"] = tmpdir
-        config_dict["output_dir"] = os.path.join(tmpdir, "test_outputs")
         result = subprocess.run(
             [
                 str(sortscore_exe),

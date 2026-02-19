@@ -9,8 +9,120 @@ Examples
 >>> translate_dna('ATGGCC')
 'MA'
 """
-from typing import List, Optional
+import re
+from typing import List, Literal, Optional
 from Bio.Seq import Seq
+
+
+def _classify_single_sequence(seq: str) -> Optional[Literal['dna', 'aa']]:
+    """Classify one sequence string as DNA, AA, or unknown."""
+    seq = seq.strip()
+
+    seq = seq.upper()
+
+    aa_single_patterns = [
+        r'^[ACDEFGHIKLMNPQRSTVWY]\d+[ACDEFGHIKLMNPQRSTVWY\*]$',
+        r'^[ACDEFGHIKLMNPQRSTVWY]\.\d+\.[ACDEFGHIKLMNPQRSTVWY\*]$',
+        r'^[ACDEFGHIKLMNPQRSTVWY]-\d+-[ACDEFGHIKLMNPQRSTVWY\*]$',
+        r'^[ACDEFGHIKLMNPQRSTVWY]_\d+_[ACDEFGHIKLMNPQRSTVWY\*]$',
+    ]
+    for pattern in aa_single_patterns:
+        if re.match(pattern, seq):
+            return 'aa'
+
+    aa_three_letter = {
+        'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN', 'GLU', 'GLY', 'HIS', 'ILE',
+        'LEU', 'LYS', 'MET', 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL', 'TER'
+    }
+    match = re.match(r'^([A-Z]{3})(\d+)([A-Z]{3})$', seq)
+    if match:
+        from_aa, _, to_aa = match.groups()
+        if from_aa in aa_three_letter and to_aa in aa_three_letter:
+            return 'aa'
+
+    dna_change_patterns = [
+        r'^[ATCG]\d+[ATCG]$',
+        r'^[ATCG]\.\d+\.[ATCG]$',
+        r'^[ATCG]-\d+-[ATCG]$',
+        r'^[ATCG]_\d+_[ATCG]$',
+    ]
+    for pattern in dna_change_patterns:
+        if re.match(pattern, seq):
+            return 'dna'
+
+    seq_chars = set(seq)
+    if seq_chars.issubset(set('ATCG')) and len(seq) > 1:
+        return 'dna'
+    if seq_chars.issubset(set('ACDEFGHIKLMNPQRSTVWY*')) and len(seq) > 1:
+        return 'aa'
+    if seq_chars.issubset(set('ATCGRYSWKMBDHVN')) and len(seq) > 1:
+        return 'dna'
+    return None
+
+
+def detect_sequence_format(sequences: List[str]) -> Literal['dna', 'aa']:
+    """
+    Classify a set of sequences as DNA or amino-acid format.
+    """
+    if not sequences:
+        raise ValueError("No sequences provided for format detection")
+
+    valid_sequences = [seq for seq in sequences if seq and str(seq).strip()]
+    if not valid_sequences:
+        raise ValueError("No valid sequences provided for format detection")
+
+    dna_count = 0
+    aa_count = 0
+    for seq in valid_sequences:
+        fmt = _classify_single_sequence(str(seq))
+        if fmt == 'dna':
+            dna_count += 1
+        elif fmt == 'aa':
+            aa_count += 1
+
+    total_classified = dna_count + aa_count
+    if total_classified == 0:
+        raise ValueError("All input sequences are unrecognized. Could not determine sequence format.")
+    if dna_count == total_classified:
+        return 'dna'
+    if aa_count == total_classified:
+        return 'aa'
+    raise ValueError("Mixed sequence formats detected (both DNA and AA present). Ensure all sequences use a consistent format.")
+
+
+def detect_sequence_format_from_counts(
+    counts: dict,
+    sample_size: int = 200,
+    sequence_column: str = 'variant_seq',
+) -> Literal['dna', 'aa']:
+    """
+    Detect sequence format from loaded count tables.
+
+    Uses ``sequence_column`` when present, otherwise falls back to the first
+    column in each table.
+    """
+    sampled_sequences = []
+    for rep_dict in counts.values():
+        for df in rep_dict.values():
+            if df is None or df.empty:
+                continue
+
+            if sequence_column in df.columns:
+                seq_col = sequence_column
+            else:
+                seq_col = df.columns[0]
+
+            sampled_sequences.extend(df[seq_col].dropna().astype(str).head(sample_size).tolist())
+            if len(sampled_sequences) >= sample_size:
+                break
+        if len(sampled_sequences) >= sample_size:
+            break
+
+    if not sampled_sequences:
+        raise ValueError("No sequences available to detect sequence format from loaded counts.")
+
+    return detect_sequence_format(sampled_sequences)
+
 
 def translate_dna(dna_sequence: str) -> str:
     """
@@ -188,8 +300,6 @@ def get_reference_sequence(wt_seq: str, target_format: str) -> str:
     >>> get_reference_sequence('MKVL', 'aa')
     'MKVL'
     """
-    from sortscore.utils.variant_detection import detect_sequence_format
-    
     wt_seq_format = detect_sequence_format([wt_seq])
     
     if target_format == 'aa':

@@ -91,7 +91,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
         
         # Annotate sequences
         scores_df = annotate_scores_dataframe(
-            scores_df, experiment.wt_seq, experiment.variant_type
+            scores_df, experiment.wt_seq, experiment.mutagenesis_type
         )
         
         all_scores[f'experiment{i}'] = scores_df
@@ -496,16 +496,16 @@ def apply_zscore_center_normalization(
     logger.info("Applying z-score centering normalization (WT-only)")
     
     # Determine variant type from experiment configs
-    variant_types = [exp.variant_type for exp in experiments]
-    if len(set(variant_types)) > 1:
-        raise ValueError(f"All experiments must have the same variant_type. Found: {set(variant_types)}")
-    variant_type = variant_types[0]
+    mutagenesis_types = [exp.mutagenesis_type for exp in experiments]
+    if len(set(mutagenesis_types)) > 1:
+        raise ValueError(f"All experiments must have the same mutagenesis_type. Found: {set(mutagenesis_types)}")
+    mutagenesis_type = mutagenesis_types[0]
     
     # Calculate global reference scores for normalization
     reference_scores = []
     reference_type = None
     
-    if variant_type in {'codon', 'snv', 'dna'}:
+    if mutagenesis_type in {'codon', 'snv'}:
         # For DNA variants, prefer wt_dna if available, otherwise use synonymous
         for batch_name, batch_df in combined_scores.groupby('batch'):
             if 'annotate_dna' in batch_df.columns:

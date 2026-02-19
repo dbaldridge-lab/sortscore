@@ -11,6 +11,7 @@ import pandas as pd
 from typing import Dict, Any, Optional
 from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 
+# TODO: #47 Separate DNA-level and AA-level stats into different functions or modes
 def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Optional[str] = None) -> Dict[str, Any]:
     """
     Calculate comprehensive summary stats from variant scores.
@@ -87,6 +88,7 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
                 mean_val = syn_aa_subset[score_col].mean()
                 min_val = syn_aa_subset[score_col].min()
                 max_val = syn_aa_subset[score_col].max()
+                #TODO: #47 This currently gets added to DNA stats
                 stats['syn_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
                 stats['syn_min'] = round(float(min_val)) if pd.notna(min_val) else None
                 stats['syn_max'] = round(float(max_val)) if pd.notna(max_val) else None

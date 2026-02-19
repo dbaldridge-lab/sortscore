@@ -7,8 +7,8 @@ It includes automatic detection and conversion of pre-annotated amino acid chang
 Supported Variant Formats
 -------------------------
 1. **Full Sequences**: DNA or protein sequences to be compared against the wild-type sequence.
-   - DNA: Full nucleotide sequences for variant_type="codon" or "snv"
-   - AA: Full amino acid sequences for variant_type="aa"
+   - DNA: Full nucleotide sequences for mutagenesis_type="codon" or "snv"
+   - AA: Full amino acid sequences for mutagenesis_type="aa"
 
 TODO: #35 Add HGVS c. notation support
 2. **Pre-annotated Variants** (Auto-detected):
@@ -30,114 +30,14 @@ from pathlib import Path
 import json
 import logging
 import pandas as pd
-import re
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 
-from sortscore.utils.sequence_parsing import get_reference_sequence
+from sortscore.utils.sequence_parsing import get_reference_sequence, detect_sequence_format_from_counts
+from sortscore.utils.variant_parsing import is_aa_change_format, parse_aa_change
 from sortscore.utils.experiment_setup import load_experiment_setup
 
 logger = logging.getLogger(__name__)
-
-def is_aa_change_format(variant_seq: str) -> bool:
-    """
-    Detect if a variant sequence is in pre-annotated AA change format.
-    
-    Supports multiple formats:
-    - Single-letter: "M1M", "R98C", "P171X"
-    - Three-letter: "Met1Met", "Arg98Cys", "Pro171Ter"
-    - HGVS p. notation: "p.M1M", "p.Arg98Cys", "p.Pro171Ter"
-    
-    Parameters
-    ----------
-    variant_seq : str
-        Variant sequence to check
-        
-    Returns
-    -------
-    bool
-        True if the sequence matches AA change format
-    """
-    # Clean the sequence - remove p. prefix, whitespace, and common separators
-    clean_seq = re.sub(r'^p\.', '', variant_seq.strip())
-    clean_seq = re.sub(r'[\s\.\-_]', '', clean_seq)
-    
-    # Three-letter AA codes
-    aa_codes = ['Ala', 'Arg', 'Asn', 'Asp', 'Cys', 'Gln', 'Glu', 'Gly', 'His', 'Ile', 
-               'Leu', 'Lys', 'Met', 'Phe', 'Pro', 'Ser', 'Thr', 'Trp', 'Tyr', 'Val', 
-               'Ter', 'Amb', 'Sec', 'Pyl']
-    
-    # Try three-letter format first
-    aa_pattern = '|'.join(aa_codes)
-    pattern_3letter = rf'^({aa_pattern})([0-9]+)({aa_pattern})$'
-    if re.match(pattern_3letter, clean_seq, re.IGNORECASE):
-        return True
-    
-    # Try single-letter format
-    pattern_1letter = r'^[A-Z*X][0-9]+[A-Z*X]$'
-    if re.match(pattern_1letter, clean_seq, re.IGNORECASE):
-        return True
-    
-    return False
-
-def parse_aa_change(variant_seq: str) -> tuple:
-    """
-    Parse a pre-annotated AA change into components.
-    
-    Supports multiple formats:
-    - Single-letter: "M1M", "R98C", "P171X"
-    - Three-letter: "Met1Met", "Arg98Cys", "Pro171Ter"
-    - HGVS p. notation: "p.M1M", "p.Arg98Cys", "p.Pro171Ter"
-    
-    Parameters
-    ----------
-    variant_seq : str
-        Variant sequence in various formats
-        
-    Returns
-    -------
-    tuple
-        (ref_aa, position, alt_aa) where position is 1-based and AAs are single-letter codes
-    """
-    # Clean the sequence - remove p. prefix, whitespace, and common separators
-    clean_seq = re.sub(r'^p\.', '', variant_seq.strip())
-    clean_seq = re.sub(r'[\s\.\-_]', '', clean_seq)
-    
-    # Mapping from three-letter to single-letter codes
-    aa_map = {
-        'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D', 'Cys': 'C', 'Gln': 'Q',
-        'Glu': 'E', 'Gly': 'G', 'His': 'H', 'Ile': 'I', 'Leu': 'L', 'Lys': 'K',
-        'Met': 'M', 'Phe': 'F', 'Pro': 'P', 'Ser': 'S', 'Thr': 'T', 'Trp': 'W',
-        'Tyr': 'Y', 'Val': 'V', 'Ter': '*', 'Amb': 'X', 'Sec': 'U', 'Pyl': 'O'
-    }
-    
-    # Three-letter AA codes
-    aa_codes = list(aa_map.keys())
-    aa_pattern = '|'.join(aa_codes)
-    
-    # Try three-letter format first
-    pattern = rf'^({aa_pattern})([0-9]+)({aa_pattern})$'
-    match = re.match(pattern, clean_seq, re.IGNORECASE)
-    if match:
-        ref_aa_3 = match.group(1).capitalize()
-        position = int(match.group(2))
-        alt_aa_3 = match.group(3).capitalize()
-        
-        ref_aa = aa_map.get(ref_aa_3, ref_aa_3[0])  # Fallback to first letter
-        alt_aa = aa_map.get(alt_aa_3, alt_aa_3[0])
-        
-        return ref_aa, position, alt_aa
-    
-    # Try single-letter format
-    pattern = r'^([A-Z*X])([0-9]+)([A-Z*X])$'
-    match = re.match(pattern, clean_seq, re.IGNORECASE)
-    if match:
-        ref_aa = match.group(1).upper()
-        position = int(match.group(2))
-        alt_aa = match.group(3).upper()
-        return ref_aa, position, alt_aa
-    
-    raise ValueError(f"Invalid AA change format: {variant_seq}")
 
 def detect_variant_format(counts: Dict[int, Dict[int, pd.DataFrame]]) -> str:
     """
@@ -177,6 +77,7 @@ def detect_variant_format(counts: Dict[int, Dict[int, pd.DataFrame]]) -> str:
     else:
         return 'aa'  # Full AA sequences
 
+
 @dataclass
 class ExperimentConfig:
     """
@@ -193,7 +94,7 @@ class ExperimentConfig:
     cell_prop: Optional[Dict[int, Dict[int, float]]] = None
 
     # Auto-detected properties (set during loading)
-    variant_type: Optional[str] = None  # Auto-detected: 'aa', 'codon', 'snv'"
+    mutagenesis_type: str = 'aa'  # Supported: 'aa', 'codon', 'snv'
     min_pos: Optional[int] = None  # Auto-detected from data
     max_pos: Optional[int] = None  # Auto-detected from data
 
@@ -215,11 +116,11 @@ class ExperimentConfig:
     
     @property 
     def num_positions(self) -> int:
-        """Calculate number of positions based on variant_type."""
-        if self.variant_type == 'snv':
+        """Calculate number of positions based on mutagenesis_type."""
+        if self.mutagenesis_type == 'snv':
             # For DNA positions, use the full DNA sequence length
             return len(self.wt_seq)
-        if self.variant_type == 'codon':
+        if self.mutagenesis_type == 'codon':
             return len(self.wt_seq) // 3
         if self.min_pos is None or self.max_pos is None:
             self._detect_position_range()
@@ -284,7 +185,7 @@ class ExperimentConfig:
         optional_fields = [
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold','max_cv',
-            'mutagenesis_variants', 'biophysical_prop',
+            'mutagenesis_type', 'mutagenesis_variants', 'biophysical_prop',
             'min_pos', 'max_pos'
         ]
 
@@ -297,7 +198,8 @@ class ExperimentConfig:
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
-                       'minread_threshold', 'max_cv', 'mutagenesis_variants', 'biophysical_prop'}
+                       'minread_threshold', 'max_cv', 'mutagenesis_type',
+                       'mutagenesis_variants', 'biophysical_prop'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -311,15 +213,15 @@ class ExperimentConfig:
         except Exception as e:
             raise ValueError(f"Invalid experiment setup CSV '{config.experiment_setup_file}': {e}") from e
 
-        # Load counts once; variant type detection uses loaded sequences (no extra file reads).
+        # Load counts once before validating downstream config-dependent settings.
         config.load_counts(detect_position_range=False)
 
-        from sortscore.utils.variant_detection import detect_variant_type_from_counts
-        try:
-            config.variant_type = detect_variant_type_from_counts(config.counts)
-            logging.info(f"Auto-detected variant_type: '{config.variant_type}'")
-        except Exception as e:
-            raise ValueError(f"Failed to auto-detect variant_type from loaded counts: {e}") from e
+        if config.mutagenesis_type not in {'aa', 'codon', 'snv'}:
+            raise ValueError(
+                "Invalid mutagenesis_type. Supported values: 'aa', 'codon', 'snv'."
+            )
+        config._validate_mutagenesis_type_against_counts()
+        logging.info(f"Using mutagenesis_type: '{config.mutagenesis_type}'")
 
         # Detect position range from loaded data.
         config._detect_position_range()
@@ -588,6 +490,7 @@ class ExperimentConfig:
             # If file reading fails, default to header=0
             return 0
 
+    # TODO: #46 Add logic to handle pre-annotated DNA changes 
     def _convert_aa_changes_to_annotations(self) -> None:
         """
         Convert pre-annotated AA changes to the format expected by existing annotation functions.
@@ -607,23 +510,29 @@ class ExperimentConfig:
                 for variant_seq in df['variant_seq']:
                     try:
                         ref_aa, position, alt_aa = parse_aa_change(variant_seq)
-                        
-                        # Verify the reference AA matches the WT sequence
-                        if position <= len(wt_aa_seq) and wt_aa_seq[position-1] == ref_aa:
-                            # Only add difference if alt_aa is different from ref_aa
-                            if ref_aa != alt_aa:
-                                aa_seq_diff = f"{ref_aa}.{position}.{alt_aa}"
-                                aa_seq_diffs.append(aa_seq_diff)
-                            else:
-                                # No difference (e.g., M1M)
-                                aa_seq_diffs.append('')
-                        else:
-                            # Reference doesn't match WT, still record the difference
-                            aa_seq_diff = f"{ref_aa}.{position}.{alt_aa}"
-                            aa_seq_diffs.append(aa_seq_diff)
-                        
                     except ValueError:
                         # If parsing fails, treat as empty difference
+                        aa_seq_diffs.append('')
+                        continue
+
+                    # Verify the reference AA matches the WT sequence
+                    if not (1 <= position <= len(wt_aa_seq)):
+                        raise ValueError(
+                            f"AA-change position {position} is out of range for WT AA sequence length {len(wt_aa_seq)} "
+                            f"(variant '{variant_seq}')."
+                        )
+                    if wt_aa_seq[position - 1] != ref_aa:
+                        raise ValueError(
+                            f"AA-change reference residue mismatch for variant '{variant_seq}': "
+                            f"expected '{wt_aa_seq[position - 1]}' at position {position}, found '{ref_aa}'."
+                        )
+
+                    # Only add difference if alt_aa is different from ref_aa
+                    if ref_aa != alt_aa:
+                        aa_seq_diff = f"{ref_aa}.{position}.{alt_aa}"
+                        aa_seq_diffs.append(aa_seq_diff)
+                    else:
+                        # No difference (e.g., M1M)
                         aa_seq_diffs.append('')
                 
                 # Add the aa_seq_diff column
@@ -644,7 +553,7 @@ class ExperimentConfig:
             logging.warning("No counts loaded, cannot detect position range")
             # Fallback to sequence length so downstream code has usable values
             try:
-                ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
+                ref_seq = get_reference_sequence(self.wt_seq, self.mutagenesis_type)
                 seq_len = len(ref_seq)
             except Exception:
                 seq_len = len(self.wt_seq)
@@ -656,7 +565,7 @@ class ExperimentConfig:
         max_pos = float('-inf')
         
         try:
-            ref_seq = get_reference_sequence(self.wt_seq, self.variant_type)
+            ref_seq = get_reference_sequence(self.wt_seq, self.mutagenesis_type)
         except ValueError as e:
             logging.error(f"Cannot get reference wild-type sequence: {e}")
             ref_seq = self.wt_seq
@@ -666,7 +575,7 @@ class ExperimentConfig:
             self.min_pos = 1
         if self.max_pos is None:
             # TODO: #33 will this work with variant IDs that are not full sequences? May need to edit ref_seq
-            if self.variant_type in {'snv', 'dna'}:
+            if self.mutagenesis_type in {'snv'}:
                 self.max_pos = len(ref_seq)
             else:
                 aa_len = len(get_reference_sequence(ref_seq, 'aa')) if ref_seq else 0
@@ -677,7 +586,7 @@ class ExperimentConfig:
         if self.max_pos is None:
             self.max_pos = len(ref_seq)
 
-    def annotate_variants(self, df, wt_ref_seq: str, wt_aa_seq: str, variant_type: str) -> None:
+    def annotate_variants(self, df, wt_ref_seq: str, wt_aa_seq: str, mutagenesis_type: str) -> None:
         """
         Annotate a variant count DataFrame with sequence difference from WT.
 
@@ -689,16 +598,16 @@ class ExperimentConfig:
             Wild-type DNA sequence.
         wt_aa_seq : str
             Wild-type amino acid sequence.
-        variant_type : str
+        mutagenesis_type : str
             'aa' for amino acid variants, 'codon' for multiple nucleotide changes in single frame, 'snv' for single nucleotide variants.
         """
         from sortscore.utils.sequence_parsing import compare_to_reference, translate_dna
         
         # AA annotation
-        if variant_type == 'aa':
+        if mutagenesis_type == 'aa':
             df['aa_seq'] = df['variant_seq']  # AA sequences provided directly
         # TODO: #33 will this work with variant IDs that are not full sequences?
-        elif variant_type in {'codon', 'snv', 'dna'}:
+        elif mutagenesis_type in {'codon', 'snv'}:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
             # DNA annotation
             df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
@@ -708,3 +617,26 @@ class ExperimentConfig:
         df['aa_seq_diff'] = df['aa_seq'].apply(lambda x: compare_to_reference(wt_aa_seq, x))
         df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         df['aa_diff_count'] = df['aa_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+
+    def _validate_mutagenesis_type_against_counts(self) -> None:
+        """
+        Ensure configured mutagenesis_type matches loaded sequence format.
+        """
+        if not self.counts:
+            return
+
+        try:
+            sequence_type = detect_sequence_format_from_counts(self.counts, sequence_column='variant_seq')
+        except ValueError as e:
+            raise ValueError(
+                f"Unable to validate mutagenesis_type '{self.mutagenesis_type}' against input sequences: {e}"
+            ) from e
+
+        expects_dna = self.mutagenesis_type in {'codon', 'snv'}
+        if expects_dna and sequence_type != 'dna':
+            raise ValueError(
+                f"""
+                mutagenesis_type='{self.mutagenesis_type}' requires DNA input sequences, 
+                but detected sequence format was '{sequence_type}'.
+                """.strip()
+            )

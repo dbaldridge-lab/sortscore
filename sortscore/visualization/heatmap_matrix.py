@@ -65,11 +65,11 @@ def generate_codon_labels(three_letter_aa: bool = False) -> List[str]:
     else:
         return [f'{aa}({codon})' for aa, codon in codon_data]
 
-def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesis_variants: list = None, three_letter_aa: bool = False) -> pd.DataFrame:
+def dms_matrix_template(num_positions: int, mutagenesis_type: str = 'aa', mutagenesis_variants: list = None, three_letter_aa: bool = False) -> pd.DataFrame:
     column_values = list(range(1, num_positions + 1))
     
-    # Row labels depend on variant_type and mutagenesis_variants
-    if variant_type == 'aa':
+    # Row labels depend on mutagenesis_type and mutagenesis_variants
+    if mutagenesis_type == 'aa':
         if mutagenesis_variants is not None:
             if three_letter_aa:
                 row_labels = [convert_aa_to_three_letter(aa) for aa in mutagenesis_variants]
@@ -81,9 +81,9 @@ def dms_matrix_template(num_positions: int, variant_type: str = 'aa', mutagenesi
                 row_labels = [convert_aa_to_three_letter(aa) for aa in default_aa]
             else:
                 row_labels = default_aa
-    elif variant_type == 'codon':
+    elif mutagenesis_type == 'codon':
         row_labels = generate_codon_labels(three_letter_aa)
-    elif variant_type in {'snv', 'dna'}:
+    elif mutagenesis_type in {'snv'}:
         row_labels = mutagenesis_variants if mutagenesis_variants is not None else ['A', 'C', 'G', 'T']
     return pd.DataFrame(index=row_labels, columns=column_values)
 
@@ -92,16 +92,18 @@ def make_dms_matrix(
     score_col: str,
     num_positions: int,
     wt_seq: str,
-    variant_type: str = 'aa',
+    mutagenesis_type: str = 'aa',
     mutagenesis_variants: list = None,
     three_letter_aa: bool = False
 ) -> pd.DataFrame:
     
     data = data.dropna(subset=[score_col])
-    matrix = dms_matrix_template(num_positions, variant_type, mutagenesis_variants, three_letter_aa)
+    matrix = dms_matrix_template(num_positions, mutagenesis_type, mutagenesis_variants, three_letter_aa)
     
-    if variant_type == 'dna':
+    if mutagenesis_type == 'snv':
         diff_col = 'dna_seq_diff'
+    elif mutagenesis_type == 'codon':
+        diff_col = 'codon_diff'
     else:
         diff_col = 'aa_seq_diff'
     
@@ -110,12 +112,12 @@ def make_dms_matrix(
         if char in matrix.index and col in matrix.columns:
             matrix.at[char, col] = row[score_col]
     # Mark WT positions
-    if variant_type == 'dna':
+    if mutagenesis_type == 'snv':
         # For DNA positions, mark WT bases at each nucleotide position
         for index, base in enumerate(wt_seq, start=1):
             if base in matrix.index and index in matrix.columns:
                 matrix.at[base, index] = 'WT'
-    elif variant_type == 'aa':
+    elif mutagenesis_type == 'aa':
         # For AA positions, mark WT amino acids
         # Check if wt_seq is DNA (length divisible by 3 and contains only ATCG) or already AA
         is_dna = len(wt_seq) % 3 == 0 and all(c in 'ATCG' for c in wt_seq.upper())
@@ -125,7 +127,7 @@ def make_dms_matrix(
             aa_key = convert_aa_to_three_letter(amino_acid) if three_letter_aa else amino_acid
             if aa_key in matrix.index and index in matrix.columns:
                 matrix.at[aa_key, index] = 'WT'
-    elif variant_type == 'codon':
+    elif mutagenesis_type == 'codon':
         # For DNA variant type with AA positions (codon-level)
         codon_enumeration = [((i // 3)+1, wt_seq[i:i+3]) for i in range(0, len(wt_seq), 3)]
         for index, codon in codon_enumeration:

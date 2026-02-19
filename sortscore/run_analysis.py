@@ -10,22 +10,19 @@ import logging
 import sys
 import os
 import pandas as pd
-import json
-from pathlib import Path
 from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.utils.file_utils import ensure_output_subdirs
 from sortscore.analysis.batch_workflow import run_batch_mode
 from sortscore.utils.analysis_logger import AnalysisLogger, generate_date_suffix
 from sortscore.analysis.workflows import run_variant_analysis_workflow
 from sortscore.visualization.heatmap_workflow import generate_heatmap_visualizations
-from sortscore.utils.console_utils import create_analysis_parser
+from sortscore.utils.console_utils import parse_analysis_args, build_merged_analysis_config
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
     
-    parser = create_analysis_parser()
-    args = parser.parse_args()
+    args = parse_analysis_args()
     
     # Handle batch processing mode for tiled experiments (e.g. multiple oligo pools)
     if args.batch:
@@ -42,48 +39,11 @@ def main():
         logging.error("Missing -e/--experiment-setup-file (required).")
         sys.exit(1)
 
-    # Merge config file (optional) with CLI overrides (highest precedence).
-    merged = {}
-    config_dir = None
-    if args.config:
-        try:
-            config_path = Path(args.config).expanduser().resolve()
-            config_dir = config_path.parent
-            with open(config_path, "r") as f:
-                merged.update(json.load(f))
-        except Exception as e:
-            logging.error(f"Failed to load config JSON '{args.config}': {e}")
-            sys.exit(1)
-
-    merged["experiment_name"] = args.experiment_name
-    merged["experiment_setup_file"] = str(Path(args.experiment_setup_file).expanduser().resolve())
-    if args.wt_seq is not None:
-        merged["wt_seq"] = args.wt_seq
-    if args.output_dir is not None:
-        merged["output_dir"] = str(Path(args.output_dir).expanduser().resolve())
-    if args.bins_required is not None:
-        merged["bins_required"] = args.bins_required
-    if args.reps_required is not None:
-        merged["reps_required"] = args.reps_required
-    if args.avg_method is not None:
-        merged["avg_method"] = args.avg_method
-    if args.minread_threshold is not None:
-        merged["minread_threshold"] = args.minread_threshold
-    if args.max_cv is not None:
-        merged["max_cv"] = args.max_cv
-    if args.mutagenesis_variants is not None:
-        if isinstance(args.mutagenesis_variants, str):
-            merged["mutagenesis_variants"] = [v.strip() for v in args.mutagenesis_variants.split(",") if v.strip()]
-        elif isinstance(args.mutagenesis_variants, list):
-            merged["mutagenesis_variants"] = args.mutagenesis_variants
-        else:
-            merged["mutagenesis_variants"] = list(args.mutagenesis_variants)
-    if args.biophysical_prop is not None:
-        merged["biophysical_prop"] = bool(args.biophysical_prop)
-    if args.min_pos is not None:
-        merged["min_pos"] = args.min_pos
-    if args.max_pos is not None:
-        merged["max_pos"] = args.max_pos
+    try:
+        merged, config_dir = build_merged_analysis_config(args)
+    except ValueError as e:
+        logging.error(str(e))
+        sys.exit(1)
 
     # Load experiment config using merged parameters
     try:
@@ -144,18 +104,10 @@ def main():
     
     # Generate visualizations
     try:
-        # Generate plots for any score tables that exist.
-        if dna_scores_df is not None:
-            dna_plot_df = dna_scores_df.drop(columns=['aa_seq_diff', 'annotate_aa'], errors='ignore')
-            generate_heatmap_visualizations(
-                scores_df=dna_plot_df,
-                experiment=experiment,
-                output_dir=output_dir,
-                output_suffix=output_suffix,
-                fig_format=fig_format,
-                export_positional_averages=args.pos_color,
-            )
-        if aa_scores_df is not None:
+        # Plot dispatch is controlled by mutagenesis_type.
+        if experiment.mutagenesis_type == 'aa':
+            if aa_scores_df is None:
+                raise ValueError("mutagenesis_type='aa' requires AA scores for plotting, but none were generated.")
             generate_heatmap_visualizations(
                 scores_df=aa_scores_df,
                 experiment=experiment,
@@ -164,6 +116,45 @@ def main():
                 fig_format=fig_format,
                 export_positional_averages=args.pos_color,
             )
+        elif experiment.mutagenesis_type == 'codon':
+            if dna_scores_df is not None:
+                generate_heatmap_visualizations(
+                    scores_df=dna_scores_df,
+                    experiment=experiment,
+                    output_dir=output_dir,
+                    output_suffix=output_suffix,
+                    fig_format=fig_format,
+                    export_positional_averages=args.pos_color,
+                )
+            if aa_scores_df is not None:
+                generate_heatmap_visualizations(
+                    scores_df=aa_scores_df,
+                    experiment=experiment,
+                    output_dir=output_dir,
+                    output_suffix=output_suffix,
+                    fig_format=fig_format,
+                    export_positional_averages=args.pos_color,
+                )
+        else:
+            # Preserve existing fallback behavior for other types (e.g., snv).
+            if dna_scores_df is not None:
+                generate_heatmap_visualizations(
+                    scores_df=dna_scores_df,
+                    experiment=experiment,
+                    output_dir=output_dir,
+                    output_suffix=output_suffix,
+                    fig_format=fig_format,
+                    export_positional_averages=args.pos_color,
+                )
+            if aa_scores_df is not None:
+                generate_heatmap_visualizations(
+                    scores_df=aa_scores_df,
+                    experiment=experiment,
+                    output_dir=output_dir,
+                    output_suffix=output_suffix,
+                    fig_format=fig_format,
+                    export_positional_averages=args.pos_color,
+                )
     except Exception as e:
         logging.error(f"Failed to generate visualizations: {e}")
         sys.exit(1)

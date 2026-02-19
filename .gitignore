@@ -54,6 +54,7 @@ dist/
 htmlcov/
 scratch/
 _test_outputs/
+*output/
 
 # Context files
 .claude/

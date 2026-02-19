@@ -50,7 +50,7 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
     scores_df = annotate_scores_dataframe(
         scores_df, 
         experiment.wt_seq, 
-        experiment.variant_type
+        experiment.mutagenesis_type
     )
     
     return scores_df
@@ -76,8 +76,8 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     Optional[str]
         Path to DNA scores file if created, None if skipped
     """
-    if experiment.variant_type == 'aa':
-        logging.info("Skipping DNA workflow (auto-detected variant type is 'aa')")
+    if experiment.mutagenesis_type == 'aa':
+        logging.info("Skipping DNA workflow (mutagenesis type is 'aa')")
         return None
     
     logging.info(f"Processing DNA workflow")
@@ -171,7 +171,7 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
         
     else:
         # Build AA table directly from counts (AA-only experiment or no DNA scores)
-        if experiment.variant_type == 'aa':
+        if experiment.mutagenesis_type == 'aa':
             logging.info("Building AA scores directly from AA input data")
         else:
             logging.info("Building AA scores directly from DNA input data (no pre-existing DNA scores)")
@@ -206,7 +206,7 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
 
 def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: str, analysis_logger) -> Tuple[Optional[str], str]:
     """
-    Run the complete variant analysis workflow based on variant_type.
+    Run the complete variant analysis workflow based on mutagenesis_type.
     
     This orchestrates the DNA and AA workflows in the correct order:
     1. DNA workflow if count files specify DNA variants
@@ -229,7 +229,7 @@ def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: st
         (dna_scores_file_path, aa_scores_file_path)
         Either path can be empty string if that workflow was skipped
     """
-    logging.info(f"Auto-detected variant_type: '{experiment.variant_type}'")
+    logging.info(f"Using mutagenesis_type: '{experiment.mutagenesis_type}'")
     
     dna_scores_file = process_dna_workflow(experiment, output_dir, output_suffix, analysis_logger)
     aa_scores_file = process_aa_workflow(experiment, output_dir, output_suffix, analysis_logger, dna_scores_file)

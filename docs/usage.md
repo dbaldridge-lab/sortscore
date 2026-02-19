@@ -20,7 +20,7 @@ Example:
 | ATGCGT...|  123  |
 | GCTTAA...|   45  |
 
-Note: At this time, `sortscore` requires full variant sequences (DNA or protein). Work to include additional variant nomenclatures is ongoing.
+Note: `sortscore` expects full variant sequences (DNA or protein) in count files. Work to include additional variant nomenclatures is ongoing.
 
 ## 2. Prepare Experiment Configuration File
 - Create your (see `config/experimental_setup.csv`) experiment setup CSV.
@@ -45,7 +45,7 @@ The entry point for running the Sort-seq scoring workflow is the `sortscore` com
 |------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `experiment_name`      | str   | Name/ID of the experiment or submission. |
 | `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below). |
-| `wt_seq`               | str   | Wild-type reference sequence (DNA or amino acid) for the region analyzed. |
+| `wt_seq`               | str   | Wild-type reference sequence for the region analyzed. Use **DNA** sequence when `mutagenesis_type` is `codon` or `snv`; use **protein** sequence when `mutagenesis_type` is `aa`. |
 
 Additional optional fields can be used to customize the analysis. These can be selected by providing a JSON configuration with the `-c` option, or through CLI flags. If a parameter is provided both in the CLI and the config file, the CLI value takes precedence.
 
@@ -58,6 +58,7 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
 | `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
 | `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
+| `mutagenesis_type`     | str   | Mutagenesis type: `aa`, `codon`, or `snv`. **Default:** `aa`. Set this in config or CLI when running DNA-based analysis (`codon`/`snv`). |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
 | `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. |
 | `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
@@ -66,6 +67,10 @@ Additional optional fields can be used to customize the analysis. These can be s
 
 Note:
 Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
+
+`wt_seq` format requirement by mutagenesis type:
+- `mutagenesis_type: codon` or `snv` -> provide DNA `wt_seq`
+- `mutagenesis_type: aa` -> provide protein `wt_seq`
 
 ### Basic Usage
 
@@ -118,6 +123,10 @@ scores/{experiment_name}_aa_stats_{suffix}.json
 ```bash
 # Basic analysis
 sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json
+```
+```bash
+# DNA codon-level analysis
+sortscore -n my_experiment -e experiment_setup.csv -c my_experiment.json --mutagenesis-type codon
 ```
 ```bash
 # With custom output suffix
@@ -213,20 +222,14 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 6. Visualization: Combined tiled heatmaps generated with position mapping
 7. Output: Combined results saved, individual files cleaned up (if requested)
 
-### Automatic Variant Format Detection
+### Mutagenesis Type Selection
 
-`sortscore` auto-detects whether your inputs are DNA sequences or protein sequences by sampling the `seq` column of the count files listed in `experiment_setup.csv`
+`sortscore` uses `mutagenesis_type` to determine analysis mode:
+- `aa` (default)
+- `codon`
+- `snv` (not yet implemented; see open issues)
 
-**DNA Formats Detected:**
-- Full DNA sequences: `ATGCGTAAC...`
-- Nucleotide changes: `A123T`, `G.252.C`, `C_45_T`
-- HGVS DNA notation: `c.123A>T`
-
-**Amino Acid Formats Detected:**
-- Full AA sequences: `MKILVAGD...`
-- Single-letter changes: `M1V`, `R.98.C`, `P171*`
-- Three-letter changes: `Met1Val`, `Arg98Cys`, `Pro171Ter`
-- HGVS protein notation: `p.Met1Val`, `p.Arg98Cys`
+Set it either in your config JSON (`"mutagenesis_type": "codon"`) or on the CLI with `--mutagenesis-type codon`.
 
 
 ### Position Numbering Convention
@@ -235,7 +238,7 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Default**: Position 1 corresponds to the first character of `wt_seq`
 - **Pre-annotated data**: If count files contain position annotations (e.g., "K.2.E"),
   those positions are used as-is, with optional offset adjustment applied
-- **Sequence flexibility**: `wt_seq` can be DNA or amino acid sequence - the system auto-detects the type and handles accordingly
+- **Sequence flexibility**: `wt_seq` can be DNA or amino acid sequence, but analysis mode is controlled by `mutagenesis_type`
 
 ### Common Mutagenesis Libraries
 
@@ -248,7 +251,5 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 - **Input**: DNA sequences (required)
 - **Output**: Codon heatmap, DNA scores file, codon variance quantification, synonymous vs non-synonymous analysis
 - **Use for**: Codon optimization studies, synonymous variant effects, quantifying codon-level variance
-
-
 
 

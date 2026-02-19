@@ -10,14 +10,13 @@ Examples
 >>> annotated_df = annotate_scores_dataframe(scores_df, experiment)
 """
 import pandas as pd
-from typing import Optional
 from sortscore.utils.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
 
 # TODO: #37 redundant, see if we can remove
 def annotate_scores_dataframe(
     scores_df: pd.DataFrame, 
     wt_dna_seq: str, 
-    variant_type: str = 'codon'
+    mutagenesis_type: str = 'aa',
 ) -> pd.DataFrame:
     """
     Add sequence annotation columns to a scores DataFrame.
@@ -28,8 +27,8 @@ def annotate_scores_dataframe(
         DataFrame with variant sequences and scores.
     wt_dna_seq : str
         Wild-type DNA reference sequence.
-    variant_type : str, default 'codon'
-        Type of variants ('codon', 'snv', 'aa').
+    mutagenesis_type : str, default 'aa'
+        Type of mutagenesis ('codon', 'snv', 'aa').
     
     Returns
     -------
@@ -46,7 +45,7 @@ def annotate_scores_dataframe(
     has_pre_annotated_aa = 'aa_seq_diff' in df.columns
     
     # Treat 'dna' as a DNA-sequence variant type (full-length DNA sequences)
-    if variant_type in {'codon', 'snv', 'dna'}:
+    if mutagenesis_type in {'codon', 'snv'}:
         # Add codon differences
         df['codon_diff'] = df['variant_seq'].apply(
             lambda x: compare_codon_lists(wt_dna_seq, x)
@@ -68,7 +67,7 @@ def annotate_scores_dataframe(
             )
             df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         
-    elif variant_type == 'aa':
+    elif mutagenesis_type == 'aa':
         # For AA variants, add sequence differences only if not pre-annotated
         if not has_pre_annotated_aa:
             wt_aa_seq = translate_dna(wt_dna_seq) if len(wt_dna_seq) % 3 == 0 else wt_dna_seq
@@ -88,7 +87,11 @@ def annotate_scores_dataframe(
     return df
 
 # TODO: #37 isn't this redundant with similar functions
-def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: str = 'aa') -> pd.DataFrame:
+def add_sequence_differences(
+    df: pd.DataFrame,
+    wt_dna_seq: str,
+    mutagenesis_type: str = 'aa',
+) -> pd.DataFrame:
     """
     Add sequence difference columns to a DataFrame.
     
@@ -98,8 +101,8 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
         DataFrame with variant sequences.
     wt_dna_seq : str
         Wild-type DNA sequence.
-    variant_type : str, default 'aa'
-        Type of variants ('codon', 'snv', 'aa').
+    mutagenesis_type : str, default 'aa'
+        Type of mutagenesis ('codon', 'snv', 'aa').
         
     Returns
     -------
@@ -108,7 +111,7 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
     """
     df = df.copy()
     
-    if variant_type in {'codon', 'snv', 'dna'}:
+    if mutagenesis_type in {'codon', 'snv'}:
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
             lambda x: compare_to_reference(wt_dna_seq, x)
@@ -123,7 +126,7 @@ def add_sequence_differences(df: pd.DataFrame, wt_dna_seq: str, variant_type: st
         )
         df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         
-    elif variant_type == 'aa':
+    elif mutagenesis_type == 'aa':
         # For AA variants, sequences are already amino acids
         wt_aa_seq = translate_dna(wt_dna_seq) if len(wt_dna_seq) % 3 == 0 else wt_dna_seq
         df['aa_seq_diff'] = df['variant_seq'].apply(

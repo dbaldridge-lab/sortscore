@@ -41,7 +41,7 @@ def _build_aa_heatmap_config(experiment: ExperimentConfig) -> SimpleNamespace:
         min_pos=experiment.min_pos,
         max_pos=experiment.max_pos,
         wt_seq=wt_aa_seq,
-        variant_type='aa',
+        mutagenesis_type='aa',
         mutagenesis_variants=experiment.mutagenesis_variants
     )
 
@@ -60,22 +60,6 @@ def _compute_wt_score(
         return pd.NA
     score_val = subset[score_col].mean()
     return float(score_val) if pd.notna(score_val) else pd.NA
-
-
-def _require_wt_score(
-    wt_score: pd.NA | float,
-    annotate_value: str,
-    annotate_col: str,
-    score_col: str,
-    plot_name: str
-) -> float:
-    """Validate WT score is present and return it as a float."""
-    if pd.isna(wt_score):
-        raise ValueError(
-            f"Cannot generate {plot_name}: missing required wt_score from "
-            f"'{annotate_col}' == '{annotate_value}' using score column '{score_col}'."
-        )
-    return float(wt_score)
 
 
 def _tick_marks(
@@ -135,7 +119,7 @@ def generate_heatmap_visualizations(
 
         # AA score tables can be passed even when the experiment is DNA-based.
         # If this is already AA-level data, do not re-aggregate.
-        if experiment.variant_type == 'aa' or (has_aa_annotations and not has_dna_diff):
+        if experiment.mutagenesis_type == 'aa' or (has_aa_annotations and not has_dna_diff):
             logger.info("AA data creation: scores_df shape %s", scores_df.shape)
             aa_data = scores_df[['aa_seq_diff', 'annotate_aa', score_col]].copy()
             logger.info("AA data created: aa_data shape %s", aa_data.shape)
@@ -149,13 +133,20 @@ def generate_heatmap_visualizations(
             )
 
         wt_score = _compute_wt_score(aa_data, score_col, 'annotate_aa', 'synonymous')
-        wt_score = _require_wt_score(
-            wt_score=wt_score,
-            annotate_value='synonymous',
-            annotate_col='annotate_aa',
-            score_col=score_col,
-            plot_name='AA heatmap',
-        )
+        if pd.isna(wt_score):
+            # Some AA tables label no-change entries as wt_dna and may not contain additional synonymous rows.
+            wt_score = _compute_wt_score(aa_data, score_col, 'annotate_aa', 'wt_dna')
+        if pd.isna(wt_score) and 'annotate_dna' in scores_df.columns:
+            # In DNA/codon workflows, fall back to DNA WT anchor when AA aggregation
+            # contains only missense rows.
+            wt_score = _compute_wt_score(scores_df, score_col, 'annotate_dna', 'wt_dna')
+        if pd.isna(wt_score):
+            raise ValueError(
+                "Cannot generate AA heatmap: missing required wt_score from "
+                "'annotate_aa' == 'synonymous' or 'wt_dna', and no 'annotate_dna' == 'wt_dna' fallback "
+                f"using score column '{score_col}'."
+            )
+        wt_score = float(wt_score)
         logger.info("Synonymous-WT score from AA data: %s", wt_score)
 
         tick_values, tick_labels = _tick_marks(aa_data[score_col], wt_score, "WT Avg")
@@ -187,15 +178,14 @@ def generate_heatmap_visualizations(
         logger.info("Saved AA heatmap to %s", aa_heatmap_file)
 
     # Codon heatmap generation (DNA-level plots only make sense when plotting DNA-level scores)
-    if experiment.variant_type == 'codon' and 'annotate_dna' in scores_df.columns:
+    if experiment.mutagenesis_type == 'codon' and 'annotate_dna' in scores_df.columns:
         wt_score_codon = _compute_wt_score(scores_df, score_col, 'annotate_dna', 'wt_dna')
-        wt_score_codon = _require_wt_score(
-            wt_score=wt_score_codon,
-            annotate_value='wt_dna',
-            annotate_col='annotate_dna',
-            score_col=score_col,
-            plot_name='codon heatmap',
-        )
+        if pd.isna(wt_score_codon):
+            raise ValueError(
+                f"Cannot generate codon heatmap: missing required wt_score from "
+                f"'annotate_dna' == 'wt_dna' using score column '{score_col}'."
+            )
+        wt_score_codon = float(wt_score_codon)
         logger.info("Found WT score for codon heatmap: %s", wt_score_codon)
 
         tick_values_codon, tick_labels_codon = _tick_marks(

@@ -3,7 +3,7 @@ import pandas as pd
 from sortscore.analysis.annotation import annotate_scores_dataframe
 
 
-def test_annotate_scores_dataframe_supports_dna_variant_type():
+def test_annotate_scores_dataframe_supports_codon_mutagenesis_type():
     wt_dna = "ATGGCC"  # MA
     missense = "ATGTCC"  # MS (A2S)
     synonymous = "ATGGCT"  # MA (A2A)
@@ -15,7 +15,7 @@ def test_annotate_scores_dataframe_supports_dna_variant_type():
         }
     )
 
-    annotated = annotate_scores_dataframe(scores_df, wt_dna, variant_type="dna")
+    annotated = annotate_scores_dataframe(scores_df, wt_dna, mutagenesis_type="codon")
 
     assert "dna_seq_diff" in annotated.columns
     assert "aa_seq_diff" in annotated.columns
@@ -35,4 +35,3 @@ def test_annotate_scores_dataframe_supports_dna_variant_type():
     assert annotated.loc[2, "dna_seq_diff"] != ""
     assert annotated.loc[2, "annotate_dna"] == "synonymous"
     assert annotated.loc[2, "annotate_aa"] == "synonymous"
-

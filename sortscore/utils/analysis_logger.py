@@ -130,7 +130,7 @@ class AnalysisLogger:
         
         analysis_params = {
             'experiment_name': experiment.experiment_name,
-            'variant_type': experiment.variant_type,
+            'mutagenesis_type': experiment.mutagenesis_type,
             'avg_method': experiment.avg_method,
             'bins_required': experiment.bins_required,
             'reps_required': experiment.reps_required,

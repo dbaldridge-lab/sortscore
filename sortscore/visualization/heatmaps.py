@@ -201,7 +201,7 @@ def plot_heatmap(
         score_col,
         experiment.num_positions,
         experiment.wt_seq,
-        experiment.variant_type,
+        experiment.mutagenesis_type,
         experiment.mutagenesis_variants
     )
     dropout_num, dropout_percent = get_dropout(dms_matrix, experiment.mutagenesis_variants)
@@ -378,7 +378,7 @@ def plot_heatmap(
         cbar = plt.colorbar(sm, cax=cax)
 
     # Configure axes labels and ticks
-    if experiment.variant_type == 'dna':
+    if experiment.mutagenesis_type == 'snv':
         x_labels = [str(i) for i in range(1, experiment.num_positions + 1)]
     else:
         x_labels = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
@@ -411,7 +411,7 @@ def plot_heatmap(
     ax1.set_yticks([])
     
     #TODO: #34 instead, have DNA and AA heatmap mode options
-    if experiment.variant_type == 'dna':
+    if experiment.mutagenesis_type == 'snv':
         ax2.set_xlabel('DNA Position', fontsize=28)
     else:
         ax2.set_xlabel('Residue Sequence Number', fontsize=28)

@@ -9,10 +9,11 @@ DEFAULT_CONFIG_DICT = {
     "reps_required": 1,
     "avg_method": "rep-weighted",
     "minread_threshold": 0,
+    "mutagenesis_type": "codon",
     "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
     "min_pos": 551,
     "max_pos": 583,
-    "output_dir": '_test_outputs',
+    "output_dir": os.path.abspath('_test_outputs'),
     "biophysical_prop": True
 }
 

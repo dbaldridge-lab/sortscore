@@ -2,6 +2,7 @@
   "bins_required": 3,
   "reps_required": 1,
   "avg_method": "rep-weighted", 
+  "mutagenesis_type": "codon",
   "minread_threshold": 0,
   "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
   "min_pos": 551,
