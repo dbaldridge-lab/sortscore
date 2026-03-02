@@ -3,6 +3,7 @@ import tempfile
 import json
 import pytest
 import shutil
+import copy
 
 DEFAULT_CONFIG_DICT = {
     "bins_required": 3,
@@ -17,13 +18,53 @@ DEFAULT_CONFIG_DICT = {
     "biophysical_prop": True
 }
 
+DEFAULT_BATCH_CONFIG_DICT = {
+    "experiments": [
+        {
+            "tile": 1,
+            "output_dir": os.path.abspath('_test_outputs/tile1'),
+            "wt_seq": "TGCGAGCACGAGGGCTGCAACAAGGCCTTCAGCAACGCCAGCGACAGGGCCAAGCACCAGAACAGGACCCACAGCAACGAGAAGCCTTATATCTGCAAG",
+            "min_pos": 518,
+            "max_pos": 550,
+        },
+        {
+            "tile": 2,
+            "output_dir": os.path.abspath('_test_outputs/tile2'),
+            "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
+            "min_pos": 551,
+            "max_pos": 583,
+        }
+    ],
+    "bins_required": 3,
+    "reps_required": 1,
+    "avg_method": "rep-weighted",
+    "minread_threshold": 0,
+    "mutagenesis_type": "codon",
+    "batch_normalization_method": "zscore_2pole",
+    "pathogenic_control_type": "nonsense",
+    "pathogenic_variants": None,
+    "combined_output_dir": os.path.abspath("_test_outputs/batch_normalized"),
+}
+
 @pytest.fixture(scope="function")
 def config_dict(request):
     """
     Default config dict fixture, parameterizable via pytest.mark.parametrize.
     To override, use @pytest.mark.parametrize('config_dict', [your_dict], indirect=True)
     """
-    config = DEFAULT_CONFIG_DICT.copy()
+    config = copy.deepcopy(DEFAULT_CONFIG_DICT)
+    if hasattr(request, "param"):
+        config.update(request.param)
+    return config
+
+
+@pytest.fixture(scope="function")
+def batch_config_dict(request):
+    """
+    Default batch config dict fixture, parameterizable via pytest.mark.parametrize.
+    To override, use @pytest.mark.parametrize('batch_config_dict', [your_dict], indirect=True)
+    """
+    config = copy.deepcopy(DEFAULT_BATCH_CONFIG_DICT)
     if hasattr(request, "param"):
         config.update(request.param)
     return config
@@ -33,6 +74,16 @@ def config_path(config_dict):
     # Write config dict to a temp file for CLI use
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tf:
         json.dump(config_dict, tf)
+        tf.flush()
+        yield tf.name
+    os.remove(tf.name)
+
+
+@pytest.fixture(scope="function")
+def batch_config_path(batch_config_dict):
+    # Write batch config dict to a temp file for CLI/use in tests
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tf:
+        json.dump(batch_config_dict, tf)
         tf.flush()
         yield tf.name
     os.remove(tf.name)

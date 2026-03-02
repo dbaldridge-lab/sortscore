@@ -83,10 +83,7 @@ Batch workflows generate unified tiled heatmaps that:
 - support non-contiguous regions (gaps)
 - use one normalized scale across all tiles
 
-Use batch config keys to control global axis range:
-
-- `global_min_pos`
-- `global_max_pos`
+Global axis range is derived from per-experiment positions in `experiments[*].min_pos` and `experiments[*].max_pos`.
 
 ## Examples
 

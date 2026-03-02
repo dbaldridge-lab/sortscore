@@ -148,7 +148,16 @@ def build_merged_analysis_config(
             config_path = Path(args.config).expanduser().resolve()
             config_dir = config_path.parent
             with open(config_path, "r") as f:
-                merged.update(json.load(f))
+                config_payload = json.load(f)
+
+            # Allow grouping score settings under analysis_parameters while preserving
+            # backward compatibility with top-level keys.
+            analysis_parameters = config_payload.get("analysis_parameters")
+            if isinstance(analysis_parameters, dict):
+                for key, value in analysis_parameters.items():
+                    config_payload.setdefault(key, value)
+
+            merged.update(config_payload)
         except Exception as e:
             raise ValueError(f"Failed to load config JSON '{args.config}': {e}") from e
 

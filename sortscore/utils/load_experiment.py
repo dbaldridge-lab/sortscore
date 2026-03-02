@@ -87,6 +87,7 @@ class ExperimentConfig:
     experiment_setup_file: str
     wt_seq: str
     output_dir: Optional[str] = None
+    tile_id: Optional[int] = None
     other_params: Optional[Dict[str, Any]] = None
     counts: Optional[Dict[int, Dict[int, pd.DataFrame]]] = None
     mfi: Optional[Dict[int, Dict[int, float]]] = None
@@ -149,7 +150,7 @@ class ExperimentConfig:
     @staticmethod
     def from_dict(data: Dict[str, Any], config_file_dir: Optional[Path] = None) -> 'ExperimentConfig':
         """
-        Load experiment configuration from an in-memory mapping.
+        Load experiment configuration from a mapping.
 
         Implements CLI-based configuration (merged from CLI args + optional JSON config).
 
@@ -186,7 +187,7 @@ class ExperimentConfig:
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold','max_cv',
             'mutagenesis_type', 'mutagenesis_variants', 'biophysical_prop',
-            'min_pos', 'max_pos'
+            'min_pos', 'max_pos', 'tile_id'
         ]
 
         for field, value in data.items():
@@ -199,7 +200,7 @@ class ExperimentConfig:
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
                        'minread_threshold', 'max_cv', 'mutagenesis_type',
-                       'mutagenesis_variants', 'biophysical_prop'}
+                       'mutagenesis_variants', 'biophysical_prop', 'tile_id'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -243,6 +244,19 @@ class ExperimentConfig:
             setup_df, setup_cols = load_experiment_setup(self.experiment_setup_file)
         except Exception as e:
             raise RuntimeError(f"Failed to load experiment setup file: {e}") from e
+
+        if self.tile_id is not None:
+            if setup_cols.tile is None:
+                raise ValueError(
+                    f"tile_id={self.tile_id} was provided, but no Tile column exists in {self.experiment_setup_file}"
+                )
+            tile_series = setup_df[setup_cols.tile].astype(int)
+            setup_df = setup_df[tile_series == int(self.tile_id)]
+            if setup_df.empty:
+                raise ValueError(
+                    f"No rows found for tile_id={self.tile_id} in experiment setup file: {self.experiment_setup_file}"
+                )
+
         counts = {}
         mfi = {}
         total_reads = {}

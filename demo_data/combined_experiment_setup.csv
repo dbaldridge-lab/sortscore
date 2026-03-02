@@ -1,0 +1,25 @@
+Tile,Replicate,Bin,Path,MFI,Read Count
+1,1,1,GLI2_oPool4b/counts/S2_matched_allowlist_substring_unique_counts.tsv.gz,166,107360226
+1,1,2,GLI2_oPool4b/counts/S3_matched_allowlist_substring_unique_counts.tsv.gz,282,92043975
+1,1,3,GLI2_oPool4b/counts/S4_matched_allowlist_substring_unique_counts.tsv.gz,760,83394618
+1,1,4,GLI2_oPool4b/counts/S5_matched_allowlist_substring_unique_counts.tsv.gz,2856,83522453
+1,2,1,GLI2_oPool4b/counts/S6_matched_allowlist_substring_unique_counts.tsv.gz,143,108306680
+1,2,2,GLI2_oPool4b/counts/S7_matched_allowlist_substring_unique_counts.tsv.gz,355,115157157
+1,2,3,GLI2_oPool4b/counts/S8_matched_allowlist_substring_unique_counts.tsv.gz,826,111184817
+1,2,4,GLI2_oPool4b/counts/S9_matched_allowlist_substring_unique_counts.tsv.gz,3692,84550579
+1,3,1,GLI2_oPool4b/counts/S10_matched_allowlist_substring_unique_counts.tsv.gz,144,109830312
+1,3,2,GLI2_oPool4b/counts/S11_matched_allowlist_substring_unique_counts.tsv.gz,410,96912089
+1,3,3,GLI2_oPool4b/counts/S12_matched_allowlist_substring_unique_counts.tsv.gz,980,106051422
+1,3,4,GLI2_oPool4b/counts/S13_matched_allowlist_substring_unique_counts.tsv.gz,4908,90752560
+2,1,1,GLI2_oPool5b/counts/S2_matched_allowlist_substring_unique_counts.tsv.gz,125,107082786
+2,1,2,GLI2_oPool5b/counts/S3_matched_allowlist_substring_unique_counts.tsv.gz,242,108500458
+2,1,3,GLI2_oPool5b/counts/S4_matched_allowlist_substring_unique_counts.tsv.gz,953,132353594
+2,1,4,GLI2_oPool5b/counts/S5_matched_allowlist_substring_unique_counts.tsv.gz,3077,94931869
+2,2,1,GLI2_oPool5b/counts/S6_matched_allowlist_substring_unique_counts.tsv.gz,111,12407956
+2,2,2,GLI2_oPool5b/counts/S7_matched_allowlist_substring_unique_counts.tsv.gz,226,144482367
+2,2,3,GLI2_oPool5b/counts/S8_matched_allowlist_substring_unique_counts.tsv.gz,827,11378881
+2,2,4,GLI2_oPool5b/counts/S9_matched_allowlist_substring_unique_counts.tsv.gz,3282,131017017
+2,3,1,GLI2_oPool5b/counts/S10_matched_allowlist_substring_unique_counts.tsv.gz,86.9,99162382
+2,3,2,GLI2_oPool5b/counts/S11_matched_allowlist_substring_unique_counts.tsv.gz,204,123323262
+2,3,3,GLI2_oPool5b/counts/S12_matched_allowlist_substring_unique_counts.tsv.gz,711,1190513
+2,3,4,GLI2_oPool5b/counts/S13_matched_allowlist_substring_unique_counts.tsv.gz,3038,10994939

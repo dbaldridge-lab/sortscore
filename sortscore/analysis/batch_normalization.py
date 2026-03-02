@@ -18,14 +18,64 @@ It supports two normalization approaches:
 import logging
 import os
 import json
+from pathlib import Path
+from types import SimpleNamespace
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
-from sortscore.utils.load_experiment import ExperimentConfig
-from sortscore.analysis.score import calculate_full_activity_scores
-from sortscore.analysis.annotation import annotate_scores_dataframe
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure a canonical `avgscore` column exists for normalization steps."""
+    if 'avgscore' in scores_df.columns:
+        return scores_df
+    for col in ('avgscore_rep_weighted', 'avgscore_simple_avg'):
+        if col in scores_df.columns:
+            out = scores_df.copy()
+            out['avgscore'] = out[col]
+            return out
+    raise ValueError("Scores file missing required score column ('avgscore' or known avgscore_* variants)")
+
+
+def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
+    """Load best available score CSV from `output_dir/scores`."""
+    scores_dir = Path(output_dir).expanduser().resolve() / 'scores'
+    if not scores_dir.exists():
+        raise FileNotFoundError(f"Scores directory not found: {scores_dir}")
+
+    dna_files = sorted(scores_dir.glob("*_dna_scores_*.csv"))
+    aa_files = sorted(scores_dir.glob("*_aa_scores_*.csv"))
+    candidate = None
+    if dna_files:
+        candidate = dna_files[-1]
+    elif aa_files:
+        candidate = aa_files[-1]
+    else:
+        raise FileNotFoundError(f"No score CSV found in {scores_dir}")
+
+    scores_df = pd.read_csv(candidate)
+    return _ensure_avgscore_column(scores_df)
+
+
+def _infer_position_range(scores_df: pd.DataFrame) -> Tuple[int, int]:
+    """Infer min/max position from sequence-diff columns."""
+    pos_values = []
+    for col in ('aa_seq_diff', 'dna_seq_diff'):
+        if col not in scores_df.columns:
+            continue
+        series = scores_df[col].dropna().astype(str)
+        for val in series:
+            parts = val.split('.')
+            if len(parts) >= 3:
+                try:
+                    pos_values.append(int(parts[1]))
+                except Exception:
+                    continue
+    if not pos_values:
+        raise ValueError("Could not infer positions from aa_seq_diff/dna_seq_diff in scores table")
+    return min(pos_values), max(pos_values)
 
 
 def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -45,60 +95,50 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     logger.info("Starting batch normalization workflow")
     
-    # Extract configuration parameters
-    experiment_configs = batch_config['experiment_configs']
+    experiment_entries = batch_config.get('experiments') or []
     method = batch_config.get('batch_normalization_method', 'zscore_2pole')
     pathogenic_control_type = batch_config.get('pathogenic_control_type', 'nonsense')
     pathogenic_variants = batch_config.get('pathogenic_variants', None)
     output_dir = batch_config.get('combined_output_dir', '.')
     
-    # Load all experiment configurations
+    # Load all tile score tables from batch config entries.
     experiments = []
-    for config_path in experiment_configs:
-        try:
-            experiment = ExperimentConfig.from_json(config_path)
-            experiments.append(experiment)
-            logger.info(f"Loaded experiment config: {config_path}")
-        except Exception as e:
-            logger.error(f"Failed to load experiment config {config_path}: {e}")
-            raise
-    
-    # Run individual analyses if needed
     all_scores = {}
     all_stats = {}
-    
-    for i, experiment in enumerate(experiments, 1):
-        logger.info(f"Processing experiment {i}: {experiment.experiment_name}")
-        
-        # Load counts. Avoid re-reading files.
-        if experiment.counts is None:
-            experiment.load_counts()
-        
-        # Calculate activity scores
-        merged_df = experiment.get_merged_counts()
-        scores_df = calculate_full_activity_scores(
-            counts=experiment.counts,
-            mfi=experiment.mfi,
-            min_bins=experiment.bins_required,
-            min_reps=experiment.reps_required,
-            minread_threshold=experiment.minread_threshold,
-            avg_method=experiment.avg_method,
-            total_reads=experiment.total_reads,
-            cell_prop=experiment.cell_prop,
-            merged_df=merged_df,
-            max_cv=experiment.max_cv
-        )
-        
-        # Annotate sequences
-        scores_df = annotate_scores_dataframe(
-            scores_df, experiment.wt_seq, experiment.mutagenesis_type
-        )
-        
-        all_scores[f'experiment{i}'] = scores_df
-        
-        # Extract key statistics
-        stats = extract_experiment_stats(scores_df, experiment.avg_method)
-        all_stats[f'experiment{i}'] = stats
+
+    for idx, cfg in enumerate(experiment_entries, 1):
+        try:
+            tile = int(cfg['tile'])
+            output_dir_i = str(cfg['output_dir'])
+            scores_df = _load_scores_from_output_dir(output_dir_i)
+            batch_name = f"experiment{idx}"
+
+            mutagenesis_type = cfg.get('mutagenesis_type')
+            if mutagenesis_type is None:
+                mutagenesis_type = 'codon' if 'dna_seq_diff' in scores_df.columns else 'aa'
+
+            avg_method = cfg.get('avg_method', 'rep-weighted')
+            min_pos = int(cfg['min_pos']) if 'min_pos' in cfg else None
+            max_pos = int(cfg['max_pos']) if 'max_pos' in cfg else None
+            if min_pos is None or max_pos is None:
+                min_pos, max_pos = _infer_position_range(scores_df)
+            all_scores[batch_name] = scores_df
+            all_stats[batch_name] = extract_experiment_stats(scores_df, avg_method)
+            experiments.append(
+                SimpleNamespace(
+                    tile=tile,
+                    wt_seq=cfg.get('wt_seq'),
+                    mutagenesis_type=mutagenesis_type,
+                    avg_method=avg_method,
+                    min_pos=min_pos,
+                    max_pos=max_pos,
+                    mutagenesis_variants=cfg.get('mutagenesis_variants'),
+                )
+            )
+            logger.info(f"Loaded batch config entry {idx}: tile={tile}, output_dir={output_dir_i}")
+        except Exception as e:
+            logger.error(f"Failed to load batch config entry {idx}: {e}")
+            raise
     
     # Combine raw scores with batch tracking
     combined_scores = combine_raw_scores(all_scores)

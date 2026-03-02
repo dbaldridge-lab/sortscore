@@ -6,11 +6,9 @@ Sort-seq experiments in batch processing workflows.
 """
 
 import json
-import os
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
-from sortscore.utils.experiment_setup import load_experiment_setup
 
 
 @dataclass
@@ -35,17 +33,12 @@ class BatchConfig:
         Custom pathogenic variants if using 'custom' pathogenic_control_type
     combined_output_dir : str, optional
         Directory for final combined results, default current directory
-    global_min_pos : Optional[int], optional
-        Overall minimum position across all experiments (for tiled heatmaps)
-    global_max_pos : Optional[int], optional
-        Overall maximum position across all experiments (for tiled heatmaps)
     """
+    experiments: List[Dict[str, Any]]
     batch_normalization_method: str = 'zscore_2pole'
     pathogenic_control_type: str = 'nonsense'
     pathogenic_variants: Optional[List[str]] = None
     combined_output_dir: str = './normalized'
-    global_min_pos: Optional[int] = None
-    global_max_pos: Optional[int] = None
     
     @staticmethod
     def from_json(json_path: str) -> 'BatchConfig':
@@ -64,18 +57,14 @@ class BatchConfig:
         """
         with open(json_path, 'r') as f:
             data = json.load(f)
-        
-        # Required field
-        if 'experiment_configs' not in data:
-            raise ValueError("experiment_configs is required in batch configuration")
-        
-        args = {'experiment_configs': data['experiment_configs']}
+        if 'experiments' not in data:
+            raise ValueError("Batch configuration requires 'experiments'")
+        args: Dict[str, Any] = {'experiments': data['experiments']}
         
         # Optional fields (only add if present to preserve defaults)
         optional_fields = [
             'batch_normalization_method', 'pathogenic_control_type', 
-            'pathogenic_variants', 'combined_output_dir', 'global_min_pos', 
-            'global_max_pos', 'allow_position_breaks', 'cleanup_individual_files'
+            'pathogenic_variants', 'combined_output_dir'
         ]
         
         for field in optional_fields:
@@ -95,26 +84,39 @@ class BatchConfig:
         FileNotFoundError
             If experiment config files don't exist
         """
-        # Check that experiment config files exist
-        for config_path in self.experiment_configs:
-            if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Experiment config file not found: {config_path}")
-            # Batch mode requires Tile column with integer-like values.
+        if not self.experiments:
+            raise ValueError("experiments must contain at least one entry")
+
+        seen_tiles = set()
+        for idx, cfg in enumerate(self.experiments):
+            if 'tile' not in cfg:
+                raise ValueError(f"experiments[{idx}] missing 'tile'")
+            if 'output_dir' not in cfg:
+                raise ValueError(f"experiments[{idx}] missing 'output_dir'")
+            if 'wt_seq' not in cfg:
+                raise ValueError(f"experiments[{idx}] missing 'wt_seq'")
+            if 'min_pos' not in cfg:
+                raise ValueError(f"experiments[{idx}] missing 'min_pos'")
+            if 'max_pos' not in cfg:
+                raise ValueError(f"experiments[{idx}] missing 'max_pos'")
             try:
-                config_path_obj = Path(config_path).expanduser().resolve()
-                with open(config_path_obj, 'r') as f:
-                    experiment_cfg = json.load(f)
-                if 'experiment_setup_file' not in experiment_cfg:
-                    raise ValueError(
-                        f"Missing 'experiment_setup_file' in experiment config: {config_path}"
-                    )
-                setup_rel = Path(str(experiment_cfg['experiment_setup_file'])).expanduser()
-                setup_path = (config_path_obj.parent / setup_rel).resolve()
-                load_experiment_setup(str(setup_path), require_tile=True)
+                tile = int(cfg['tile'])
             except Exception as e:
-                raise ValueError(
-                    f"Invalid experiment setup for batch mode in '{config_path}': {e}"
-                ) from e
+                raise ValueError(f"experiments[{idx}].tile must be int-like") from e
+            try:
+                min_pos = int(cfg['min_pos'])
+                max_pos = int(cfg['max_pos'])
+            except Exception as e:
+                raise ValueError(f"experiments[{idx}].min_pos/max_pos must be int-like") from e
+            if min_pos >= max_pos:
+                raise ValueError(f"experiments[{idx}] min_pos must be less than max_pos")
+            if tile in seen_tiles:
+                raise ValueError(f"Duplicate tile value in experiments: {tile}")
+            seen_tiles.add(tile)
+
+            out_dir = Path(str(cfg['output_dir'])).expanduser().resolve()
+            if not out_dir.exists():
+                raise FileNotFoundError(f"experiments[{idx}] output_dir does not exist: {out_dir}")
         
         # Validate normalization method
         valid_methods = ['zscore_2pole', '2pole', 'zscore_center']
@@ -132,11 +134,6 @@ class BatchConfig:
         if self.pathogenic_control_type == 'custom' and not self.pathogenic_variants:
             raise ValueError("pathogenic_variants must be specified when using 'custom' pathogenic_control_type")
         
-        # Validate position parameters
-        if self.global_min_pos is not None and self.global_max_pos is not None:
-            if self.global_min_pos >= self.global_max_pos:
-                raise ValueError("global_min_pos must be less than global_max_pos")
-    
     def get_batch_config_dict(self) -> Dict[str, Any]:
         """
         Convert batch configuration to dictionary format for processing.
@@ -147,13 +144,9 @@ class BatchConfig:
             Configuration dictionary for batch processing functions
         """
         return {
-            'experiment_configs': self.experiment_configs,
+            'experiments': self.experiments,
             'batch_normalization_method': self.batch_normalization_method,
             'pathogenic_control_type': self.pathogenic_control_type,
             'pathogenic_variants': self.pathogenic_variants,
-            'combined_output_dir': self.combined_output_dir,
-            'global_min_pos': self.global_min_pos,
-            'global_max_pos': self.global_max_pos,
-            'allow_position_breaks': self.allow_position_breaks,
-            'cleanup_individual_files': self.cleanup_individual_files
+            'combined_output_dir': self.combined_output_dir
         }

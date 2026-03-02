@@ -148,8 +148,13 @@ sortscore norm -c batch_config.json
 For tiled experimental designs where different sequencing datasets cover different regions of the same protein, sortscore supports automatic batch processing with cross-tile normalization:
 
 ```bash
-# Run tiled batch analysis (requires a `tile` column in the setup CSV)
+# Step 1: score (auto-runs each tile independently)
+sortscore score -n tiled_experiment -e experiment_setup.csv -c experiment_config.json
+
+# Step 2: normalize using your batch config
 sortscore norm -c batch_config.json
+sortscore norm -c batch_config.json --method zscore_2pole
+sortscore norm -c batch_config.json --output-dir /path/to/combined_results
 
 
 ```
@@ -173,20 +178,19 @@ Replicate,Bin,Read Counts (CSV),MFI,tile
 
 ### Automatic Tiled Workflow
 
-When sortscore detects a `tile` column in your experiment setup CSV, it automatically processes each sequence tile separately and then combines them using the selected normalization method and controls. Each tile is analyzed independently to generate raw activity scores, then all tiles are combined to allow comparisons of scores across the entire protein sequence.
+When sortscore detects a `tile` column in your experiment setup CSV, it automatically processes each sequence tile separately while still using the same single `experiment_setup.csv`.
 
-The system generates unified tiled heatmaps that properly map each tile's positions to the global protein coordinate system, with visual indicators showing tile boundaries and handling any gaps between non-contiguous sequence regions. Individual tile outputs are automatically cleaned up after successful combination, leaving only the final combined results. Intermediate files for individual experiments can be optionally retained.
+The system generates unified tiled heatmaps that properly map each tile's positions to the global protein coordinate system, with visual indicators showing tile boundaries and handling any gaps between non-contiguous sequence regions.
 
 ### Batch Configuration Parameters
 
 | Key                        | Type      | Description                                                              |
 |---------------------------|-----------|--------------------------------------------------------------------------|
+| experiments               | list      | Required list of experiment entries. Each entry includes `tile`, `output_dir`, `wt_seq`, `min_pos`, `max_pos`. |
 | batch_normalization_method| str       | "zscore_2pole" (default), "2pole", or "zscore_center"                |
 | pathogenic_control_type   | str       | "nonsense" (default) or "custom"                                       |
 | pathogenic_variants       | list      | Custom pathogenic variants (required when using "custom")              |
 | combined_output_dir       | str       | Directory for final combined results                                     |
-| global_min_pos            | int       | Overall minimum position across all experiments (updates tiled heatmaps axis)    |
-| global_max_pos            | int       | Overall maximum position across all experiments (updates tiled heatmaps axis)    |
 
 ### Batch Normalization Methods
 

@@ -4,8 +4,6 @@ This module centralizes the heatmap generation logic. It prepares the data for a
 and codon heatmaps and delegates plotting to `plot_heatmap`.
 """
 
-from __future__ import annotations
-
 import logging
 import os
 from types import SimpleNamespace
@@ -51,7 +49,7 @@ def _compute_wt_score(
     score_col: str,
     annotate_col: str,
     annotate_value: str
-) -> pd.NA | float:
+) -> Optional[float]:
     """Compute WT score from annotated rows if present."""
     if annotate_col not in data.columns:
         return pd.NA

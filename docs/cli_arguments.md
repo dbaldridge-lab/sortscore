@@ -32,4 +32,8 @@ Batch normalization is routed through:
 
 ```bash
 sortscore norm -c batch_config.json
+sortscore norm -c batch_config.json --method zscore_2pole
+sortscore norm -c batch_config.json --output-dir /path/to/combined
 ```
+
+`norm` expects a batch config JSON containing an `experiments` list with tile `output_dir` entries.

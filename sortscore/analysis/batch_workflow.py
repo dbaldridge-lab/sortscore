@@ -2,14 +2,13 @@
 Batch processing workflow for combining multiple Sort-seq experiments.
 
 This module orchestrates the complete batch analysis workflow, including configuration
-loading, analysis execution, result saving, visualization generation, and cleanup.
+loading, analysis execution, result saving, and visualization generation.
 """
 import logging
 import sys
 from typing import Optional
 from sortscore.analysis.batch_config import BatchConfig
 from sortscore.analysis.batch_normalization import run_batch_analysis, save_batch_results, generate_batch_visualizations
-from sortscore.utils.file_utils import cleanup_individual_experiment_files
 
 
 def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
@@ -21,7 +20,7 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
     2. Runs batch analysis with cross-experiment normalization
     3. Saves combined results and statistics
     4. Generates tiled visualizations 
-    5. Optionally cleans up individual experiment files
+    5. Writes combined outputs
     
     Parameters
     ----------
@@ -39,7 +38,7 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
     try:
         batch_config = BatchConfig.from_json(config_path)
         batch_config.validate_config()
-        logging.info(f"Loaded batch config with {len(batch_config.experiment_configs)} experiments")
+        logging.info(f"Loaded batch config with {len(batch_config.experiments)} tiles")
     except Exception as e:
         logging.error(f"Failed to load batch config: {e}")
         sys.exit(1)
@@ -73,13 +72,5 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
     except Exception as e:
         logging.error(f"Failed to generate visualizations: {e}")
         # Don't exit on visualization failure, just warn
-    
-    # Cleanup individual files if requested
-    if batch_config.cleanup_individual_files:
-        try:
-            cleanup_individual_experiment_files(batch_config.experiment_configs)
-            logging.info("Cleaned up individual experiment files")
-        except Exception as e:
-            logging.warning(f"Failed to cleanup individual files: {e}")
     
     print(f"Batch analysis complete! Combined results saved to {results['output_dir']}")

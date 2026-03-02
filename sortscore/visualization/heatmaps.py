@@ -519,14 +519,9 @@ def plot_tiled_heatmap(
     """
     logging.info(f"Creating tiled heatmap for {len(experiments)} experiments")
     
-    # Determine global position range
-    if batch_config.global_min_pos is not None and batch_config.global_max_pos is not None:
-        global_min_pos = batch_config.global_min_pos
-        global_max_pos = batch_config.global_max_pos
-    else:
-        # Calculate from experiment configs
-        global_min_pos = min(exp.min_pos for exp in experiments)
-        global_max_pos = max(exp.max_pos for exp in experiments)
+    # Calculate global range from per-experiment positions.
+    global_min_pos = min(exp.min_pos for exp in experiments)
+    global_max_pos = max(exp.max_pos for exp in experiments)
     
     # Create position mapping for each experiment
     position_mapping = {}

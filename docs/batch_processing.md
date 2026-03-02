@@ -19,25 +19,41 @@ Batch processing enables you to:
 
 ## Quick Start
 
-1. Run individual experiments using standard sortscore analysis
+1. Run tiled scoring to generate tile outputs
 2. List 2 or more tiles in experimental_setup file
-3. Run batch analysis:
+3. Create a `batch_config.json` with an `experiments` list of tile output directories
+4. Run batch analysis:
    ```bash
+   sortscore score -n my_experiment -e experiment_setup.csv -c experiment_config.json
    sortscore norm -c batch_config.json
    ```
 
 ## Batch Configuration
 
 ### Example Config
-Example batch config options are shown below. This template uses default options (besides global_min and global_max, which have no default). This may be added to the same config used for scoring or to a new, separate config. The options will be read during batch processing initiated by the `norm` command.
+Example batch config options are shown below. The `experiments` list is required and should include each tile plus the tile output directory where scoring outputs were written.
 ```json
 {
+    "experiments": [
+        {
+            "tile": 1,
+            "output_dir": "/path/to/output/tile_1",
+            "wt_seq": "ATG...",
+            "min_pos": 1,
+            "max_pos": 150
+        },
+        {
+            "tile": 2,
+            "output_dir": "/path/to/output/tile_2",
+            "wt_seq": "ATG...",
+            "min_pos": 151,
+            "max_pos": 300
+        }
+    ],
     "batch_normalization_method": "zscore_2pole",
     "pathogenic_control_type": "nonsense",
     "pathogenic_variants": ["E501K"],
-    "combined_output_dir": "/path/to/combined_results",
-    "global_min_pos": 1,
-    "global_max_pos": 500
+    "combined_output_dir": "/path/to/combined_results"
 }
 ```
 
@@ -45,12 +61,15 @@ Example batch config options are shown below. This template uses default options
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `experiments` | list | required | Tile entries for normalization. Each entry must include `tile` (int), `output_dir`, `wt_seq`, `min_pos`, and `max_pos`. |
 | `batch_normalization_method` | string | `"zscore_2pole"` | Normalization method: `"zscore_2pole"`, `"2pole"`, or `"zscore_center"` |
 | `pathogenic_control_type` | string | `"nonsense"` | Type of pathogenic control: `"nonsense"` or `"custom"` |
 | `pathogenic_variants` | list | `null` | Custom pathogenic variants (required when `pathogenic_control_type` is `"custom"`) |
 | `combined_output_dir` | string | `"./normalized"` | Output directory for combined results |
-| `global_min_pos` | int | `null` | Global minimum position for tiled heatmaps (auto-calculated if not provided) |
-| `global_max_pos` | int | `null` | Global maximum position for tiled heatmaps (auto-calculated if not provided) |
+
+CLI override:
+- `sortscore norm -c batch_config.json --method zscore_2pole`
+- `sortscore norm -c batch_config.json --output-dir /path/to/combined_results`
 
 
 ## Normalization Methods
