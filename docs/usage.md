@@ -62,13 +62,17 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
 | `mutagenesis_type`     | str   | Mutagenesis type: `aa`, `codon`, or `snv`. **Default:** `aa`. Set this in config or CLI when running DNA-based analysis (`codon`/`snv`). |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
-| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. |
+| `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. If set in config JSON, relative paths are resolved from the config file directory. If set via `--output-dir`, relative paths are resolved from the current working directory. |
 | `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
 | `min_pos`              | int   | Minimum position (1-based). **Default:** `1`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 | `max_pos`              | int   | Maximum position (1-based). **Default:** `1 + length of wild-type sequence`. Interpreted as amino acid or DNA position depending on `wt_seq` and the variant sequences provided in the count files. |
 
 Note:
 Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
+
+Path resolution summary:
+- `--output-dir` on CLI: relative to current working directory.
+- `output_dir` in config JSON: relative to the config file location.
 
 `wt_seq` format requirement by mutagenesis type:
 - `mutagenesis_type: codon` or `snv` -> provide DNA `wt_seq`

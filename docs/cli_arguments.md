@@ -12,7 +12,7 @@ sortscore score [options]
 | `--experiment-setup-file` | `-e` | str | Path to experiment setup CSV **(required)** | - |
 | `--config` | `-c` | str | Optional experiment config JSON file (used as fallback defaults; CLI takes precedence) | - |
 | `--wt-seq` | `-w` | str | Wild-type sequence (required unless provided in `--config`). Use DNA WT for `--mutagenesis-type codon/snv`; use protein WT for `--mutagenesis-type aa`. | - |
-| `--output-dir` | `-o` | str | Output directory | `.` |
+| `--output-dir` | `-o` | str | Output directory. Relative values are resolved from the current working directory. | `.` |
 | `--bins-required` | - | int | Minimum number of bins required | 1 |
 | `--reps-required` | - | int | Minimum number of replicates required | 1 |
 | `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | rep-weighted |
@@ -24,6 +24,7 @@ sortscore score [options]
 | `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | False |
 | `--min-pos` | - | int | Minimum position (1-based) | 1 |
 | `--max-pos` | - | int | Maximum position (1-based) | None |
+| `--relative-path-base` | - | str | Base directory for resolving relative paths when this setting is applied: `setup` or `cwd` | setup |
 | `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
 | `--pos-color` | `-p` | flag | See [visualization.md](visualization.md) for exporting positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
@@ -37,3 +38,7 @@ sortscore norm -c batch_config.json --output-dir /path/to/combined
 ```
 
 `norm` expects a batch config JSON containing an `experiments` list with tile `output_dir` entries.
+
+Path resolution note:
+- `--output-dir` (CLI) uses the current working directory as the base for relative paths.
+- `output_dir` in JSON config files is resolved relative to the config file directory.

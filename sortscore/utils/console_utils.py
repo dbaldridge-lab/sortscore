@@ -118,6 +118,16 @@ def create_analysis_parser() -> argparse.ArgumentParser:
                         choices=['png', 'svg', 'pdf'], 
                         required=False,
                         help='Output format for figures. If not provided, uses config value or default (png).')
+    parser.add_argument(
+        "--relative-path-base",
+        type=str,
+        choices=["setup", "cwd"],
+        required=False,
+        help=(
+            "Base directory for resolving relative paths when this setting is applied: "
+            "'setup' (experimental setup CSV directory) or 'cwd' (current working directory)."
+        ),
+    )
     return parser
 
 
@@ -192,5 +202,7 @@ def build_merged_analysis_config(
         merged["min_pos"] = args.min_pos
     if args.max_pos is not None:
         merged["max_pos"] = args.max_pos
+    if args.relative_path_base is not None:
+        merged["relative_path_base"] = args.relative_path_base
 
     return merged, config_dir
