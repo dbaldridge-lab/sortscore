@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sortscore"
+version = "0.1.0"
+description = "A modular Python package for Sort-seq variant analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Caitlyn Chitwood", email = "c.chitwood@wustl.edu" }
+]
+keywords = ["bioinformatics", "sequencing", "variant-analysis", "sort-seq"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+  "pandas>=2.0.0",
+  "numpy>=1.24.0",
+  "scipy>=1.10.0",
+  "matplotlib>=3.6.0",
+  "seaborn>=0.12.0",
+  "biopython>=1.81",
+  "mavehgvs>=0.7.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/dbaldridge-lab/sortscore"
+
+[project.scripts]
+sortscore = "sortscore.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sortscore", "sortscore.*"]
