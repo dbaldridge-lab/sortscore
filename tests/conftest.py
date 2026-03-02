@@ -108,6 +108,17 @@ def cleanup_outputs(config_dict):
                     pass
 
 
+@pytest.fixture(scope="function")
+def isolated_runtime_env(tmp_path, monkeypatch):
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    monkeypatch.setenv("MPLBACKEND", "Agg")
+    monkeypatch.setenv("MPLCONFIGDIR", str(runtime_dir))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(runtime_dir))
+    monkeypatch.setenv("HOME", str(runtime_dir))
+    return os.environ.copy()
+
+
 # Parameters to test individually for boundary cases
 PARAMS_TO_TEST = [
     ("bins_required", 1),
