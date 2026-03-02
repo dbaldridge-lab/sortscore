@@ -3,7 +3,6 @@ import os
 import tempfile
 from pathlib import Path
 import json
-import csv
 from datetime import datetime
 import pandas as pd
 
@@ -68,31 +67,8 @@ def test_sortscore_cli_multitile_writes_tile_scores(config_dict, batch_config_di
     workdir = (REPO_ROOT / "_test_outputs").resolve()
     with tempfile.TemporaryDirectory(prefix="sortscore_multitile_cfg_") as cfg_tmp:
         output_root = workdir
-        setup_path = Path(cfg_tmp) / "combined_setup.csv"
         config_path = Path(cfg_tmp) / "config.json"
-
-        # Build a two-tile setup from the combined demo setup:
-        # tile 1 paths map to GLI2_oPool4b/counts, tile 2 to GLI2_oPool5b/counts.
-        combined_src = (REPO_ROOT / "demo_data" / "combined_experiment_setup.csv").resolve()
-        counts4 = (REPO_ROOT / "demo_data" / "GLI2_oPool4b" / "counts").resolve()
-        counts5 = (REPO_ROOT / "demo_data" / "GLI2_oPool5b" / "counts").resolve()
-        rows = list(csv.DictReader(combined_src.open()))
-        fieldnames = list(rows[0].keys())
-        tile_col = next(k for k in fieldnames if k.strip().lower() == "tile")
-        path_col = next(k for k in fieldnames if "path" in k.strip().lower() or "file" in k.strip().lower())
-
-        combined_rows = []
-        for row in rows:
-            mapped = dict(row)
-            tile = int(mapped[tile_col])
-            base = counts4 if tile == 1 else counts5
-            mapped[path_col] = str((base / Path(mapped[path_col]).name).resolve())
-            combined_rows.append(mapped)
-
-        with setup_path.open("w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(combined_rows)
+        setup_path = (REPO_ROOT / "demo_data" / "combined_experiment_setup.csv").resolve()
 
         tile_dirs = {
             int(entry["tile"]): Path(entry["output_dir"]).resolve()
@@ -143,8 +119,8 @@ def test_sortscore_cli_multitile_writes_tile_scores(config_dict, batch_config_di
                 assert tile_fig.exists(), f"Missing tile figure file: {tile_fig}"
 
             # Distinct tile inputs should not produce identical score tables.
-            tile1_scores = output_root / "scores" / f"test_multitile_tile1_aa_scores_{expected_suffix}.csv"
-            tile2_scores = output_root / "scores" / f"test_multitile_tile2_aa_scores_{expected_suffix}.csv"
+            tile1_scores = expected_tile_files[1]
+            tile2_scores = expected_tile_files[2]
             df1 = pd.read_csv(tile1_scores)
             df2 = pd.read_csv(tile2_scores)
             assert not df1.equals(df2), "Tile 1 and Tile 2 score outputs are unexpectedly identical"

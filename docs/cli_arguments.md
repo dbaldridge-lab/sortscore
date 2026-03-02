@@ -24,6 +24,7 @@ sortscore score [options]
 | `--biophysical-prop` | - | bool | Show biophysical properties panel in heatmaps | False |
 | `--min-pos` | - | int | Minimum position (1-based) | 1 |
 | `--max-pos` | - | int | Maximum position (1-based) | None |
+| `--relative-path-base` | - | str | Base directory for resolving relative paths when this setting is applied: `setup` or `cwd` | setup |
 | `--suffix` | `-s` | str | Custom suffix for all output files | (auto: current date) |
 | `--pos-color` | `-p` | flag | See [visualization.md](visualization.md) for exporting positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |

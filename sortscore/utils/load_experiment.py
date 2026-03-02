@@ -36,6 +36,7 @@ from typing import Dict, Any, Optional
 from sortscore.utils.sequence_parsing import get_reference_sequence, detect_sequence_format_from_counts
 from sortscore.utils.variant_parsing import is_aa_change_format, parse_aa_change
 from sortscore.utils.experiment_setup import load_experiment_setup
+from sortscore.utils.file_utils import _resolve_count_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ class ExperimentConfig:
     minread_threshold: int = 0
     mutagenesis_variants: Optional[list] = None
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
+    relative_path_base: str = "setup"  # Base for resolving relative paths
     
     @property
     def num_aa(self) -> int:
@@ -187,7 +189,7 @@ class ExperimentConfig:
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
             'minread_threshold','max_cv',
             'mutagenesis_type', 'mutagenesis_variants', 'biophysical_prop',
-            'min_pos', 'max_pos', 'tile_id'
+            'min_pos', 'max_pos', 'tile_id', 'relative_path_base'
         ]
 
         for field, value in data.items():
@@ -200,7 +202,7 @@ class ExperimentConfig:
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
                        'minread_threshold', 'max_cv', 'mutagenesis_type',
-                       'mutagenesis_variants', 'biophysical_prop', 'tile_id'}
+                       'mutagenesis_variants', 'biophysical_prop', 'tile_id', 'relative_path_base'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
             args['other_params'] = other_params
@@ -208,9 +210,17 @@ class ExperimentConfig:
         # Create config instance
         config = ExperimentConfig(**args)
 
+        if config.relative_path_base not in {"setup", "cwd"}:
+            raise ValueError(
+                "Invalid relative_path_base. Supported values: 'setup', 'cwd'."
+            )
+
         # Validate experiment setup CSV early for clearer errors
         try:
-            load_experiment_setup(config.experiment_setup_file)
+            load_experiment_setup(
+                config.experiment_setup_file,
+                relative_path_base=config.relative_path_base,
+            )
         except Exception as e:
             raise ValueError(f"Invalid experiment setup CSV '{config.experiment_setup_file}': {e}") from e
 
@@ -261,15 +271,16 @@ class ExperimentConfig:
         mfi = {}
         total_reads = {}
         cell_prop = {}
-        config_file_dir = Path(self.experiment_setup_file).expanduser().resolve().parent
-        
         for _, row in setup_df.iterrows():
             rep = int(row[setup_cols.replicate])
             bin_ = str(row[setup_cols.bin]).strip()
-            count_file = str(row[setup_cols.count_file]).strip()
-            count_file = config_file_dir / Path(count_file).expanduser()
-            count_file = count_file.resolve()
-            count_file = str(count_file)
+            count_file = str(
+                _resolve_count_file_path(
+                    self.experiment_setup_file,
+                    str(row[setup_cols.count_file]).strip(),
+                    relative_path_base=self.relative_path_base,
+                )
+            )
             
             mfi_val = float(row[setup_cols.mfi])
             

@@ -11,7 +11,40 @@ import os
 import sys
 import logging
 import shutil
+from pathlib import Path
 from typing import Any, Optional, List
+
+
+def _resolve_count_file_path(
+    experiment_setup_file: str,
+    count_file_path: str,
+    *,
+    relative_path_base: str = "setup",
+) -> Path:
+    """
+    Resolve a path value from an experiment setup row.
+
+    Resolution behavior:
+    1. Absolute paths are used as-is.
+    2. Relative paths are resolved against one base selected by
+       ``relative_path_base``:
+       - ``"setup"``: directory of the setup CSV
+       - ``"cwd"``: current working directory
+    """
+    raw = str(count_file_path).strip()
+    path_obj = Path(raw).expanduser()
+    if path_obj.is_absolute():
+        return path_obj.resolve()
+
+    if relative_path_base == "setup":
+        setup_dir = Path(experiment_setup_file).expanduser().resolve().parent
+        return (setup_dir / path_obj).resolve()
+    if relative_path_base == "cwd":
+        return (Path.cwd() / path_obj).resolve()
+
+    raise ValueError(
+        f"Invalid relative_path_base '{relative_path_base}'. Expected 'setup' or 'cwd'."
+    )
 
 def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str, max_cv: Optional[float] = None) -> str:
     """

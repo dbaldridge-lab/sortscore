@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Tuple
 
 import pandas as pd
+from sortscore.utils.file_utils import _resolve_count_file_path
 
 @dataclass(frozen=True)
 class ExperimentSetupColumns:
@@ -30,6 +31,7 @@ def load_experiment_setup(
     *,
     validate_count_files: bool = False,
     require_tile: bool = False,
+    relative_path_base: str = "setup",
 ) -> Tuple[pd.DataFrame, ExperimentSetupColumns]:
     """
     Load and validate an experiment setup CSV.
@@ -43,6 +45,8 @@ def load_experiment_setup(
         resolving paths relative to the setup file directory).
     require_tile : bool
         If True, requires a tile column and validates it as integer-like.
+    relative_path_base : str
+        Base for resolving relative paths. One of: "setup", "cwd".
 
     Returns
     -------
@@ -79,7 +83,12 @@ def load_experiment_setup(
     )
 
     if validate_count_files:
-        _validate_count_files_exist(setup_df, cols, experiment_setup_file)
+        _validate_count_files_exist(
+            setup_df,
+            cols,
+            experiment_setup_file,
+            relative_path_base=relative_path_base,
+        )
 
     return setup_df, cols
 
@@ -295,16 +304,16 @@ def _validate_count_files_exist(
     setup_df: pd.DataFrame,
     cols: ExperimentSetupColumns,
     experiment_setup_file: str,
+    *,
+    relative_path_base: str = "setup",
 ) -> None:
-    setup_dir = Path(experiment_setup_file).expanduser().resolve().parent
-
     missing = []
     for path in setup_df[cols.count_file].dropna().astype(str):
-        user_expanded = Path(path.strip()).expanduser()
-        if user_expanded.is_absolute():
-            resolved = user_expanded
-        else:
-            resolved = setup_dir / user_expanded
+        resolved = _resolve_count_file_path(
+            experiment_setup_file,
+            path,
+            relative_path_base=relative_path_base,
+        )
         if not Path(resolved).exists():
             missing.append(path)
 
