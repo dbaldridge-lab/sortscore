@@ -15,11 +15,11 @@ Tile,Replicate,Bin,Path,MFI,Read Count
 2,1,2,GLI2_oPool5b/counts/S3_matched_allowlist_substring_unique_counts.tsv.gz,242,108500458
 2,1,3,GLI2_oPool5b/counts/S4_matched_allowlist_substring_unique_counts.tsv.gz,953,132353594
 2,1,4,GLI2_oPool5b/counts/S5_matched_allowlist_substring_unique_counts.tsv.gz,3077,94931869
-2,2,1,GLI2_oPool5b/counts/S6_matched_allowlist_substring_unique_counts.tsv.gz,111,12407956
+2,2,1,GLI2_oPool5b/counts/S6_matched_allowlist_substring_unique_counts.tsv.gz,111,124079566
 2,2,2,GLI2_oPool5b/counts/S7_matched_allowlist_substring_unique_counts.tsv.gz,226,144482367
-2,2,3,GLI2_oPool5b/counts/S8_matched_allowlist_substring_unique_counts.tsv.gz,827,11378881
+2,2,3,GLI2_oPool5b/counts/S8_matched_allowlist_substring_unique_counts.tsv.gz,827,113788818
 2,2,4,GLI2_oPool5b/counts/S9_matched_allowlist_substring_unique_counts.tsv.gz,3282,131017017
 2,3,1,GLI2_oPool5b/counts/S10_matched_allowlist_substring_unique_counts.tsv.gz,86.9,99162382
 2,3,2,GLI2_oPool5b/counts/S11_matched_allowlist_substring_unique_counts.tsv.gz,204,123323262
-2,3,3,GLI2_oPool5b/counts/S12_matched_allowlist_substring_unique_counts.tsv.gz,711,1190513
-2,3,4,GLI2_oPool5b/counts/S13_matched_allowlist_substring_unique_counts.tsv.gz,3038,10994939
+2,3,3,GLI2_oPool5b/counts/S12_matched_allowlist_substring_unique_counts.tsv.gz,711,119051369
+2,3,4,GLI2_oPool5b/counts/S13_matched_allowlist_substring_unique_counts.tsv.gz,3038,109949391

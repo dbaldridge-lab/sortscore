@@ -1,3 +1,4 @@
+
 import os
 import tempfile
 import json
@@ -5,66 +6,30 @@ import pytest
 import shutil
 import copy
 
-DEFAULT_CONFIG_DICT = {
-    "bins_required": 3,
-    "reps_required": 1,
-    "avg_method": "rep-weighted",
-    "minread_threshold": 0,
-    "mutagenesis_type": "codon",
-    "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
-    "min_pos": 551,
-    "max_pos": 583,
-    "output_dir": os.path.abspath('_test_outputs'),
-    "biophysical_prop": True
-}
+CONFIG_JSON_PATH = os.path.join(os.path.dirname(__file__), '../demo_data/GLI2_oPool5b/config.json')
+BATCH_CONFIG_JSON_PATH = os.path.join(os.path.dirname(__file__), '../demo_data/batch_config.json')
 
-DEFAULT_BATCH_CONFIG_DICT = {
-    "experiments": [
-        {
-            "tile": 1,
-            "output_dir": os.path.abspath('_test_outputs/tile1'),
-            "wt_seq": "TGCGAGCACGAGGGCTGCAACAAGGCCTTCAGCAACGCCAGCGACAGGGCCAAGCACCAGAACAGGACCCACAGCAACGAGAAGCCTTATATCTGCAAG",
-            "min_pos": 518,
-            "max_pos": 550,
-        },
-        {
-            "tile": 2,
-            "output_dir": os.path.abspath('_test_outputs/tile2'),
-            "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
-            "min_pos": 551,
-            "max_pos": 583,
-        }
-    ],
-    "bins_required": 3,
-    "reps_required": 1,
-    "avg_method": "rep-weighted",
-    "minread_threshold": 0,
-    "mutagenesis_type": "codon",
-    "batch_normalization_method": "zscore_2pole",
-    "pathogenic_control_type": "nonsense",
-    "pathogenic_variants": None,
-    "combined_output_dir": os.path.abspath("_test_outputs/batch_normalized"),
-}
 
 @pytest.fixture(scope="function")
 def config_dict(request):
     """
-    Default config dict fixture, parameterizable via pytest.mark.parametrize.
-    To override, use @pytest.mark.parametrize('config_dict', [your_dict], indirect=True)
+    Loads config from JSON file for tests. To override, use @pytest.mark.parametrize('config_dict', [your_dict], indirect=True)
     """
-    config = copy.deepcopy(DEFAULT_CONFIG_DICT)
+    with open(CONFIG_JSON_PATH, 'r') as f:
+        config = json.load(f)
     if hasattr(request, "param"):
         config.update(request.param)
     return config
 
 
+
 @pytest.fixture(scope="function")
 def batch_config_dict(request):
     """
-    Default batch config dict fixture, parameterizable via pytest.mark.parametrize.
-    To override, use @pytest.mark.parametrize('batch_config_dict', [your_dict], indirect=True)
+    Loads batch config from JSON file for tests. To override, use @pytest.mark.parametrize('batch_config_dict', [your_dict], indirect=True)
     """
-    config = copy.deepcopy(DEFAULT_BATCH_CONFIG_DICT)
+    with open(BATCH_CONFIG_JSON_PATH, 'r') as f:
+        config = json.load(f)
     if hasattr(request, "param"):
         config.update(request.param)
     return config

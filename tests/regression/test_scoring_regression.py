@@ -7,6 +7,20 @@ import sys
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SINGLE_EXPERIMENT_FIXTURE = (
+    REPO_ROOT
+    / "tests"
+    / "regression"
+    / "fixtures"
+    / "aa_score_regression_subset_cell_prop_normalization.csv"
+)
+MULTITILE_TILE2_FIXTURE = (
+    REPO_ROOT
+    / "tests"
+    / "regression"
+    / "fixtures"
+    / "aa_score_regression_subset_tile2.csv"
+)
 
 
 def _assert_aa_regression_subset(output_path, fixture_path):
@@ -36,7 +50,6 @@ def test_sortscore_cli_aa_scores_regression_subset(config_dict, tmp_path, isolat
     """AA score output should remain stable for an example subset of variants."""
     expected_suffix = datetime.now().strftime("%Y%m%d")
     output_root = (REPO_ROOT / "_test_outputs").resolve()
-    fixture_path = REPO_ROOT / "tests" / "regression" / "fixtures" / "aa_score_regression_subset.csv"
     output_path = output_root / "scores" / f"test_experiment_regression_aa_scores_{expected_suffix}.csv"
     if output_path.exists():
         output_path.unlink()
@@ -65,7 +78,7 @@ def test_sortscore_cli_aa_scores_regression_subset(config_dict, tmp_path, isolat
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
-    _assert_aa_regression_subset(output_path, fixture_path)
+    _assert_aa_regression_subset(output_path, SINGLE_EXPERIMENT_FIXTURE)
 
 
 def test_sortscore_cli_multitile_tile2_regression_subset(
@@ -73,7 +86,6 @@ def test_sortscore_cli_multitile_tile2_regression_subset(
 ):
     """Multitile scoring should preserve the expected AA scores on tile 2."""
     expected_suffix = datetime.now().strftime("%Y%m%d")
-    fixture_path = REPO_ROOT / "tests" / "regression" / "fixtures" / "aa_score_regression_subset.csv"
     setup_path = REPO_ROOT / "demo_data" / "combined_experiment_setup.csv"
     tile2_entry = next(entry for entry in batch_config_dict["experiments"] if int(entry["tile"]) == 2)
     tile2_output_dir = Path(tile2_entry["output_dir"]).resolve()
@@ -104,4 +116,4 @@ def test_sortscore_cli_multitile_tile2_regression_subset(
         env=isolated_runtime_env,
     )
     assert result.returncode == 0, f"CLI failed: {result.stderr}"
-    _assert_aa_regression_subset(output_path, fixture_path)
+    _assert_aa_regression_subset(output_path, MULTITILE_TILE2_FIXTURE)
