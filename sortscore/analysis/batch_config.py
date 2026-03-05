@@ -55,7 +55,8 @@ class BatchConfig:
         config : BatchConfig
             Loaded batch configuration
         """
-        with open(json_path, 'r') as f:
+        json_path_obj = Path(json_path).expanduser().resolve()
+        with open(json_path_obj, 'r') as f:
             data = json.load(f)
         if 'experiments' not in data:
             raise ValueError("Batch configuration requires 'experiments'")
@@ -70,6 +71,23 @@ class BatchConfig:
         for field in optional_fields:
             if field in data:
                 args[field] = data[field]
+
+        # Resolve output paths relative to the config file directory.
+        config_dir = json_path_obj.parent
+        experiments = []
+        for entry in args['experiments']:
+            entry_cfg = dict(entry)
+            if 'output_dir' in entry_cfg and entry_cfg['output_dir'] is not None:
+                entry_cfg['output_dir'] = str(
+                    (config_dir / Path(str(entry_cfg['output_dir'])).expanduser()).resolve()
+                )
+            experiments.append(entry_cfg)
+        args['experiments'] = experiments
+
+        if 'combined_output_dir' in args and args['combined_output_dir'] is not None:
+            args['combined_output_dir'] = str(
+                (config_dir / Path(str(args['combined_output_dir'])).expanduser()).resolve()
+            )
         
         return BatchConfig(**args)
     

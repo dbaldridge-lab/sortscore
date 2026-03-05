@@ -39,6 +39,23 @@ def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
     raise ValueError("Scores file missing required score column ('avgscore' or known avgscore_* variants)")
 
 
+def _score_columns(scores_df: pd.DataFrame) -> List[str]:
+    """Return score-like columns used in normalization math."""
+    return [col for col in scores_df.columns if 'score' in col.lower()]
+
+
+def _coerce_score_columns_to_float(scores_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure score columns are float-typed before applying multiplicative scaling.
+
+    Pandas warns when assigning float values back into integer-typed columns.
+    """
+    out = scores_df.copy()
+    for col in _score_columns(out):
+        out[col] = pd.to_numeric(out[col], errors='coerce').astype(float)
+    return out
+
+
 def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
     """Load best available score CSV from `output_dir/scores`."""
     scores_dir = Path(output_dir).expanduser().resolve() / 'scores'
@@ -99,7 +116,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     method = batch_config.get('batch_normalization_method', 'zscore_2pole')
     pathogenic_control_type = batch_config.get('pathogenic_control_type', 'nonsense')
     pathogenic_variants = batch_config.get('pathogenic_variants', None)
-    output_dir = batch_config.get('combined_output_dir', '.')
+    output_dir = str(Path(str(batch_config.get('combined_output_dir', '.'))).expanduser().resolve())
     
     # Load all tile score tables from batch config entries.
     experiments = []
@@ -109,7 +126,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     for idx, cfg in enumerate(experiment_entries, 1):
         try:
             tile = int(cfg['tile'])
-            output_dir_i = str(cfg['output_dir'])
+            output_dir_i = str(Path(str(cfg['output_dir'])).expanduser().resolve())
             scores_df = _load_scores_from_output_dir(output_dir_i)
             batch_name = f"experiment{idx}"
 
@@ -317,8 +334,8 @@ def apply_2pole_normalization(
             normalization_factors[exp_name] = 1.0
     
     # Apply normalization to scores
-    normalized_scores = combined_scores.copy()
-    score_columns = [col for col in normalized_scores.columns if 'score' in col.lower()]
+    normalized_scores = _coerce_score_columns_to_float(combined_scores)
+    score_columns = _score_columns(normalized_scores)
     
     for batch_name, batch_df in normalized_scores.groupby('batch'):
         if batch_name in normalization_factors:
@@ -404,8 +421,8 @@ def apply_zscore_2pole_normalization(
             wt_normalization_factors[exp_name] = 1.0
     
     # Apply WT normalization
-    wt_normalized_scores = combined_scores.copy()
-    score_columns = [col for col in wt_normalized_scores.columns if 'score' in col.lower()]
+    wt_normalized_scores = _coerce_score_columns_to_float(combined_scores)
+    score_columns = _score_columns(wt_normalized_scores)
     
     for batch_name, batch_df in wt_normalized_scores.groupby('batch'):
         if batch_name in wt_normalization_factors:
@@ -592,8 +609,8 @@ def apply_zscore_center_normalization(
             normalization_factors[exp_name] = 1.0
     
     # Apply reference normalization
-    reference_normalized_scores = combined_scores.copy()
-    score_columns = [col for col in reference_normalized_scores.columns if 'score' in col.lower()]
+    reference_normalized_scores = _coerce_score_columns_to_float(combined_scores)
+    score_columns = _score_columns(reference_normalized_scores)
     
     for batch_name, batch_df in reference_normalized_scores.groupby('batch'):
         if batch_name in normalization_factors:
