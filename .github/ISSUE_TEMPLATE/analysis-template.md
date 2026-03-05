@@ -1,27 +1,23 @@
 ---
-name: Analysis Template
+name: Feature Request Template
 about: Briefly describe the scope of the analysis or output.
-title: "[TASK]"
+title: ""
 labels: ''
 assignees: ''
 
 ---
 
-Deliverable
+#### Deliverable
 Short description of the analysis or output.
 
-Data sources
+#### Data Sources
 Links to datasets or collaborators.
 
-Checklist
-[ ] metadata inspection
-[ ] QC
-[ ] initial analysis
-[ ] refinement
-[ ] figure generation
-
-Dependencies
+#### Dependancies
 Data, collaborators, or upstream analyses.
 
-Estimated effort
-2–4 days
+#### Checklist
+- [ ] item1
+
+#### Estimated effort
+<2 days
