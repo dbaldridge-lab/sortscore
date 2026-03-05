@@ -76,23 +76,25 @@ def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
     return _ensure_avgscore_column(scores_df)
 
 
-def _infer_position_range(scores_df: pd.DataFrame) -> Tuple[int, int]:
-    """Infer min/max position from sequence-diff columns."""
-    pos_values = []
-    for col in ('aa_seq_diff', 'dna_seq_diff'):
-        if col not in scores_df.columns:
-            continue
-        series = scores_df[col].dropna().astype(str)
-        for val in series:
-            parts = val.split('.')
-            if len(parts) >= 3:
-                try:
-                    pos_values.append(int(parts[1]))
-                except Exception:
-                    continue
-    if not pos_values:
-        raise ValueError("Could not infer positions from aa_seq_diff/dna_seq_diff in scores table")
-    return min(pos_values), max(pos_values)
+def _get_position_range_from_config(experiment_cfg: Dict[str, Any], experiment_idx: int) -> Tuple[int, int]:
+    """Read and validate min/max positions from a tile entry in `batch_config.experiments`."""
+    if 'min_pos' not in experiment_cfg or 'max_pos' not in experiment_cfg:
+        raise ValueError(
+            f"experiments[{experiment_idx}] missing 'min_pos'/'max_pos'; "
+            "position range must be set in batch_config tile entries"
+        )
+    try:
+        min_pos = int(experiment_cfg['min_pos'])
+        max_pos = int(experiment_cfg['max_pos'])
+    except Exception as e:
+        raise ValueError(
+            f"experiments[{experiment_idx}].min_pos/max_pos must be int-like"
+        ) from e
+    if min_pos >= max_pos:
+        raise ValueError(
+            f"experiments[{experiment_idx}] min_pos must be less than max_pos"
+        )
+    return min_pos, max_pos
 
 
 def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,10 +137,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
                 mutagenesis_type = 'codon' if 'dna_seq_diff' in scores_df.columns else 'aa'
 
             avg_method = cfg.get('avg_method', 'rep-weighted')
-            min_pos = int(cfg['min_pos']) if 'min_pos' in cfg else None
-            max_pos = int(cfg['max_pos']) if 'max_pos' in cfg else None
-            if min_pos is None or max_pos is None:
-                min_pos, max_pos = _infer_position_range(scores_df)
+            min_pos, max_pos = _get_position_range_from_config(cfg, idx - 1)
             all_scores[batch_name] = scores_df
             all_stats[batch_name] = extract_experiment_stats(scores_df, avg_method)
             experiments.append(
@@ -778,9 +777,43 @@ def generate_batch_visualizations(
         # For 2-pole method, try to get global synonymous median
         wt_score = combined_stats.get('syn_median_global_raw')
     
+    # Build colorbar ticks/labels informed by combined stats.
+    def _build_colorbar_ticks(score_series: pd.Series) -> Tuple[Optional[List[float]], Optional[List[str]]]:
+        series = pd.to_numeric(score_series, errors='coerce').dropna()
+        if len(series) == 0:
+            return None, None
+
+        data_min = float(series.min())
+        data_max = float(series.max())
+
+        pathogenic_tick = None
+        if config_obj.pathogenic_control_type == 'nonsense':
+            pathogenic_tick = combined_stats.get('nonsense_avg_experiment1_final')
+        if pathogenic_tick is None:
+            pathogenic_tick = combined_stats.get('non_avg_global_zscore_z')
+
+        ticks = [(data_min, f'{data_min:.1f}')]
+        if wt_score is not None and pd.notna(wt_score):
+            ticks.append((float(wt_score), 'WT Avg'))
+        if pathogenic_tick is not None and pd.notna(pathogenic_tick):
+            ticks.append((float(pathogenic_tick), '(-) Control Avg'))
+        ticks.append((data_max, f'{data_max:.1f}'))
+
+        dedup = {}
+        for val, label in ticks:
+            dedup[round(float(val), 6)] = (float(val), label)
+        ordered = sorted(dedup.values(), key=lambda x: x[0])
+        return [val for val, _ in ordered], [label for _, label in ordered]
+
+    tick_values = None
+    tick_labels = None
+    if score_col in results['normalized_scores'].columns:
+        tick_values, tick_labels = _build_colorbar_ticks(results['normalized_scores'][score_col])
+
     # Create tiled heatmap
-    heatmap_file = os.path.join(figures_dir, f"tiled_heatmap_{suffix}.png")
-    
+    tiled_heatmap_file = os.path.join(figures_dir, f"tiled_heatmap_{suffix}.png")
+    combined_aa_heatmap_file = os.path.join(figures_dir, f"combined_aa_heatmap_{suffix}.png")
+
     try:
         plot_tiled_heatmap(
             batch_data=results['normalized_scores'],
@@ -788,15 +821,62 @@ def generate_batch_visualizations(
             batch_config=config_obj,
             experiments=results['experiments'],
             wt_score=wt_score,
+            tick_values=tick_values,
+            tick_labels=tick_labels,
             export=True,
-            output=heatmap_file,
+            output=tiled_heatmap_file,
             export_matrix=True,
-            biophysical_properties=True  # Enable biophysical properties panel
+            biophysical_properties=False
         )
-        logger.info(f"Generated tiled heatmap: {heatmap_file}")
-        
+        logger.info(f"Generated tiled heatmap: {tiled_heatmap_file}")
+
+        # Also export a combined AA heatmap artifact for batch outputs.
+        from sortscore.analysis.variant_aggregation import aggregate_aa_data
+
+        aa_batch_frames = []
+        for batch_name, batch_df in results['normalized_scores'].groupby('batch'):
+            if 'aa_seq_diff' not in batch_df.columns:
+                continue
+            aa_df = aggregate_aa_data(batch_df, score_col)
+            aa_df['batch'] = batch_name
+            aa_batch_frames.append(aa_df)
+
+        aa_batch_data = pd.concat(aa_batch_frames, ignore_index=True) if aa_batch_frames else results['normalized_scores']
+        aa_tick_values = tick_values
+        aa_tick_labels = tick_labels
+        if score_col in aa_batch_data.columns:
+            aa_tick_values, aa_tick_labels = _build_colorbar_ticks(aa_batch_data[score_col])
+        aa_experiments = [
+            SimpleNamespace(
+                tile=exp.tile,
+                wt_seq=exp.wt_seq,
+                mutagenesis_type='aa',
+                avg_method=exp.avg_method,
+                min_pos=exp.min_pos,
+                max_pos=exp.max_pos,
+                mutagenesis_variants=exp.mutagenesis_variants,
+            )
+            for exp in results['experiments']
+        ]
+
+        plot_tiled_heatmap(
+            batch_data=aa_batch_data,
+            score_col=score_col,
+            batch_config=config_obj,
+            experiments=aa_experiments,
+            wt_score=wt_score,
+            tick_values=aa_tick_values,
+            tick_labels=aa_tick_labels,
+            export=True,
+            output=combined_aa_heatmap_file,
+            export_matrix=True,
+            biophysical_properties=False,
+            title='Combined AA Heatmap'
+        )
+        logger.info(f"Generated combined AA heatmap: {combined_aa_heatmap_file}")
+
     except Exception as e:
-        logger.error(f"Failed to generate tiled heatmap: {e}")
+        logger.error(f"Failed to generate tiled/combined AA heatmap: {e}")
 
 
 def save_batch_results(

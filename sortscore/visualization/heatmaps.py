@@ -14,11 +14,18 @@ import logging
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
 import seaborn as sns
 from typing import Optional, List
-from sortscore.visualization.heatmap_matrix import make_dms_matrix, fill_wt, make_col_avg_df, get_dropout
+from sortscore.visualization.heatmap_matrix import (
+    make_dms_matrix,
+    fill_wt,
+    make_col_avg_df,
+    get_dropout,
+    dms_matrix_template,
+)
 from sortscore.visualization.plots import generate_position_avg_colors
 from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.analysis.batch_config import BatchConfig
@@ -527,8 +534,10 @@ def plot_tiled_heatmap(
     position_mapping = {}
     experiment_ranges = {}
     
+    batch_to_experiment = {}
     for i, experiment in enumerate(experiments, 1):
         batch_name = f'experiment{i}'
+        batch_to_experiment[batch_name] = experiment
         position_mapping[batch_name] = {
             'min_pos': experiment.min_pos,
             'max_pos': experiment.max_pos,
@@ -536,15 +545,19 @@ def plot_tiled_heatmap(
         }
         experiment_ranges[batch_name] = list(range(experiment.min_pos, experiment.max_pos + 1))
     
-    # Get mutagenesis variants from first experiment (assume consistent across experiments)
-    mutagenesis_variants = experiments[0].mutagenesis_variants
-    if mutagenesis_variants is None:
-        mutagenesis_variants = ['W', 'F', 'Y', 'P', 'M', 'I', 'L', 'V', 'A', 'G', 'C', 'S', 'T', 'Q', 'N', 'D', 'E', 'H', 'R', 'K', '*']
+    # Build row labels from experiment mutagenesis settings so index aligns with make_dms_matrix output.
+    first_experiment = experiments[0]
+    template = dms_matrix_template(
+        num_positions=1,
+        mutagenesis_type=first_experiment.mutagenesis_type,
+        mutagenesis_variants=first_experiment.mutagenesis_variants,
+    )
+    row_labels = list(template.index)
     
     # Create global matrix with NaN values
     global_positions = list(range(global_min_pos, global_max_pos + 1))
     global_matrix = pd.DataFrame(
-        index=mutagenesis_variants,
+        index=row_labels,
         columns=global_positions,
         dtype=float
     )
@@ -553,26 +566,36 @@ def plot_tiled_heatmap(
     # Fill matrix with data from each experiment
     for batch_name, batch_df in batch_data.groupby('batch'):
         if batch_name in position_mapping:
-            exp_mapping = position_mapping[batch_name]
+            experiment = batch_to_experiment[batch_name]
             exp_positions = experiment_ranges[batch_name]
             
             # Create matrix for this experiment
+            exp_num_positions = experiment.max_pos - experiment.min_pos + 1
             exp_matrix = make_dms_matrix(
-                batch_df, 
-                score_col, 
-                exp_positions, 
-                mutagenesis_variants,
-                fill_na=True
+                batch_df,
+                score_col,
+                exp_num_positions,
+                experiment.wt_seq,
+                experiment.mutagenesis_type,
+                experiment.mutagenesis_variants
             )
             
-            # Map experiment matrix to global matrix
-            for pos in exp_positions:
-                if pos in exp_matrix.columns and pos in global_matrix.columns:
-                    global_matrix[pos] = exp_matrix[pos]
+            # Map relative experiment columns (1..N) to absolute global positions.
+            for rel_pos, abs_pos in enumerate(exp_positions, start=1):
+                if rel_pos in exp_matrix.columns and abs_pos in global_matrix.columns:
+                    global_matrix[abs_pos] = exp_matrix[rel_pos]
     
 
-    # Use full global range
-    plot_matrix = global_matrix
+    # Preserve WT locations for dot overlay after numeric coercion.
+    wt_mask = global_matrix == 'WT'
+
+    # Use full global range; imshow requires numeric matrix.
+    plot_matrix = global_matrix.copy()
+    if wt_score is not None and pd.notna(wt_score):
+        plot_matrix = plot_matrix.replace('WT', float(wt_score))
+    else:
+        plot_matrix = plot_matrix.replace('WT', np.nan)
+    plot_matrix = plot_matrix.apply(pd.to_numeric, errors='coerce')
     position_labels = global_positions
     
     # Set figure size based on matrix dimensions
@@ -585,8 +608,11 @@ def plot_tiled_heatmap(
     
     # Adjust figure width based on number of positions
     n_positions = len(position_labels)
+    n_rows = len(plot_matrix.index)
     if n_positions > 100:
         figsize = (max(20, n_positions * 0.2), figsize[1])
+    # Increase height for large row counts so labels/cells remain readable.
+    figsize = (figsize[0], max(figsize[1], n_rows * 0.33))
     
     # Create figure
     facecolor = 'none' if transparent else 'white'
@@ -600,46 +626,100 @@ def plot_tiled_heatmap(
     else:
         ax_heatmap = fig.add_subplot(111)
     
-    # Create heatmap
+    # Create heatmap with explicit clipping so colorbar doesn't show over/under caps.
+    matrix_min = float(np.nanmin(plot_matrix.values))
+    matrix_max = float(np.nanmax(plot_matrix.values))
+    norm = plt.Normalize(vmin=matrix_min, vmax=matrix_max, clip=True)
     im = ax_heatmap.imshow(
         plot_matrix.values,
         aspect='auto',
         cmap='RdBu_r',
-        interpolation='nearest'
+        interpolation='nearest',
+        norm=norm,
+    )
+
+    # Overlay WT positions as white dots, matching single-heatmap convention.
+    wt_indices = np.where(wt_mask.values)
+    ax_heatmap.scatter(
+        wt_indices[1],
+        wt_indices[0],
+        color='#9E9E9E',
+        s=70,
+        alpha=1.0,
+        edgecolors='black',
+        linewidths=0.8,
+        zorder=5,
     )
     
     # Set ticks and labels
-    ax_heatmap.set_xticks(range(len(position_labels)))
-    ax_heatmap.set_xticklabels(position_labels, rotation=45, ha='right')
-    ax_heatmap.set_yticks(range(len(mutagenesis_variants)))
-    ax_heatmap.set_yticklabels(mutagenesis_variants)
+    # Show position labels every 5 residues with larger font for readability.
+    is_aa_like_heatmap = len(plot_matrix.index) <= 25
+    xtick_size = 24 if is_aa_like_heatmap else 22
+    ytick_size = 22 if is_aa_like_heatmap else 20
+    tick_step = 5
+    tick_indices = list(range(0, len(position_labels), tick_step))
+    if (len(position_labels) - 1) not in tick_indices:
+        tick_indices.append(len(position_labels) - 1)
+    ax_heatmap.set_xticks(tick_indices)
+    ax_heatmap.set_xticklabels([position_labels[i] for i in tick_indices], rotation=0, ha='center', fontsize=xtick_size)
+    ax_heatmap.set_yticks(range(len(plot_matrix.index)))
+    ax_heatmap.set_yticklabels(plot_matrix.index, fontsize=ytick_size)
     
     # Add colorbar
-    cbar = plt.colorbar(im, ax=ax_heatmap, shrink=0.8)
+    divider = make_axes_locatable(ax_heatmap)
+    cax = divider.append_axes("right", size="3%", pad=0.08)
+    cbar = plt.colorbar(im, cax=cax)
+    cbar_label_size = 24 if len(plot_matrix.index) >= 60 else (22 if is_aa_like_heatmap else 18)
     if tick_values and tick_labels:
-        cbar.set_ticks(tick_values)
-        cbar.set_ticklabels(tick_labels)
+        in_range = [
+            (float(v), str(lbl))
+            for v, lbl in zip(tick_values, tick_labels)
+            if matrix_min <= float(v) <= matrix_max
+        ]
+        if in_range:
+            cbar.set_ticks([v for v, _ in in_range])
+            cbar.set_ticklabels([lbl for _, lbl in in_range])
+            cbar.ax.set_yticklabels([lbl for _, lbl in in_range], fontsize=cbar_label_size)
+    cbar.ax.tick_params(labelsize=cbar_label_size)
     
     # Add biophysical properties panel if requested
     if biophysical_properties:
         _add_biophysical_properties_panel(
             ax_props, 
-            mutagenesis_variants, 
+            list(plot_matrix.index),
             None,  # No boundaries needed for simple panel
             is_small_heatmap=fig_size == 'small'
         )
     
     # Set title
+    def _title_with_bold_first_line(text: str) -> str:
+        first, sep, second = text.partition("\n")
+        # Use mathtext so only the first line is bold.
+        first_math = first.replace(" ", r"\ ")
+        if sep:
+            return rf"$\bf{{{first_math}}}$" + "\n" + second
+        return rf"$\bf{{{first_math}}}$"
+
     if title:
-        ax_heatmap.set_title(title)
+        title_text = title if "\n" in title else title.replace(" (", "\n(", 1)
+        title_size = 34 if is_aa_like_heatmap else 30
+        ax_heatmap.set_title(_title_with_bold_first_line(title_text), fontsize=title_size, pad=24)
     else:
         method = batch_config.batch_normalization_method
         n_exp = len(experiments)
-        ax_heatmap.set_title(f'Combined Activity Scores ({method} normalization, {n_exp} experiments)')
+        title_size = 34 if is_aa_like_heatmap else 30
+        ax_heatmap.set_title(
+            _title_with_bold_first_line(
+                f'Combined Activity Scores\n({method} normalization, {n_exp} experiments)'
+            ),
+            fontsize=title_size,
+            pad=24,
+        )
     
     # Set axis labels
-    ax_heatmap.set_xlabel('Position')
-    ax_heatmap.set_ylabel('Amino Acid')
+    axis_label_size = 36 if is_aa_like_heatmap else (32 if len(plot_matrix.index) >= 60 else 26)
+    ax_heatmap.set_xlabel('Position', fontsize=axis_label_size)
+    ax_heatmap.set_ylabel('Amino Acid', fontsize=axis_label_size)
     
     # Export matrix data if requested
     if export_matrix and output:
