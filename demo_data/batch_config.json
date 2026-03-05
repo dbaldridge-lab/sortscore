@@ -7,18 +7,18 @@
 "batch_normalization_method": "zscore_2pole",
 "pathogenic_control_type": "nonsense",
 "pathogenic_variants": null,
-"combined_output_dir": "multitile_output",
+"combined_output_dir": "_test_outputs/multitile_output",
 "experiments": [
     {
         "tile": 1,
-        "output_dir": "multitile_output/tile1",
+        "output_dir": "_test_outputs/multitile_output/tile1",
         "wt_seq": "TGCGAGCACGAGGGCTGCAACAAGGCCTTCAGCAACGCCAGCGACAGGGCCAAGCACCAGAACAGGACCCACAGCAACGAGAAGCCTTATATCTGCAAG",
         "min_pos": 518,
         "max_pos": 550
     },
     {
         "tile": 2,
-        "output_dir": "multitile_output/tile2",
+        "output_dir": "_test_outputs/multitile_output/tile2",
         "wt_seq": "ATCCCTGGCTGCACCAAGAGATACACCGACCCTAGCAGCCTGAGGAAGCACGTGAAGACCGTGCACGGCCCTGACGCCCACGTGACCAAGAAGCAGAGG",
         "min_pos": 551,
         "max_pos": 583

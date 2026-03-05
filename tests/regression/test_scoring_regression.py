@@ -82,22 +82,31 @@ def test_sortscore_cli_aa_scores_regression_subset(config_dict, tmp_path, isolat
 
 
 def test_sortscore_cli_multitile_tile2_regression_subset(
-    config_dict, batch_config_dict, tmp_path, isolated_runtime_env
+    batch_config_dict,
+    tmp_path, 
+    isolated_runtime_env
 ):
     """Multitile scoring should preserve the expected AA scores on tile 2."""
+    run_cfg = dict(batch_config_dict)
+    run_cfg["combined_output_dir"] = str(Path(run_cfg["combined_output_dir"]).resolve())
+    run_cfg["experiments"] = []
+    for entry in batch_config_dict["experiments"]:
+        entry_cfg = dict(entry)
+        entry_cfg["output_dir"] = str(Path(entry_cfg["output_dir"]).resolve())
+        run_cfg["experiments"].append(entry_cfg)
+
     expected_suffix = datetime.now().strftime("%Y%m%d")
     setup_path = REPO_ROOT / "demo_data" / "combined_experiment_setup.csv"
-    tile2_entry = next(entry for entry in batch_config_dict["experiments"] if int(entry["tile"]) == 2)
+    tile2_entry = next(entry for entry in run_cfg["experiments"] if int(entry["tile"]) == 2)
     tile2_output_dir = Path(tile2_entry["output_dir"]).resolve()
     output_path = tile2_output_dir / "scores" / f"test_multitile_regression_tile2_aa_scores_{expected_suffix}.csv"
     if output_path.exists():
         output_path.unlink()
 
-    run_cfg = dict(config_dict)
-    run_cfg["experiments"] = batch_config_dict["experiments"]
+    # Temporarily write the batch config to a file for CLI testing use
     config_path = tmp_path / "multitile_config.json"
     config_path.write_text(json.dumps(run_cfg))
-
+ 
     result = subprocess.run(
         [
             sys.executable,
