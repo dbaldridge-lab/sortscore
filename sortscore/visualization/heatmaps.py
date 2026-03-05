@@ -633,7 +633,7 @@ def plot_tiled_heatmap(
     im = ax_heatmap.imshow(
         plot_matrix.values,
         aspect='auto',
-        cmap='RdBu_r',
+        cmap='magma',
         interpolation='nearest',
         norm=norm,
     )
@@ -643,10 +643,10 @@ def plot_tiled_heatmap(
     ax_heatmap.scatter(
         wt_indices[1],
         wt_indices[0],
-        color='#9E9E9E',
+        color='white',
         s=70,
         alpha=1.0,
-        edgecolors='black',
+        edgecolors='white',
         linewidths=0.8,
         zorder=5,
     )

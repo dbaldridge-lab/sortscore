@@ -77,7 +77,16 @@ def test_sortscore_cli_multitile_writes_tile_scores(config_dict, batch_config_di
                 p.unlink()
 
         run_cfg = dict(config_dict)
-        run_cfg["experiments"] = batch_config_dict["experiments"]
+        run_cfg["experiments"] = []
+        for entry in batch_config_dict["experiments"]:
+            entry_cfg = dict(entry)
+            entry_output_dir = Path(str(entry_cfg["output_dir"]))
+            if not entry_output_dir.is_absolute():
+                entry_output_dir = (REPO_ROOT / entry_output_dir).resolve()
+            else:
+                entry_output_dir = entry_output_dir.resolve()
+            entry_cfg["output_dir"] = str(entry_output_dir)
+            run_cfg["experiments"].append(entry_cfg)
         config_path.write_text(json.dumps(run_cfg))
 
         result = subprocess.run(
