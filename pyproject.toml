@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sortscore"
-version = "0.1.0"
+version = "0.1.0b1"
 description = "A modular Python package for Sort-seq variant analysis"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["bioinformatics", "sequencing", "variant-analysis", "sort-seq"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "License :: OSI Approved :: MIT License",
