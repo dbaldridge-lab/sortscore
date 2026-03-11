@@ -17,7 +17,7 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
-## [0.1.0b1] - 2026-03-05
+## [0.1.0b1] - 2026-03-11
 
 ### Added
 - First beta release workflow for trusted publishing via GitHub Actions.
