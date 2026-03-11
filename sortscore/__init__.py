@@ -5,7 +5,7 @@ This package provides tools for analyzing Sort-seq experimental data,
 calculating activity scores, and generating visualizations.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.0b2"
 __author__ = "Caitlyn Chitwood"
 __email__ = "c.chitwood@wustl.edu"
 
