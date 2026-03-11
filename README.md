@@ -20,6 +20,16 @@ If the `sortscore` command is not on your `PATH`, run:
 python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
+## Example Heatmaps
+
+Single Experiment Scoring Heatmap
+
+![Single Experiment Scoring Heatmap](https://raw.githubusercontent.com/dbaldridge-lab/sortscore/main/docs/assets/single_experiment_heatmap.png)
+
+Batch Normalization Heatmap
+
+![Batch Normalization Heatmap](https://raw.githubusercontent.com/dbaldridge-lab/sortscore/main/docs/assets/batch_normalization_heatmap.png)
+
 ## Documentation
 - [Installation](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/installation.md)
 - [Usage](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/usage.md)

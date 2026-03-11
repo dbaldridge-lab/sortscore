@@ -17,6 +17,29 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
+## [0.1.0b3] - 2026-03-11
+
+### Added
+- README visual examples with generated heatmap figures for single-experiment scoring and batch normalization workflows.
+
+### Changed
+- Updated README Quick Start to use `pip install sortscore` as the default install path.
+- Updated installation and usage docs to consistently prioritize PyPI installation.
+
+### Fixed
+- None.
+
+## [0.1.0b2] - 2026-03-11
+
+### Added
+- Second beta release candidate for package index testing.
+
+### Changed
+- Bumped package version metadata from `0.1.0b1` to `0.1.0b2`.
+
+### Fixed
+- Converted README documentation/demo links to absolute GitHub URLs so they render correctly on TestPyPI/PyPI.
+
 ## [0.1.0b1] - 2026-03-11
 
 ### Added
@@ -40,6 +63,8 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
-[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/v0.1.0b1...HEAD
-[0.1.0b1]: https://github.com/dbaldridge-lab/sortscore/compare/v0.1.0a1...v0.1.0b1
-[0.1.0a1]: https://github.com/dbaldridge-lab/sortscore/releases/tag/v0.1.0a1
+[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b3...HEAD
+[0.1.0b1]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0a1...0.1.0b1
+[0.1.0a1]: https://github.com/dbaldridge-lab/sortscore/releases/tag/0.1.0a1
+[0.1.0b2]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b1...0.1.0b2
+[0.1.0b3]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b2...0.1.0b3
