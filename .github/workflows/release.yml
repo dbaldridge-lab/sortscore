@@ -3,7 +3,7 @@ name: Release to TestPyPI and PyPI
 on:
   push:
     tags:
-      - "v*"
+      - "*"
 
 jobs:
   build:
