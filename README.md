@@ -23,16 +23,17 @@ python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/t
 ```
 
 ## Documentation
-- [Installation](docs/installation.md)
-- [Usage](docs/usage.md)
-- [CLI Arguments](docs/cli_arguments.md)
-- [Visualization](docs/visualization.md)
-- [Batch Processing](docs/batch_processing.md)
-- [Troubleshooting](TROUBLESHOOTING.md)
-- [Contributing](CONTRIBUTING.md)
+- [Installation](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/installation.md)
+- [Usage](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/usage.md)
+- [CLI Arguments](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/cli_arguments.md)
+- [Visualization](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/visualization.md)
+- [Batch Processing](https://github.com/dbaldridge-lab/sortscore/blob/main/docs/batch_processing.md)
+- [Troubleshooting](https://github.com/dbaldridge-lab/sortscore/blob/main/TROUBLESHOOTING.md)
+- [Contributing](https://github.com/dbaldridge-lab/sortscore/blob/main/CONTRIBUTING.md)
 
 ## Demo
 
-- [Notebook demo](demo_data/demo.ipynb)
-- [Example config](demo_data/GLI2_oPool5b/config.json)
-- [Example experiment setup](demo_data/GLI2_oPool5b/experiment_setup.csv)
+- [Single Experiment Scoring Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/single_experiment_demo.ipynb)
+- [Batch Normalization Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/tiled_demo.ipynb)
+- [Example Config](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/config.json)
+- [Example Experiment Setup](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/experiment_setup.csv)
