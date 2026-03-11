@@ -81,10 +81,10 @@ Path resolution summary:
 ### Basic Usage
 
 ```bash
-# After installation (recommended)
+# After installing from PyPI (recommended)
 sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 
-# Without installation (from project root)
+# Module form (if `sortscore` is not on your PATH)
 python -m sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 

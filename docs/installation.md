@@ -13,18 +13,18 @@ Platform notes:
 
 ## Install Options
 
-### Option 1: Install from Source (current recommended path)
+### Option 1: Install from PyPI (recommended)
+
+```bash
+pip install sortscore
+```
+
+### Option 2: Install from Source (for development)
 
 ```bash
 git clone https://github.com/dbaldridge-lab/sortscore
 cd sortscore
 pip install -e .
-```
-
-### Option 2: Install from PyPI
-
-```bash
-pip install sortscore
 ```
 
 ## Verify Installation

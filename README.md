@@ -5,18 +5,16 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/dbaldridge-lab/sortscore
-cd sortscore
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install sortscore
 ```
 Run a standard variant scoring analysis:
 
 ```bash
 sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
-If you did not install the CLI entry point, run:
+If the `sortscore` command is not on your `PATH`, run:
 
 ```bash
 python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
