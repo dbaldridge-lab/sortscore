@@ -81,7 +81,6 @@ def generate_heatmap_visualizations(
     scores_df: pd.DataFrame,
     experiment: ExperimentConfig,
     output_dir: str,
-    output_suffix: str,
     fig_format: str = 'png',
     export_positional_averages: bool = False,
 ) -> None:
@@ -96,8 +95,6 @@ def generate_heatmap_visualizations(
         Experiment configuration used for plotting context.
     output_dir : str
         Base output directory (figures will be written under ``output_dir/figures``).
-    output_suffix : str
-        Suffix applied to exported file names for traceability.
     fig_format : str, optional
         Export figure format (default: ``'png'``).
     export_positional_averages : bool, optional
@@ -159,7 +156,6 @@ def generate_heatmap_visualizations(
             export_matrix=True,
             export_positional_averages=export_positional_averages,
             biophysical_properties=experiment.biophysical_prop,
-            suffix=output_suffix,
         )
 
         plot_heatmap(
@@ -172,7 +168,7 @@ def generate_heatmap_visualizations(
             **plot_kwargs,
         )
 
-        aa_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_aa_heatmap_{output_suffix}.{fig_format}")
+        aa_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_aa_heatmap.{fig_format}")
         logger.info("Saved AA heatmap to %s", aa_heatmap_file)
 
     # Codon heatmap generation (DNA-level plots only make sense when plotting DNA-level scores)
@@ -201,7 +197,6 @@ def generate_heatmap_visualizations(
             export_matrix=True,
             export_positional_averages=export_positional_averages,
             biophysical_properties=experiment.biophysical_prop,
-            suffix=output_suffix,
         )
 
         plot_heatmap(
@@ -214,5 +209,5 @@ def generate_heatmap_visualizations(
             **plot_kwargs,
         )
 
-        codon_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_codon_heatmap_{output_suffix}.{fig_format}")
+        codon_heatmap_file = os.path.join(figures_dir, f"{experiment.experiment_name}_codon_heatmap.{fig_format}")
         logger.info("Saved codon heatmap to %s", codon_heatmap_file)

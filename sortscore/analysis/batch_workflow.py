@@ -6,12 +6,11 @@ loading, analysis execution, result saving, and visualization generation.
 """
 import logging
 import sys
-from typing import Optional
 from sortscore.analysis.batch_config import BatchConfig
 from sortscore.analysis.batch_normalization import run_batch_analysis, save_batch_results, generate_batch_visualizations
 
 
-def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
+def run_batch_mode(config_path: str) -> None:
     """
     Run batch processing mode for combining multiple experiments.
     
@@ -26,13 +25,9 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
     ----------
     config_path : str
         Path to batch configuration JSON file
-    suffix : Optional[str]
-        Custom suffix for output files
-        
     Examples
     --------
     >>> run_batch_mode('batch_config.json')
-    >>> run_batch_mode('batch_config.json', suffix='final_analysis')
     """
     # Load batch configuration
     try:
@@ -54,7 +49,7 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
     
     # Save results
     try:
-        save_batch_results(results, results['output_dir'], suffix)
+        save_batch_results(results, results['output_dir'])
         logging.info(f"Batch results saved to {results['output_dir']}")
     except Exception as e:
         logging.error(f"Failed to save batch results: {e}")
@@ -65,8 +60,7 @@ def run_batch_mode(config_path: str, suffix: Optional[str] = None) -> None:
         generate_batch_visualizations(
             results, 
             batch_config_dict, 
-            results['output_dir'], 
-            suffix
+            results['output_dir']
         )
         logging.info("Generated batch visualizations")
     except Exception as e:

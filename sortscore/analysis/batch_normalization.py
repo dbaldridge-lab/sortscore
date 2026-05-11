@@ -777,7 +777,6 @@ def generate_batch_visualizations(
     results: Dict[str, Any],
     batch_config: Dict[str, Any],
     output_dir: str,
-    suffix: Optional[str] = None
 ) -> None:
     """
     Generate tiled heatmap visualizations from batch results.
@@ -790,8 +789,6 @@ def generate_batch_visualizations(
         Batch configuration dictionary
     output_dir : str
         Output directory for visualizations
-    suffix : Optional[str]
-        Optional suffix for output files
     """
     from sortscore.analysis.batch_config import BatchConfig
     from sortscore.visualization.heatmaps import plot_tiled_heatmap
@@ -803,12 +800,6 @@ def generate_batch_visualizations(
     
     # Create batch config object for visualization
     config_obj = BatchConfig(**batch_config)
-    
-    # Generate suffix if not provided
-    if suffix is None:
-        timestamp = pd.Timestamp.now().strftime('%Y%m%d')
-        method = results['method']
-        suffix = f"batch_{method}_{timestamp}"
     
     # Determine score column to visualize
     score_col = 'avgscore'  # Default, could be made configurable
@@ -859,8 +850,8 @@ def generate_batch_visualizations(
         tick_values, tick_labels = _build_colorbar_ticks(results['normalized_scores'][score_col])
 
     # Create tiled heatmap
-    tiled_heatmap_file = os.path.join(figures_dir, f"tiled_heatmap_{suffix}.png")
-    combined_aa_heatmap_file = os.path.join(figures_dir, f"combined_aa_heatmap_{suffix}.png")
+    tiled_heatmap_file = os.path.join(figures_dir, "tiled_heatmap.png")
+    combined_aa_heatmap_file = os.path.join(figures_dir, "combined_aa_heatmap.png")
 
     try:
         plot_tiled_heatmap(
@@ -921,7 +912,6 @@ def generate_batch_visualizations(
 def save_batch_results(
     results: Dict[str, Any],
     output_dir: str,
-    suffix: Optional[str] = None
 ) -> None:
     """
     Save batch normalization results to files.
@@ -932,23 +922,15 @@ def save_batch_results(
         Results dictionary from batch analysis
     output_dir : str
         Output directory for saving results
-    suffix : Optional[str]
-        Optional suffix for output files
     """
     from sortscore.utils.file_utils import ensure_output_subdirs
     
     # Ensure output directories exist
     ensure_output_subdirs(output_dir)
     
-    # Generate suffix if not provided
-    if suffix is None:
-        timestamp = pd.Timestamp.now().strftime('%Y%m%d')
-        method = results['method']
-        suffix = f"batch_{method}_{timestamp}"
-    
     # Save normalized scores
     scores_dir = os.path.join(output_dir, 'scores')
-    scores_file = os.path.join(scores_dir, f"batch_scores_{suffix}.csv")
+    scores_file = os.path.join(scores_dir, "batch_scores.csv")
     
     normalized_scores = results['normalized_scores'].copy()
     # Round score columns to integers for consistency
@@ -964,12 +946,12 @@ def save_batch_results(
     if aa_scores is None:
         aa_scores = pd.DataFrame()
     if not aa_scores.empty:
-        aa_scores_file = os.path.join(scores_dir, f"batch_aa_scores_{suffix}.csv")
+        aa_scores_file = os.path.join(scores_dir, "batch_aa_scores.csv")
         aa_scores.to_csv(aa_scores_file, index=False)
         logger.info(f"Saved batch AA scores to {aa_scores_file}")
     
     # Save combined statistics
-    stats_file = os.path.join(scores_dir, f"batch_stats_{suffix}.json")
+    stats_file = os.path.join(scores_dir, "batch_stats.json")
     with open(stats_file, 'w') as f:
         json.dump(results['combined_stats'], f, indent=2)
     logger.info(f"Saved batch statistics to {stats_file}")

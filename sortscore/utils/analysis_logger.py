@@ -85,7 +85,7 @@ class AnalysisLogger:
     reproducibility.
     """
     
-    def __init__(self, experiment, args, output_suffix: str, output_dir: str):
+    def __init__(self, experiment, args, output_dir: str):
         """
         Initialize analysis logger with automatic parameter extraction.
         
@@ -95,18 +95,15 @@ class AnalysisLogger:
             Experiment configuration object
         args : argparse.Namespace
             Command-line arguments
-        output_suffix : str
-            Suffix for output files
         output_dir : str
             Output directory for analysis files
         """
         self.experiment_name = experiment.experiment_name
-        self.suffix = output_suffix
         self.output_dir = output_dir
         
         # Generate unique analysis ID
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.analysis_id = f"{experiment.experiment_name}_{output_suffix}_{timestamp}"
+        self.analysis_id = f"{experiment.experiment_name}_{timestamp}"
         
         # Initialize data structures
         self.execution = ExecutionInfo(
@@ -116,13 +113,12 @@ class AnalysisLogger:
         self.environment = self._capture_environment()
         
         # Log file path
-        self.log_file = os.path.join(output_dir, f"{experiment.experiment_name}_analysis_{output_suffix}.log.json")
+        self.log_file = os.path.join(output_dir, f"{experiment.experiment_name}_analysis.log.json")
         
         # Extract and set request parameters automatically
         # TODO: #36 resolve to experiment/execution parameters instead of CLI args
         cli_args = {
             'config': getattr(args, 'config', None),
-            'suffix': getattr(args, 'suffix', None),
             'batch': getattr(args, 'batch', False),
             'pos_color': getattr(args, 'pos_color', False),
             'fig_format': getattr(args, 'fig_format', None)
@@ -270,8 +266,3 @@ class AnalysisLogger:
         """Serialize outputs, filtering out None values."""
         outputs_dict = asdict(self.outputs)
         return {k: v for k, v in outputs_dict.items() if v is not None}
-
-
-def generate_date_suffix() -> str:
-    """Generate a date-based suffix for output files."""
-    return datetime.now().strftime('%Y%m%d')

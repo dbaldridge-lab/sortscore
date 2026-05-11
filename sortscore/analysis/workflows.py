@@ -56,7 +56,7 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
     return scores_df
 
 
-def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analysis_logger) -> Optional[str]:
+def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Optional[str]:
     """
     Process DNA-level analysis workflow (codon or snv analysis types).
     
@@ -66,8 +66,6 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
         Experiment configuration
     output_dir : str
         Output directory
-    output_suffix : str
-        Output file suffix
     analysis_logger : AnalysisLogger
         Analysis logger
         
@@ -98,14 +96,14 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     scores_df_rounded = round_score_columns(scores_df_rounded)
     
     # Save DNA scores
-    dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv")
+    dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores.csv")
     scores_df_rounded.to_csv(dna_scores_file, index=False)
     logging.info(f"Saved DNA scores to {dna_scores_file}")
     
     # Log output
     analysis_logger.log_output_file(
         'dna_scores', 
-        f"{experiment.experiment_name}_dna_scores_{output_suffix}.csv",
+        f"{experiment.experiment_name}_dna_scores.csv",
         dna_scores_file,
         variant_count=len(scores_df_rounded)
     )
@@ -116,7 +114,6 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
         stats,
         experiment,
         scores_dir,
-        output_suffix,
         analysis_logger,
         stats_basename="dna_stats",
         output_field="dna_statistics",
@@ -126,7 +123,7 @@ def process_dna_workflow(experiment, output_dir: str, output_suffix: str, analys
     return dna_scores_file
 
 
-def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysis_logger, 
+def process_aa_workflow(experiment, output_dir: str, analysis_logger,
                        dna_scores_file: Optional[str] = None) -> str:
     """
     Process AA-level analysis workflow.
@@ -141,8 +138,6 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
         Experiment configuration
     output_dir : str
         Output directory
-    output_suffix : str
-        Output file suffix
     analysis_logger : AnalysisLogger
         Analysis logger
     dna_scores_file : Optional[str]
@@ -182,10 +177,10 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
         analysis_logger.set_processing_stats(len(scores_df))
     
     # Process and save AA scores using existing function
-    process_and_save_aa_scores(scores_df, experiment, scores_dir, output_suffix, analysis_logger)
+    process_and_save_aa_scores(scores_df, experiment, scores_dir, analysis_logger)
     
     # Calculate and save statistics on the final processed AA data
-    aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores_{output_suffix}.csv")
+    aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores.csv")
     
     if os.path.exists(aa_scores_file):
         final_scores_df = pd.read_csv(aa_scores_file)
@@ -194,7 +189,6 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
             stats,
             experiment,
             scores_dir,
-            output_suffix,
             analysis_logger,
             stats_basename="aa_stats",
             output_field="aa_statistics",
@@ -204,7 +198,7 @@ def process_aa_workflow(experiment, output_dir: str, output_suffix: str, analysi
     return aa_scores_file
 
 
-def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: str, analysis_logger) -> Tuple[Optional[str], str]:
+def run_variant_analysis_workflow(experiment, output_dir: str, analysis_logger) -> Tuple[Optional[str], str]:
     """
     Run the complete variant analysis workflow based on mutagenesis_type.
     
@@ -218,8 +212,6 @@ def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: st
         Experiment configuration
     output_dir : str
         Output directory
-    output_suffix : str
-        Output file suffix
     analysis_logger : AnalysisLogger
         Analysis logger
         
@@ -231,7 +223,7 @@ def run_variant_analysis_workflow(experiment, output_dir: str, output_suffix: st
     """
     logging.info(f"Using mutagenesis_type: '{experiment.mutagenesis_type}'")
     
-    dna_scores_file = process_dna_workflow(experiment, output_dir, output_suffix, analysis_logger)
-    aa_scores_file = process_aa_workflow(experiment, output_dir, output_suffix, analysis_logger, dna_scores_file)
+    dna_scores_file = process_dna_workflow(experiment, output_dir, analysis_logger)
+    aa_scores_file = process_aa_workflow(experiment, output_dir, analysis_logger, dna_scores_file)
     
     return dna_scores_file, aa_scores_file

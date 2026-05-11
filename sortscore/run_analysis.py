@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 import pandas as pd
 from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.utils.file_utils import ensure_output_subdirs
-from sortscore.utils.analysis_logger import AnalysisLogger, generate_date_suffix
+from sortscore.utils.analysis_logger import AnalysisLogger
 from sortscore.analysis.workflows import run_variant_analysis_workflow
 from sortscore.visualization.heatmap_workflow import generate_heatmap_visualizations
 from sortscore.utils.console_utils import parse_analysis_args, build_merged_analysis_config
@@ -54,7 +54,6 @@ def _apply_experiment_overrides(base: Dict[str, Any], entry: Optional[Dict[str, 
 def _run_single_analysis(
     experiment: ExperimentConfig,
     args,
-    output_suffix: str,
     *,
     fail_on_viz_error: bool = True,
 ) -> None:
@@ -66,11 +65,11 @@ def _run_single_analysis(
     print("Counts loaded.")
 
     fig_format = getattr(args, 'fig_format', None) or getattr(experiment, 'fig_format', None) or 'png'
-    analysis_logger = AnalysisLogger(experiment, args, output_suffix, output_dir)
+    analysis_logger = AnalysisLogger(experiment, args, output_dir)
 
     try:
         dna_scores_file, aa_scores_file = run_variant_analysis_workflow(
-            experiment, output_dir, output_suffix, analysis_logger
+            experiment, output_dir, analysis_logger
         )
         dna_scores_df = pd.read_csv(dna_scores_file) if dna_scores_file and os.path.exists(dna_scores_file) else None
         aa_scores_df = pd.read_csv(aa_scores_file) if aa_scores_file and os.path.exists(aa_scores_file) else None
@@ -93,7 +92,6 @@ def _run_single_analysis(
                 scores_df=aa_scores_df,
                 experiment=experiment,
                 output_dir=output_dir,
-                output_suffix=output_suffix,
                 fig_format=fig_format,
                 export_positional_averages=args.pos_color,
             )
@@ -103,7 +101,6 @@ def _run_single_analysis(
                     scores_df=dna_scores_df,
                     experiment=experiment,
                     output_dir=output_dir,
-                    output_suffix=output_suffix,
                     fig_format=fig_format,
                     export_positional_averages=args.pos_color,
                 )
@@ -112,7 +109,6 @@ def _run_single_analysis(
                     scores_df=aa_scores_df,
                     experiment=experiment,
                     output_dir=output_dir,
-                    output_suffix=output_suffix,
                     fig_format=fig_format,
                     export_positional_averages=args.pos_color,
                 )
@@ -122,7 +118,6 @@ def _run_single_analysis(
                     scores_df=dna_scores_df,
                     experiment=experiment,
                     output_dir=output_dir,
-                    output_suffix=output_suffix,
                     fig_format=fig_format,
                     export_positional_averages=args.pos_color,
                 )
@@ -131,7 +126,6 @@ def _run_single_analysis(
                     scores_df=aa_scores_df,
                     experiment=experiment,
                     output_dir=output_dir,
-                    output_suffix=output_suffix,
                     fig_format=fig_format,
                     export_positional_averages=args.pos_color,
                 )
@@ -164,14 +158,6 @@ def main():
         logging.error(str(e))
         sys.exit(1)
 
-    # Generate string that will be used to name output files
-    if args.suffix:
-        output_suffix = args.suffix
-        logging.info(f"Using custom output suffix: {output_suffix}")
-    else:
-        output_suffix = generate_date_suffix()
-        logging.info(f"Using date-based output suffix: {output_suffix}")
-
     try:
         setup_df, setup_cols = load_experiment_setup(merged["experiment_setup_file"], require_tile=False)
     except Exception as e:
@@ -190,7 +176,7 @@ def main():
             entry = _select_experiment_entry(merged, tile=None)
             merged_single = _apply_experiment_overrides(merged, entry)
             experiment = ExperimentConfig.from_dict(merged_single, config_file_dir=config_dir)
-            _run_single_analysis(experiment, args, output_suffix, fail_on_viz_error=True)
+            _run_single_analysis(experiment, args, fail_on_viz_error=True)
         except Exception as e:
             logging.error(f"Failed to run analysis: {e}")
             sys.exit(1)
@@ -223,7 +209,7 @@ def main():
         logging.info(f"Running tile {tile}: output_dir={tile_merged['output_dir']}")
         try:
             experiment = ExperimentConfig.from_dict(tile_merged, config_file_dir=config_dir)
-            _run_single_analysis(experiment, args, output_suffix, fail_on_viz_error=True)
+            _run_single_analysis(experiment, args, fail_on_viz_error=True)
         except Exception as e:
             failures += 1
             logging.error(f"Tile {tile} failed: {e}")

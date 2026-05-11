@@ -105,11 +105,6 @@ def create_analysis_parser() -> argparse.ArgumentParser:
                         required=False, 
                         help="Maximum position (1-based). If not provided, uses config value or default (None)."
                             )
-    parser.add_argument('-s', '--suffix', 
-                        type=str, 
-                        required=False,
-                        help='Custom suffix for output files. If not provided, uses date-based suffix (YYYYMMDD).'
-                            )
     parser.add_argument('-p', '--pos-color', 
                         action='store_true', 
                         help='Export positional averages with colors for protein structure visualization. If not provided, uses config value or default (False).'

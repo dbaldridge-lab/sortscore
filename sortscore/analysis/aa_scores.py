@@ -20,8 +20,7 @@ def _get_score_column_from_avg_method(avg_method: str) -> str:
     return f"avgscore_{avg_method.replace('-', '_')}"
 
 
-def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: str, 
-                              output_suffix: str, analysis_logger) -> None:
+def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: str, analysis_logger) -> None:
     """
     Process and save amino acid scores from variant data.
     
@@ -41,8 +40,6 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
         Experiment configuration containing metadata
     scores_dir : str
         Directory to save scores file
-    output_suffix : str
-        Suffix for output filename
     analysis_logger : AnalysisLogger
         Logger instance for recording outputs
         
@@ -58,14 +55,14 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
     aa_scores = build_aa_scores_table(scores_df, score_col)
     
     # Save to file
-    aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores_{output_suffix}.csv")
+    aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores.csv")
     aa_scores.to_csv(aa_scores_file, index=False)
     logging.info(f"Saved AA scores to {aa_scores_file} ({len(aa_scores)} unique AA variants)")
     
     # Log file output  
     analysis_logger.log_output_file(
         'aa_scores',
-        f"{experiment.experiment_name}_aa_scores_{output_suffix}.csv", 
+        f"{experiment.experiment_name}_aa_scores.csv",
         aa_scores_file,
         variant_count=len(aa_scores)
     )

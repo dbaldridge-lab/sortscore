@@ -1,8 +1,8 @@
 # Visualization files
-figures/{experiment_name}_aa_heatmap_{suffix}.{png|svg|pdf}
-figures/{experiment_name}_aa_heatmap_matrix_{suffix}.csv
-figures/{experiment_name}_codon_heatmap_{suffix}.{png|svg|pdf}         # when plotting DNA-level scores
-figures/{experiment_name}_codon_heatmap_matrix_{suffix}.csv            # when plotting DNA-level scores
+figures/{experiment_name}_aa_heatmap.{png|svg|pdf}
+figures/{experiment_name}_aa_heatmap_matrix.csv
+figures/{experiment_name}_codon_heatmap.{png|svg|pdf}         # when plotting DNA-level scores
+figures/{experiment_name}_codon_heatmap_matrix.csv            # when plotting DNA-level scores
 ### Exporting positional averages for structure visualization
 
 To export positional averages with hex color codes for protein structure visualization, use the `--pos-color` (or `-p`) flag:
@@ -14,7 +14,7 @@ sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -
 This generates a file:
 
 ```
-figures/{experiment_name}_positional_averages_{suffix}.csv
+figures/{experiment_name}_positional_averages.csv
 ```
 
 The file contains columns for position, average score, and a hex color suitable for mapping onto protein structures.
@@ -26,20 +26,9 @@ This guide covers heatmap generation, output formats, and visualization-specific
 
 When figures are produced, they are written under `figures/` in your output directory.
 
-Common files:
-
-```text
-figures/{experiment_name}_aa_heatmap_{suffix}.{png|svg|pdf}
-figures/{experiment_name}_aa_heatmap_matrix_{suffix}.csv
-figures/{experiment_name}_codon_heatmap_{suffix}.{png|svg|pdf}
-figures/{experiment_name}_codon_heatmap_matrix_{suffix}.csv
-figures/{experiment_name}_positional_averages_{suffix}.csv
-```
 
 Notes:
-
 - Codon heatmap files are produced when DNA-level scores are plotted.
-- `positional_averages` is produced when `--pos-color` is enabled.
 
 ## CLI options for visualization
 
