@@ -22,9 +22,11 @@ from pathlib import Path
 from types import SimpleNamespace
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, cast
 
 logger = logging.getLogger(__name__)
+
+from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, build_aa_scores_table
 
 
 def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
@@ -54,6 +56,43 @@ def _coerce_score_columns_to_float(scores_df: pd.DataFrame) -> pd.DataFrame:
     for col in _score_columns(out):
         out[col] = pd.to_numeric(out[col], errors='coerce').astype(float)
     return out
+
+
+def _build_batch_aa_scores(
+    normalized_scores: pd.DataFrame,
+    experiments: List[Any],
+) -> pd.DataFrame:
+    """Aggregate normalized batch results to AA level for each batch separately."""
+
+    experiment_by_batch = {
+        f"tile{idx}": experiment
+        for idx, experiment in enumerate(experiments, start=1)
+    }
+
+    aa_batch_frames = []
+    for batch_name, batch_df in normalized_scores.groupby('batch'):
+        if 'aa_seq_diff' not in batch_df.columns:
+            continue
+
+        batch_name = cast(str, batch_name)
+        if batch_name not in experiment_by_batch:
+            raise ValueError(f"Missing experiment metadata for batch '{batch_name}'")
+        experiment = experiment_by_batch[batch_name]
+        score_col = _get_score_column_from_avg_method(experiment.avg_method)
+        if score_col not in batch_df.columns:
+            raise ValueError(
+                f"Batch '{batch_name}' is missing expected score column '{score_col}' "
+                f"for avg_method '{experiment.avg_method}'"
+            )
+
+        aa_df = build_aa_scores_table(batch_df, score_col)
+        aa_df['batch'] = batch_name
+        aa_batch_frames.append(aa_df)
+
+    if not aa_batch_frames:
+        return pd.DataFrame()
+
+    return pd.concat(aa_batch_frames, ignore_index=True)
 
 
 def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
@@ -130,7 +169,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
             tile = int(cfg['tile'])
             output_dir_i = str(Path(str(cfg['output_dir'])).expanduser().resolve())
             scores_df = _load_scores_from_output_dir(output_dir_i)
-            batch_name = f"experiment{idx}"
+            batch_name = f"tile{idx}"
 
             mutagenesis_type = cfg.get('mutagenesis_type')
             if mutagenesis_type is None:
@@ -176,9 +215,11 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Unknown normalization method: {method}")
     
     logger.info(f"Applied {method} normalization to {len(normalized_scores)} variants")
+    normalized_aa_scores = _build_batch_aa_scores(normalized_scores, experiments)
     
     return {
         'normalized_scores': normalized_scores,
+        'normalized_aa_scores': normalized_aa_scores,
         'combined_stats': combined_stats,
         'method': method,
         'experiments': experiments,
@@ -696,6 +737,13 @@ def recalculate_final_statistics(
             final_stats['all_avg_global_final'] = float(scores.mean())
             final_stats['all_min_global_final'] = float(scores.min())
             final_stats['all_max_global_final'] = float(scores.max())
+
+    if 'annotate_aa' in normalized_scores.columns and score_col in normalized_scores.columns:
+        nonsense_subset = normalized_scores[normalized_scores['annotate_aa'] == 'nonsense']
+        if len(nonsense_subset) > 0:
+            nonsense_scores = nonsense_subset[score_col].dropna()
+            if len(nonsense_scores) > 0:
+                final_stats['nonsense_avg_global_final'] = float(nonsense_scores.mean())
     
     # Per-batch final statistics
     for batch_name, batch_df in normalized_scores.groupby('batch'):
@@ -788,7 +836,7 @@ def generate_batch_visualizations(
 
         pathogenic_tick = None
         if config_obj.pathogenic_control_type == 'nonsense':
-            pathogenic_tick = combined_stats.get('nonsense_avg_experiment1_final')
+            pathogenic_tick = combined_stats.get('nonsense_avg_global_final')
         if pathogenic_tick is None:
             pathogenic_tick = combined_stats.get('non_avg_global_zscore_z')
 
@@ -831,49 +879,40 @@ def generate_batch_visualizations(
         logger.info(f"Generated tiled heatmap: {tiled_heatmap_file}")
 
         # Also export a combined AA heatmap artifact for batch outputs.
-        from sortscore.analysis.variant_aggregation import aggregate_aa_data
+        aa_batch_data = results['normalized_aa_scores']
+        if not aa_batch_data.empty:
+            aa_tick_values = tick_values
+            aa_tick_labels = tick_labels
+            if score_col in aa_batch_data.columns:
+                aa_tick_values, aa_tick_labels = _build_colorbar_ticks(aa_batch_data[score_col])
+            aa_experiments = [
+                SimpleNamespace(
+                    tile=exp.tile,
+                    wt_seq=exp.wt_seq,
+                    mutagenesis_type='aa',
+                    avg_method=exp.avg_method,
+                    min_pos=exp.min_pos,
+                    max_pos=exp.max_pos,
+                    mutagenesis_variants=exp.mutagenesis_variants,
+                )
+                for exp in results['experiments']
+            ]
 
-        aa_batch_frames = []
-        for batch_name, batch_df in results['normalized_scores'].groupby('batch'):
-            if 'aa_seq_diff' not in batch_df.columns:
-                continue
-            aa_df = aggregate_aa_data(batch_df, score_col)
-            aa_df['batch'] = batch_name
-            aa_batch_frames.append(aa_df)
-
-        aa_batch_data = pd.concat(aa_batch_frames, ignore_index=True) if aa_batch_frames else results['normalized_scores']
-        aa_tick_values = tick_values
-        aa_tick_labels = tick_labels
-        if score_col in aa_batch_data.columns:
-            aa_tick_values, aa_tick_labels = _build_colorbar_ticks(aa_batch_data[score_col])
-        aa_experiments = [
-            SimpleNamespace(
-                tile=exp.tile,
-                wt_seq=exp.wt_seq,
-                mutagenesis_type='aa',
-                avg_method=exp.avg_method,
-                min_pos=exp.min_pos,
-                max_pos=exp.max_pos,
-                mutagenesis_variants=exp.mutagenesis_variants,
+            plot_tiled_heatmap(
+                batch_data=aa_batch_data,
+                score_col=score_col,
+                batch_config=config_obj,
+                experiments=aa_experiments,
+                wt_score=wt_score,
+                tick_values=aa_tick_values,
+                tick_labels=aa_tick_labels,
+                export=True,
+                output=combined_aa_heatmap_file,
+                export_matrix=True,
+                biophysical_properties=False,
+                title='Combined AA Heatmap'
             )
-            for exp in results['experiments']
-        ]
-
-        plot_tiled_heatmap(
-            batch_data=aa_batch_data,
-            score_col=score_col,
-            batch_config=config_obj,
-            experiments=aa_experiments,
-            wt_score=wt_score,
-            tick_values=aa_tick_values,
-            tick_labels=aa_tick_labels,
-            export=True,
-            output=combined_aa_heatmap_file,
-            export_matrix=True,
-            biophysical_properties=False,
-            title='Combined AA Heatmap'
-        )
-        logger.info(f"Generated combined AA heatmap: {combined_aa_heatmap_file}")
+            logger.info(f"Generated combined AA heatmap: {combined_aa_heatmap_file}")
 
     except Exception as e:
         logger.error(f"Failed to generate tiled/combined AA heatmap: {e}")
@@ -920,6 +959,14 @@ def save_batch_results(
     
     normalized_scores.to_csv(scores_file, index=False)
     logger.info(f"Saved batch scores to {scores_file}")
+
+    aa_scores = results.get('normalized_aa_scores')
+    if aa_scores is None:
+        aa_scores = pd.DataFrame()
+    if not aa_scores.empty:
+        aa_scores_file = os.path.join(scores_dir, f"batch_aa_scores_{suffix}.csv")
+        aa_scores.to_csv(aa_scores_file, index=False)
+        logger.info(f"Saved batch AA scores to {aa_scores_file}")
     
     # Save combined statistics
     stats_file = os.path.join(scores_dir, f"batch_stats_{suffix}.json")
