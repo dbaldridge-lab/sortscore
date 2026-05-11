@@ -120,7 +120,6 @@ def save_summary_stats(
     stats: Dict[str, Any],
     experiment,
     scores_dir: str,
-    output_suffix: str,
     analysis_logger,
     *,
     stats_basename: str = "stats",
@@ -138,8 +137,6 @@ def save_summary_stats(
         Experiment configuration
     scores_dir : str
         Directory to save stats file
-    output_suffix : str
-        Suffix for output filename
     analysis_logger : AnalysisLogger
         Logger instance for recording outputs
     stats_basename : str, optional
@@ -159,9 +156,9 @@ def save_summary_stats(
     Examples
     --------
     >>> stats = calculate_summary_stats(scores_df, experiment)
-    >>> stats_file = save_summary_stats(stats, experiment, 'output/scores', 'suffix', logger)
+    >>> stats_file = save_summary_stats(stats, experiment, 'output/scores', logger)
     """
-    stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_{stats_basename}_{output_suffix}.json")
+    stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_{stats_basename}.json")
     
     with open(stats_file, 'w') as f:
         json.dump(stats, f, indent=2)
@@ -174,7 +171,7 @@ def save_summary_stats(
 
     analysis_logger.log_output_file(
         output_field,
-        f"{experiment.experiment_name}_{stats_basename}_{output_suffix}.json",
+        f"{experiment.experiment_name}_{stats_basename}.json",
         stats_file,
         **metadata,
     )

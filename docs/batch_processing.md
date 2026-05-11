@@ -152,11 +152,12 @@ Specify your own list of pathogenic control variants.
 Batch processing generates:
 
 ### Score Files
-- `batch_scores_[suffix].csv`: Combined normalized scores with batch tracking
-- `batch_stats_[suffix].json`: Comprehensive statistics and normalization factors
+- `batch_scores.csv`: Combined normalized scores with batch tracking
+- `batch_aa_scores.csv`: Combined amino acid level normalized scores when AA aggregation is available
+- `batch_stats.json`: Comprehensive statistics and normalization factors
 
 ### Visualizations  
 - Unified scaling: Single colorbar applies to all data  
 - Automatic sizing: Figure dimensions scale with position range
-`tiled_heatmap_[suffix].png`: Combined heatmap with position mapping
-`tiled_heatmap_[suffix]_matrix.csv`: Underlying matrix data for heatmap
+`tiled_heatmap.png`: Combined heatmap with position mapping
+`tiled_heatmap_matrix.csv`: Underlying matrix data for heatmap

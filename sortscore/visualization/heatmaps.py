@@ -141,7 +141,6 @@ def plot_heatmap(
     export_matrix: bool = False,
     biophysical_properties: bool = False,
     export_positional_averages: bool = False,
-    suffix: Optional[str] = None,
     heatmap_basename: str = "heatmap",
     matrix_basename: str = "heatmap_matrix",
     transparent: bool = True
@@ -185,8 +184,6 @@ def plot_heatmap(
         If True, show biophysical properties panel beside the heatmap.
     export_positional_averages : bool, default False
         If True, export positional averages with hex colors to CSV for protein structure visualization.
-    suffix : str, optional
-        Suffix to append to output filenames for consistent naming.
     heatmap_basename : str, optional
         Base name for exported heatmap image (default: ``"heatmap"``).
     matrix_basename : str, optional
@@ -228,10 +225,7 @@ def plot_heatmap(
         new_columns = [str(i) for i in range(experiment.min_pos, experiment.min_pos + experiment.num_aa)]
         matrix_for_export.columns = new_columns
 
-        if suffix:
-            matrix_output = f"{output_prefix}_{matrix_basename}_{suffix}.csv"
-        else:
-            matrix_output = f"{output_prefix}_{matrix_basename}.csv"
+        matrix_output = f"{output_prefix}_{matrix_basename}.csv"
         matrix_for_export.to_csv(matrix_output)
         logger.info(f"Heatmap matrix saved to {matrix_output}")
     
@@ -239,10 +233,7 @@ def plot_heatmap(
     if export_positional_averages:
         # Use the same normalization and colormap as the main heatmap for exact color matching
         averages_colors = generate_position_avg_colors(heatmap_df, colormap='magma', norm=norm, cmap=cmap)
-        if suffix:
-            averages_output = f"{output_prefix}_positional_averages_{suffix}.csv"
-        else:
-            averages_output = f"{output_prefix}_positional_averages.csv"
+        averages_output = f"{output_prefix}_positional_averages.csv"
         averages_colors.to_csv(averages_output, index=False)
         logger.info(f"Positional averages with colors saved to {averages_output}")
 
@@ -439,10 +430,7 @@ def plot_heatmap(
 
     # Save or show plot
     if export_heatmap:
-        if suffix:
-            heatmap_output = f"{output_prefix}_{heatmap_basename}_{suffix}.{fig_format}"
-        else:
-            heatmap_output = f"{output_prefix}_{heatmap_basename}.{fig_format}"
+        heatmap_output = f"{output_prefix}_{heatmap_basename}.{fig_format}"
         facecolor = 'none' if transparent else 'white'
         plt.savefig(heatmap_output, dpi=dpi, format=fig_format, facecolor=facecolor, edgecolor='none')
         logger.info(f"Heatmap plot saved to {heatmap_output}")

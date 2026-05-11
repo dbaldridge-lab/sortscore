@@ -30,8 +30,6 @@ def main():
                        help='Override combined output directory from batch config JSON')
     parser.add_argument('--method', type=str, choices=['zscore_2pole', '2pole', 'zscore_center'],
                        help='Override normalization method from batch config JSON')
-    parser.add_argument('-s', '--suffix', type=str, 
-                       help='Custom suffix for output files (default: auto-generated)')
     args = parser.parse_args()
 
     # Load batch configuration
@@ -58,7 +56,7 @@ def main():
     
     # Save results
     try:
-        save_batch_results(results, results['output_dir'], args.suffix)
+        save_batch_results(results, results['output_dir'])
         logging.info(f"Batch results saved to {results['output_dir']}")
     except Exception as e:
         logging.error(f"Failed to save batch results: {e}")
@@ -69,8 +67,7 @@ def main():
         generate_batch_visualizations(
             results, 
             batch_config_dict, 
-            results['output_dir'], 
-            args.suffix
+            results['output_dir']
         )
         logging.info("Generated batch visualizations")
     except Exception as e:

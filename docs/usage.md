@@ -110,19 +110,15 @@ See [docs/cli_arguments.md](cli_arguments.md) for a complete list of command lin
 **Current Implementation:**
 ```
 # Score files
-scores/{experiment_name}_dna_scores_{suffix}.csv
-scores/{experiment_name}_aa_scores_{suffix}.csv
-# TODO: #31 add SNV functionality and test
-scores/{experiment_name}_dna_scores_snv_{suffix}.csv
+scores/{experiment_name}_dna_scores.csv
+scores/{experiment_name}_aa_scores.csv
 
 # Summary statistics
-scores/{experiment_name}_dna_stats_{suffix}.json         # when DNA scores are produced
-scores/{experiment_name}_aa_stats_{suffix}.json
+scores/{experiment_name}_dna_stats.json         # when DNA scores are produced
+scores/{experiment_name}_aa_stats.json
 
 # For a list of all visualization output files, see [visualization.md](visualization.md).
 ```
-
-**Auto-generated suffix format:** `YYYYMMDD` (current date)
 
 ### Examples
 
@@ -133,10 +129,6 @@ sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json
 ```bash
 # DNA codon-level analysis
 sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json --mutagenesis-type codon
-```
-```bash
-# With custom output suffix
-sortscore score -n my_experiment -e experiment_setup.csv -c my_experiment.json -s "final_analysis"
 ```
 ```bash
 # Generate SVG figures
