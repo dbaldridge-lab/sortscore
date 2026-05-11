@@ -536,7 +536,7 @@ def plot_tiled_heatmap(
     
     batch_to_experiment = {}
     for i, experiment in enumerate(experiments, 1):
-        batch_name = f'experiment{i}'
+        batch_name = f'tile{i}'
         batch_to_experiment[batch_name] = experiment
         position_mapping[batch_name] = {
             'min_pos': experiment.min_pos,

@@ -9,8 +9,15 @@ import logging
 import pandas as pd
 import numpy as np
 from scipy import stats as scipy_stats
-from typing import Tuple, List
+from typing import List
 from sortscore.analysis.statistics import calculate_codon_and_replicate_variance
+
+
+def _get_score_column_from_avg_method(avg_method: str) -> str:
+    """Return the score column name for a given averaging method."""
+    if avg_method == 'simple-avg':
+        return 'avgscore'
+    return f"avgscore_{avg_method.replace('-', '_')}"
 
 
 def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: str, 
@@ -45,26 +52,10 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
     """
     if 'aa_seq_diff' not in scores_df.columns:
         return
-        
-    # Determine score column
-    if experiment.avg_method == 'simple-avg':
-        score_col = 'avgscore'
-    else:
-        score_col_suffix = experiment.avg_method.replace('-', '_')
-        score_col = f'avgscore_{score_col_suffix}'
+
+    score_col = _get_score_column_from_avg_method(experiment.avg_method)
     
-    # Filter out rows with NaN values first
-    scores_df_drop_nan = scores_df.dropna(subset=[score_col])
-    
-    # Find replicate score columns
-    rep_score_columns = [col for col in scores_df_drop_nan.columns 
-                        if col.startswith('Rep') and col.endswith('.score')]
-    
-    # Check aggregation needs and process scores
-    aa_scores = _check_codon_num(scores_df_drop_nan, score_col, rep_score_columns)
-    
-    # Round score columns to integers
-    aa_scores = _round_score_columns(aa_scores)
+    aa_scores = build_aa_scores_table(scores_df, score_col)
     
     # Save to file
     aa_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_aa_scores_{output_suffix}.csv")
@@ -78,6 +69,35 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
         aa_scores_file,
         variant_count=len(aa_scores)
     )
+
+
+def build_aa_scores_table(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
+    """
+    Build the AA-level score table from a scored variant table.
+
+    Parameters
+    ----------
+    scores_df : pd.DataFrame
+        DataFrame containing variant scores and annotations.
+    score_col : str
+        Score column used to determine which rows are retained and how codon
+        variance is calculated.
+
+    Returns
+    -------
+    pd.DataFrame
+        AA-level score table with synonymous codons aggregated when needed.
+    """
+    if 'aa_seq_diff' not in scores_df.columns:
+        raise ValueError("scores_df must contain 'aa_seq_diff' column for AA score output")
+
+    scores_df_drop_nan = scores_df.dropna(subset=[score_col])
+    rep_score_columns = [
+        col for col in scores_df_drop_nan.columns
+        if col.startswith('Rep') and col.endswith('.score')
+    ]
+    aa_scores = _check_codon_num(scores_df_drop_nan, score_col, rep_score_columns)
+    return _round_score_columns(aa_scores)
 
 
 def _check_codon_num(scores_df_drop_nan: pd.DataFrame, score_col: str, 
