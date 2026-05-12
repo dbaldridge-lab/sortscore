@@ -12,6 +12,9 @@ Examples
 import pandas as pd
 from sortscore.utils.sequence_parsing import compare_to_reference, compare_codon_lists, translate_dna
 
+NO_DIFF_MARKER = '='
+
+
 # TODO: #37 redundant, see if we can remove
 def annotate_scores_dataframe(
     scores_df: pd.DataFrame, 
@@ -54,27 +57,24 @@ def annotate_scores_dataframe(
         
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
-            lambda x: compare_to_reference(wt_dna_seq, x)
+            lambda x: compare_to_reference(wt_dna_seq, x, no_change_marker=NO_DIFF_MARKER)
         )
-        df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
         
         # Add AA sequence annotations only if not pre-annotated
         if not has_pre_annotated_aa:
             wt_aa_seq = translate_dna(wt_dna_seq)
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)
             df['aa_seq_diff'] = df['aa_seq'].apply(
-                lambda x: compare_to_reference(wt_aa_seq, x)
+                lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
             )
-            df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         
     elif mutagenesis_type == 'aa':
         # For AA variants, add sequence differences only if not pre-annotated
         if not has_pre_annotated_aa:
             wt_aa_seq = translate_dna(wt_dna_seq) if len(wt_dna_seq) % 3 == 0 else wt_dna_seq
             df['aa_seq_diff'] = df['variant_seq'].apply(
-                lambda x: compare_to_reference(wt_aa_seq, x)
+                lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
             )
-            df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
     
     # Map stop codon representations to * for standard notation in aa_seq_diff column
     if 'aa_seq_diff' in df.columns:
@@ -114,32 +114,29 @@ def add_sequence_differences(
     if mutagenesis_type in {'codon', 'snv'}:
         # Add DNA sequence differences
         df['dna_seq_diff'] = df['variant_seq'].apply(
-            lambda x: compare_to_reference(wt_dna_seq, x)
+            lambda x: compare_to_reference(wt_dna_seq, x, no_change_marker=NO_DIFF_MARKER)
         )
-        df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
         
         # Add AA sequence differences
         wt_aa_seq = translate_dna(wt_dna_seq)
         df['aa_seq'] = df['variant_seq'].apply(translate_dna)
         df['aa_seq_diff'] = df['aa_seq'].apply(
-            lambda x: compare_to_reference(wt_aa_seq, x)
+            lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
         )
-        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
         
     elif mutagenesis_type == 'aa':
         # For AA variants, sequences are already amino acids
         wt_aa_seq = translate_dna(wt_dna_seq) if len(wt_dna_seq) % 3 == 0 else wt_dna_seq
         df['aa_seq_diff'] = df['variant_seq'].apply(
-            lambda x: compare_to_reference(wt_aa_seq, x)
+            lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
         )
-        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
     
     return df
 
 def classify_aa_variant(aa_diff, dna_diff=None):
-    if not aa_diff or aa_diff == '':
+    if aa_diff == NO_DIFF_MARKER:
         # Check if this is true WT (no DNA changes) or synonymous (DNA changes but same AA)
-        if dna_diff is not None and (not dna_diff or dna_diff == ''):
+        if dna_diff == NO_DIFF_MARKER:
             return 'wt_dna'
         else:
             return 'synonymous'
@@ -149,9 +146,9 @@ def classify_aa_variant(aa_diff, dna_diff=None):
         return 'missense_aa'
 
 def classify_dna_variant(dna_diff, aa_diff):
-    if not dna_diff or dna_diff == '':
+    if dna_diff == NO_DIFF_MARKER:
         return 'wt_dna'
-    elif not aa_diff or aa_diff == '':
+    elif aa_diff == NO_DIFF_MARKER:
         return 'synonymous'
     else:
         return 'missense_dna'

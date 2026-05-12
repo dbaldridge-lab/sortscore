@@ -146,7 +146,7 @@ def translate_dna(dna_sequence: str) -> str:
     dna_seq = Seq(dna_sequence)
     return str(dna_seq.translate())
 
-def compare_to_reference(ref_seq: str, sequence: str) -> str:
+def compare_to_reference(ref_seq: str, sequence: str, no_change_marker: str = '') -> str:
     """
     Compare a protein sequence to a reference and report differences.
     
@@ -181,6 +181,8 @@ def compare_to_reference(ref_seq: str, sequence: str) -> str:
             var_aa = '*' if sequence[i] == 'X' else sequence[i]
             difference = f'{ref_aa}.{i+1}.{var_aa}'
             differences.append(difference)
+    if not differences:
+        return no_change_marker
     return ', '.join(differences)
 
 def get_codons(dna_seq: str) -> List[str]:

@@ -1,6 +1,8 @@
 import pandas as pd
+import pytest
 
 from sortscore.analysis.annotation import annotate_scores_dataframe
+from sortscore.utils.load_experiment import ExperimentConfig
 
 
 def test_annotate_scores_dataframe_supports_codon_mutagenesis_type():
@@ -22,8 +24,8 @@ def test_annotate_scores_dataframe_supports_codon_mutagenesis_type():
     assert "annotate_dna" in annotated.columns
     assert "annotate_aa" in annotated.columns
 
-    assert annotated.loc[0, "aa_seq_diff"] == ""
-    assert annotated.loc[0, "dna_seq_diff"] == ""
+    assert annotated.loc[0, "aa_seq_diff"] == "="
+    assert annotated.loc[0, "dna_seq_diff"] == "="
     assert annotated.loc[0, "annotate_dna"] == "wt_dna"
     assert annotated.loc[0, "annotate_aa"] == "wt_dna"
 
@@ -31,7 +33,29 @@ def test_annotate_scores_dataframe_supports_codon_mutagenesis_type():
     assert annotated.loc[1, "annotate_dna"] == "missense_dna"
     assert annotated.loc[1, "annotate_aa"] == "missense_aa"
 
-    assert annotated.loc[2, "aa_seq_diff"] == ""
+    assert annotated.loc[2, "aa_seq_diff"] == "="
     assert annotated.loc[2, "dna_seq_diff"] != ""
     assert annotated.loc[2, "annotate_dna"] == "synonymous"
     assert annotated.loc[2, "annotate_aa"] == "synonymous"
+
+
+def test_preannotated_aa_parse_errors_raise_value_error():
+    config = ExperimentConfig(
+        experiment_name="exp",
+        experiment_setup_file="unused.csv",
+        wt_seq="ATGGCC",  # MA
+        mutagenesis_type="aa",
+    )
+    config.counts = {
+        1: {
+            1: pd.DataFrame(
+                {
+                    "variant_seq": ["M1M", "not-a-variant"],
+                    "count": [1, 1],
+                }
+            )
+        }
+    }
+
+    with pytest.raises(ValueError, match="Invalid pre-annotated amino-acid variant"):
+        config._convert_aa_changes_to_annotations()

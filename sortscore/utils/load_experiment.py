@@ -523,6 +523,7 @@ class ExperimentConfig:
         This creates an aa_seq_diff column in the format 'ref.position.alt' for differences
         from the wild-type sequence, and uses the existing annotation function to determine annotation types.
         """
+        from sortscore.analysis.annotation import NO_DIFF_MARKER
         from sortscore.utils.sequence_parsing import translate_dna
         
         # Get the wild-type AA sequence for annotation
@@ -536,9 +537,9 @@ class ExperimentConfig:
                     try:
                         ref_aa, position, alt_aa = parse_aa_change(variant_seq)
                     except ValueError:
-                        # If parsing fails, treat as empty difference
-                        aa_seq_diffs.append('')
-                        continue
+                        raise ValueError(
+                            f"Invalid pre-annotated amino-acid variant: '{variant_seq}'."
+                        )
 
                     # Verify the reference AA matches the WT sequence
                     if not (1 <= position <= len(wt_aa_seq)):
@@ -557,8 +558,8 @@ class ExperimentConfig:
                         aa_seq_diff = f"{ref_aa}.{position}.{alt_aa}"
                         aa_seq_diffs.append(aa_seq_diff)
                     else:
-                        # No difference (e.g., M1M)
-                        aa_seq_diffs.append('')
+                        # Mark no-change variants explicitly.
+                        aa_seq_diffs.append(NO_DIFF_MARKER)
                 
                 # Add the aa_seq_diff column
                 df['aa_seq_diff'] = aa_seq_diffs
@@ -626,6 +627,7 @@ class ExperimentConfig:
         mutagenesis_type : str
             'aa' for amino acid variants, 'codon' for multiple nucleotide changes in single frame, 'snv' for single nucleotide variants.
         """
+        from sortscore.analysis.annotation import NO_DIFF_MARKER
         from sortscore.utils.sequence_parsing import compare_to_reference, translate_dna
         
         # AA annotation
@@ -635,13 +637,19 @@ class ExperimentConfig:
         elif mutagenesis_type in {'codon', 'snv'}:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
             # DNA annotation
-            df['dna_seq_diff'] = df['variant_seq'].apply(lambda x: compare_to_reference(wt_ref_seq, x))
-            df['dna_seq_diff'] = df['dna_seq_diff'].fillna('')
-            df['dna_diff_count'] = df['dna_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+            df['dna_seq_diff'] = df['variant_seq'].apply(
+                lambda x: compare_to_reference(wt_ref_seq, x, no_change_marker=NO_DIFF_MARKER)
+            )
+            df['dna_diff_count'] = df['dna_seq_diff'].apply(
+                lambda x: 0 if x == NO_DIFF_MARKER else x.count(',') + 1
+            )
             
-        df['aa_seq_diff'] = df['aa_seq'].apply(lambda x: compare_to_reference(wt_aa_seq, x))
-        df['aa_seq_diff'] = df['aa_seq_diff'].fillna('')
-        df['aa_diff_count'] = df['aa_seq_diff'].apply(lambda x: 0 if not x else x.count(',') + 1)
+        df['aa_seq_diff'] = df['aa_seq'].apply(
+            lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
+        )
+        df['aa_diff_count'] = df['aa_seq_diff'].apply(
+            lambda x: 0 if x == NO_DIFF_MARKER else x.count(',') + 1
+        )
 
     def _validate_mutagenesis_type_against_counts(self) -> None:
         """
