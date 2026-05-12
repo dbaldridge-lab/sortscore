@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 from pathlib import Path
 import subprocess
 import sys
@@ -48,9 +47,8 @@ def _assert_aa_regression_subset(output_path, fixture_path):
 
 def test_sortscore_cli_aa_scores_regression_subset(config_dict, tmp_path, isolated_runtime_env):
     """AA score output should remain stable for an example subset of variants."""
-    expected_suffix = datetime.now().strftime("%Y%m%d")
     output_root = (REPO_ROOT / "_test_outputs").resolve()
-    output_path = output_root / "scores" / f"test_experiment_regression_aa_scores_{expected_suffix}.csv"
+    output_path = output_root / "scores" / "test_experiment_regression_aa_scores.csv"
     if output_path.exists():
         output_path.unlink()
 
@@ -95,11 +93,10 @@ def test_sortscore_cli_multitile_tile2_regression_subset(
         entry_cfg["output_dir"] = str(Path(entry_cfg["output_dir"]).resolve())
         run_cfg["experiments"].append(entry_cfg)
 
-    expected_suffix = datetime.now().strftime("%Y%m%d")
     setup_path = REPO_ROOT / "demo_data" / "combined_experiment_setup.csv"
     tile2_entry = next(entry for entry in run_cfg["experiments"] if int(entry["tile"]) == 2)
     tile2_output_dir = Path(tile2_entry["output_dir"]).resolve()
-    output_path = tile2_output_dir / "scores" / f"test_multitile_regression_tile2_aa_scores_{expected_suffix}.csv"
+    output_path = tile2_output_dir / "scores" / "test_multitile_regression_tile2_aa_scores.csv"
     if output_path.exists():
         output_path.unlink()
 

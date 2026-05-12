@@ -101,8 +101,8 @@ def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
     if not scores_dir.exists():
         raise FileNotFoundError(f"Scores directory not found: {scores_dir}")
 
-    dna_files = sorted(scores_dir.glob("*_dna_scores_*.csv"))
-    aa_files = sorted(scores_dir.glob("*_aa_scores_*.csv"))
+    dna_files = sorted(scores_dir.glob("*_dna_scores.csv"))
+    aa_files = sorted(scores_dir.glob("*_aa_scores.csv"))
     candidate = None
     if dna_files:
         candidate = dna_files[-1]
