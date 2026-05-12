@@ -204,11 +204,11 @@ def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns:
         t_critical = scipy_stats.t.ppf(0.975, df_actual)
         aa_margin_of_error = t_critical * sem
         
-        aa_scores['SD_rep'] = aa_rep_std.round().astype('Int64')
+        aa_scores['SD_rep'] = aa_rep_std
         aa_scores['CV_rep'] = (aa_rep_std / aa_rep_mean).round(3)
         aa_scores['n_measurements'] = n_measurements.astype('Int64')
-        aa_scores['SEM'] = sem.round().astype('Int64')
-        aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
-        aa_scores['CI_upper'] = (aa_rep_mean + aa_margin_of_error).round().astype('Int64')
+        aa_scores['SEM'] = sem
+        aa_scores['CI_lower'] = aa_rep_mean - aa_margin_of_error
+        aa_scores['CI_upper'] = aa_rep_mean + aa_margin_of_error
     
     return aa_scores

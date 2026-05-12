@@ -28,7 +28,7 @@ def calculate_replicate_statistics(df: pd.DataFrame, rep_score_columns: List[str
     -------
     pd.DataFrame
         DataFrame with added statistical columns:
-        - SD_rep: Standard deviation of replicates (rounded to integers)
+        - SD_rep: Standard deviation of replicates
         - CV_rep: Coefficient of variation (3 decimal places)
         - n_measurements: Number of non-null measurements per variant
         - CI_lower: Lower bound of 95% confidence interval
@@ -58,11 +58,11 @@ def calculate_replicate_statistics(df: pd.DataFrame, rep_score_columns: List[str
     margin_of_error = t_critical * (rep_std / np.sqrt(n_measurements))
     
     # Add stats to DataFrame
-    df_result['SD_rep'] = rep_std.round().astype('Int64')
+    df_result['SD_rep'] = rep_std
     df_result['CV_rep'] = (rep_std / rep_mean).round(3)
     df_result['n_measurements'] = n_measurements.astype('Int64')
-    df_result['CI_lower'] = (rep_mean - margin_of_error).round().astype('Int64')
-    df_result['CI_upper'] = (rep_mean + margin_of_error).round().astype('Int64')
+    df_result['CI_lower'] = rep_mean - margin_of_error
+    df_result['CI_upper'] = rep_mean + margin_of_error
     
     return df_result
 
@@ -151,7 +151,7 @@ def calculate_codon_and_replicate_variance(aa_scores: pd.DataFrame, rep_score_co
         - SEM: Standard error of the mean
         - CI_lower: Lower bound of 95% confidence interval
         - CI_upper: Upper bound of 95% confidence interval
-        - SD_codon: Rounded to integers
+        - SD_codon: Standard deviation across codons
         
     Examples
     --------
@@ -186,16 +186,12 @@ def calculate_codon_and_replicate_variance(aa_scores: pd.DataFrame, rep_score_co
     aa_margin_of_error = t_critical * sem
     
     # Add statistics to DataFrame
-    df_result['SD_rep'] = aa_rep_std.round().astype('Int64')
+    df_result['SD_rep'] = aa_rep_std
     df_result['CV_rep'] = (aa_rep_std / aa_rep_mean).round(3)
     df_result['CV_codon'] = (df_result['SD_codon'] / aa_rep_mean).round(3)
     df_result['n_measurements'] = n_measurements.astype('Int64')
-    df_result['SEM'] = sem.round().astype('Int64')
-    df_result['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
-    df_result['CI_upper'] = (aa_rep_mean + aa_margin_of_error).round().astype('Int64')
-    
-    # Round SD_codon column to integers
-    if 'SD_codon' in df_result.columns:
-        df_result['SD_codon'] = df_result['SD_codon'].round().astype('Int64')
+    df_result['SEM'] = sem
+    df_result['CI_lower'] = aa_rep_mean - aa_margin_of_error
+    df_result['CI_upper'] = aa_rep_mean + aa_margin_of_error
     
     return df_result

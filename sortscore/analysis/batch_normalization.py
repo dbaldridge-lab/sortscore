@@ -933,12 +933,6 @@ def save_batch_results(
     scores_file = os.path.join(scores_dir, "batch_scores.csv")
     
     normalized_scores = results['normalized_scores'].copy()
-    # Round score columns to integers for consistency
-    score_columns = [col for col in normalized_scores.columns if 'score' in col.lower()]
-    for col in score_columns:
-        if normalized_scores[col].dtype in ['float64', 'float32']:
-            normalized_scores[col] = normalized_scores[col].round().astype('Int64')
-    
     normalized_scores.to_csv(scores_file, index=False)
     logger.info(f"Saved batch scores to {scores_file}")
 
