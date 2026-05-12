@@ -32,6 +32,23 @@ from sortscore.analysis.batch_config import BatchConfig
 from sortscore.utils.sequence_parsing import convert_aa_to_three_letter
 
 
+def _is_codon_heatmap(num_rows: int) -> bool:
+    """Return True when the matrix has codon-level row density."""
+    return num_rows > 21
+
+
+def _is_aa_heatmap(num_rows: int) -> bool:
+    """Return True for standard AA heatmaps (20 amino acids plus stop)."""
+    return num_rows <= 21
+
+
+def _avg_main_height_ratios(*, row_avg: bool, is_codon_heatmap: bool) -> tuple[float, int]:
+    """Return GridSpec height ratios for the positional average row and main heatmap."""
+    if row_avg:
+        return (0.75, 60) if is_codon_heatmap else (1, 45)
+    return (0.75, 35) if is_codon_heatmap else (1, 20)
+
+
 def _add_biophysical_properties_panel(ax, row_labels, aa_boundaries, is_small_heatmap=False):
     """Add biophysical properties heatmap panel for amino acid groups in codon heatmaps."""
     
@@ -243,8 +260,8 @@ def plot_heatmap(
     
     # Determine if this is a codon heatmap and whether to show biophysical properties
     num_rows = len(dms_matrix.index)
-    is_codon_heatmap = num_rows > 21  # More than 21 rows = codon heatmap
-    is_small_aa_heatmap = num_rows == 21  # Exactly 21 rows = standard AA heatmap
+    is_codon_heatmap = _is_codon_heatmap(num_rows)
+    is_small_aa_heatmap = _is_aa_heatmap(num_rows)
     show_props = biophysical_properties and (is_codon_heatmap or is_small_aa_heatmap)
     
     # Configure figure size
@@ -267,19 +284,18 @@ def plot_heatmap(
         fig = plt.figure(figsize=(width, height), facecolor=facecolor)
         tick_freq = max(1, experiment.num_aa // 40)
 
+    avg_height_ratio, main_height_ratio = _avg_main_height_ratios(
+        row_avg=row_avg,
+        is_codon_heatmap=is_codon_heatmap,
+    )
+
     # Set up subplot layout based on row_avg and biophysical properties
     if row_avg:
         row_avg_df = pd.DataFrame(heatmap_df.mean(axis=1), columns=['Avg'])
-        if is_codon_heatmap:
-            avg_height_ratio = 0.75 
-            main_height_ratio = 60
-        else:
-            avg_height_ratio = 1
-            main_height_ratio = 45
             
         if show_props:
             # Add space for biophysical properties panel
-            gs = GridSpec(2,5, width_ratios=[1, 35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
+            gs = GridSpec(2,4, width_ratios=[1, 35, 5, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
             ax1 = fig.add_subplot(gs[0, 1])
             ax2 = fig.add_subplot(gs[1, 1])
             ax_props = fig.add_subplot(gs[1, 2])  # Biophysical properties panel
@@ -293,13 +309,6 @@ def plot_heatmap(
             ax3 = fig.add_subplot(gs[1, 0])
             ax_props = None
     else:
-        if is_codon_heatmap:
-            avg_height_ratio = 0.75
-            main_height_ratio = 35
-        else:
-            avg_height_ratio = 1
-            main_height_ratio = 20
-            
         if show_props:
             # Add space for biophysical properties panel
             gs = GridSpec(2, 4, width_ratios=[35, 5, 1, 1], height_ratios=[avg_height_ratio, main_height_ratio], hspace=0.03, wspace=0.05)
@@ -453,6 +462,7 @@ def plot_tiled_heatmap(
     dpi: int = 300,
     tick_values: Optional[List[float]] = None,
     tick_labels: Optional[List[str]] = None,
+    row_avg: bool = True,
     title: Optional[str] = None,
     export_matrix: bool = False,
     biophysical_properties: bool = False,
@@ -490,6 +500,8 @@ def plot_tiled_heatmap(
         Custom colorbar tick values
     tick_labels : Optional[List[str]]
         Custom colorbar tick labels
+    row_avg : bool, optional
+        Whether to include the positional-average subplot row, default True
     title : Optional[str]
         Custom heatmap title
     export_matrix : bool, optional
@@ -585,39 +597,56 @@ def plot_tiled_heatmap(
         plot_matrix = plot_matrix.replace('WT', np.nan)
     plot_matrix = plot_matrix.apply(pd.to_numeric, errors='coerce')
     position_labels = global_positions
+    col_avg_df = make_col_avg_df(plot_matrix)
     
-    # Set figure size based on matrix dimensions
-    size_presets = {
-        'small': (12, 8),
-        'medium': (16, 10),
-        'large': (20, 12)
-    }
-    figsize = size_presets.get(fig_size, size_presets['large'])
-    
-    # Adjust figure width based on number of positions
+    num_rows = len(plot_matrix.index)
+    is_codon_heatmap = _is_codon_heatmap(num_rows)
+    is_aa_heatmap = _is_aa_heatmap(num_rows)
     n_positions = len(position_labels)
-    n_rows = len(plot_matrix.index)
-    if n_positions > 100:
-        figsize = (max(20, n_positions * 0.2), figsize[1])
-    # Increase height for large row counts so labels/cells remain readable.
-    figsize = (figsize[0], max(figsize[1], n_rows * 0.33))
+    width = round(max(12.0, n_positions * 0.2))
+    fixed_height = 22 if is_codon_heatmap else 12
+    figsize = (width, fixed_height)
     
     # Create figure
     facecolor = 'none' if transparent else 'white'
     fig = plt.figure(figsize=figsize, facecolor=facecolor)
     
+    avg_height_ratio, main_height_ratio = _avg_main_height_ratios(
+        row_avg=row_avg,
+        is_codon_heatmap=is_codon_heatmap,
+    )
+    grid_rows = 1
+    grid_cols = 1
+    if row_avg:
+        grid_rows += 1
     if biophysical_properties:
-        # Create gridspec with biophysical properties panel
-        gs = GridSpec(1, 2, figure=fig, width_ratios=[0.98, 0.02], wspace=0.01)
-        ax_heatmap = fig.add_subplot(gs[0, 0])
-        ax_props = fig.add_subplot(gs[0, 1])
-    else:
-        ax_heatmap = fig.add_subplot(111)
+        grid_cols += 1
+    height_ratios = [avg_height_ratio, main_height_ratio] if row_avg else [main_height_ratio]
+    width_ratios = [0.98, 0.02] if biophysical_properties else [1]
+
+    gs_kwargs = {
+        "figure": fig,
+        "height_ratios": height_ratios,
+        "width_ratios": width_ratios,
+    }
+    if row_avg:
+        gs_kwargs["hspace"] = 0.03
+    if biophysical_properties:
+        gs_kwargs["wspace"] = 0.01
+
+    gs = GridSpec(grid_rows, grid_cols, **gs_kwargs)
+
+    heatmap_row = 1 if row_avg else 0
+    ax_avg = fig.add_subplot(gs[0, 0]) if row_avg else None
+    ax_heatmap = fig.add_subplot(gs[heatmap_row, 0])
+    ax_props = fig.add_subplot(gs[heatmap_row, 1]) if biophysical_properties else None
     
     # Create heatmap with explicit clipping so colorbar doesn't show over/under caps.
     matrix_min = float(np.nanmin(plot_matrix.values))
     matrix_max = float(np.nanmax(plot_matrix.values))
     norm = plt.Normalize(vmin=matrix_min, vmax=matrix_max, clip=True)
+    if ax_avg is not None:
+        sns.heatmap(col_avg_df, annot=False, cmap='magma', cbar=False, ax=ax_avg, norm=norm)
     im = ax_heatmap.imshow(
         plot_matrix.values,
         aspect='auto',
@@ -641,9 +670,8 @@ def plot_tiled_heatmap(
     
     # Set ticks and labels
     # Show position labels every 5 residues with larger font for readability.
-    is_aa_like_heatmap = len(plot_matrix.index) <= 25
-    xtick_size = 24 if is_aa_like_heatmap else 22
-    ytick_size = 22 if is_aa_like_heatmap else 20
+    xtick_size = 24 if is_aa_heatmap else 22
+    ytick_size = 22 if is_aa_heatmap else 20
     tick_step = 5
     tick_indices = list(range(0, len(position_labels), tick_step))
     if (len(position_labels) - 1) not in tick_indices:
@@ -657,7 +685,7 @@ def plot_tiled_heatmap(
     divider = make_axes_locatable(ax_heatmap)
     cax = divider.append_axes("right", size="3%", pad=0.08)
     cbar = plt.colorbar(im, cax=cax)
-    cbar_label_size = 24 if len(plot_matrix.index) >= 60 else (22 if is_aa_like_heatmap else 18)
+    cbar_label_size = 24 if len(plot_matrix.index) >= 60 else (22 if is_aa_heatmap else 18)
     if tick_values and tick_labels:
         in_range = [
             (float(v), str(lbl))
@@ -690,12 +718,12 @@ def plot_tiled_heatmap(
 
     if title:
         title_text = title if "\n" in title else title.replace(" (", "\n(", 1)
-        title_size = 34 if is_aa_like_heatmap else 30
+        title_size = 34 if is_aa_heatmap else 30
         ax_heatmap.set_title(_title_with_bold_first_line(title_text), fontsize=title_size, pad=24)
     else:
         method = batch_config.batch_normalization_method
         n_exp = len(experiments)
-        title_size = 34 if is_aa_like_heatmap else 30
+        title_size = 34 if is_aa_heatmap else 30
         ax_heatmap.set_title(
             _title_with_bold_first_line(
                 f'Combined Activity Scores\n({method} normalization, {n_exp} experiments)'
@@ -705,9 +733,15 @@ def plot_tiled_heatmap(
         )
     
     # Set axis labels
-    axis_label_size = 36 if is_aa_like_heatmap else (32 if len(plot_matrix.index) >= 60 else 26)
+    axis_label_size = 36 if is_aa_heatmap else (32 if len(plot_matrix.index) >= 60 else 26)
     ax_heatmap.set_xlabel('Position', fontsize=axis_label_size)
     ax_heatmap.set_ylabel('Amino Acid', fontsize=axis_label_size)
+    if ax_avg is not None:
+        ax_avg.set_ylabel('Avg', fontsize=20, labelpad=20, ha='center', rotation=0)
+        avg_label = ax_avg.yaxis.get_label()
+        avg_label.set_verticalalignment('center')
+        ax_avg.set_xticks([])
+        ax_avg.set_yticks([])
     
     # Export matrix data if requested
     if export_matrix and output:
