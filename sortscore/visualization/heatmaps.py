@@ -14,7 +14,6 @@ import logging
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.gridspec import GridSpec
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -611,18 +610,16 @@ def plot_tiled_heatmap(
     facecolor = 'none' if transparent else 'white'
     fig = plt.figure(figsize=figsize, facecolor=facecolor)
     
-    avg_height_ratio, main_height_ratio = _avg_main_height_ratios(
-        row_avg=row_avg,
-        is_codon_heatmap=is_codon_heatmap,
-    )
+    avg_height_ratio = 1
+    main_height_ratio = num_rows
     grid_rows = 1
-    grid_cols = 1
+    grid_cols = 2
     if row_avg:
         grid_rows += 1
     if biophysical_properties:
         grid_cols += 1
     height_ratios = [avg_height_ratio, main_height_ratio] if row_avg else [main_height_ratio]
-    width_ratios = [0.98, 0.02] if biophysical_properties else [1]
+    width_ratios = [49, 1, 1] if biophysical_properties else [49, 1]
 
     gs_kwargs = {
         "figure": fig,
@@ -630,9 +627,8 @@ def plot_tiled_heatmap(
         "width_ratios": width_ratios,
     }
     if row_avg:
-        gs_kwargs["hspace"] = 0.03
-    if biophysical_properties:
-        gs_kwargs["wspace"] = 0.01
+        gs_kwargs["hspace"] = 0.01
+    gs_kwargs["wspace"] = 0.01
 
     gs = GridSpec(grid_rows, grid_cols, **gs_kwargs)
 
@@ -640,6 +636,7 @@ def plot_tiled_heatmap(
     ax_avg = fig.add_subplot(gs[0, 0]) if row_avg else None
     ax_heatmap = fig.add_subplot(gs[heatmap_row, 0])
     ax_props = fig.add_subplot(gs[heatmap_row, 1]) if biophysical_properties else None
+    cax = fig.add_subplot(gs[heatmap_row, 2] if biophysical_properties else gs[heatmap_row, 1])
     
     # Create heatmap with explicit clipping so colorbar doesn't show over/under caps.
     matrix_min = float(np.nanmin(plot_matrix.values))
@@ -682,8 +679,6 @@ def plot_tiled_heatmap(
     ax_heatmap.set_yticklabels(plot_matrix.index, fontsize=ytick_size)
     
     # Add colorbar
-    divider = make_axes_locatable(ax_heatmap)
-    cax = divider.append_axes("right", size="3%", pad=0.08)
     cbar = plt.colorbar(im, cax=cax)
     cbar_label_size = 24 if len(plot_matrix.index) >= 60 else (22 if is_aa_heatmap else 18)
     if tick_values and tick_labels:
@@ -707,31 +702,6 @@ def plot_tiled_heatmap(
             is_small_heatmap=fig_size == 'small'
         )
     
-    # Set title
-    def _title_with_bold_first_line(text: str) -> str:
-        first, sep, second = text.partition("\n")
-        # Use mathtext so only the first line is bold.
-        first_math = first.replace(" ", r"\ ")
-        if sep:
-            return rf"$\bf{{{first_math}}}$" + "\n" + second
-        return rf"$\bf{{{first_math}}}$"
-
-    if title:
-        title_text = title if "\n" in title else title.replace(" (", "\n(", 1)
-        title_size = 34 if is_aa_heatmap else 30
-        ax_heatmap.set_title(_title_with_bold_first_line(title_text), fontsize=title_size, pad=24)
-    else:
-        method = batch_config.batch_normalization_method
-        n_exp = len(experiments)
-        title_size = 34 if is_aa_heatmap else 30
-        ax_heatmap.set_title(
-            _title_with_bold_first_line(
-                f'Combined Activity Scores\n({method} normalization, {n_exp} experiments)'
-            ),
-            fontsize=title_size,
-            pad=24,
-        )
-    
     # Set axis labels
     axis_label_size = 36 if is_aa_heatmap else (32 if len(plot_matrix.index) >= 60 else 26)
     ax_heatmap.set_xlabel('Position', fontsize=axis_label_size)
@@ -751,7 +721,6 @@ def plot_tiled_heatmap(
     
     # Export figure if requested
     if export and output:
-        plt.tight_layout()
         facecolor = 'none' if transparent else 'white'
         plt.savefig(output, dpi=dpi, bbox_inches='tight', format=format, facecolor=facecolor, edgecolor='none')
         logging.info(f"Exported tiled heatmap to {output}")

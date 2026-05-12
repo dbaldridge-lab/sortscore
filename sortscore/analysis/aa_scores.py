@@ -93,8 +93,7 @@ def build_aa_scores_table(scores_df: pd.DataFrame, score_col: str) -> pd.DataFra
         col for col in scores_df_drop_nan.columns
         if col.startswith('Rep') and col.endswith('.score')
     ]
-    aa_scores = _check_codon_num(scores_df_drop_nan, score_col, rep_score_columns)
-    return _round_score_columns(aa_scores)
+    return _check_codon_num(scores_df_drop_nan, score_col, rep_score_columns)
 
 
 def _check_codon_num(scores_df_drop_nan: pd.DataFrame, score_col: str, 
@@ -211,28 +210,5 @@ def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns:
         aa_scores['SEM'] = sem.round().astype('Int64')
         aa_scores['CI_lower'] = (aa_rep_mean - aa_margin_of_error).round().astype('Int64')
         aa_scores['CI_upper'] = (aa_rep_mean + aa_margin_of_error).round().astype('Int64')
-    
-    return aa_scores
-
-
-def _round_score_columns(aa_scores: pd.DataFrame) -> pd.DataFrame:
-    """
-    Round score columns to integers for cleaner output.
-    
-    Parameters
-    ----------
-    aa_scores : pd.DataFrame
-        DataFrame containing score columns
-        
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with score columns rounded to integers
-    """
-    # Round score columns to integers
-    score_columns = [col for col in aa_scores.columns if 'score' in col.lower()]
-    for col in score_columns:
-        if aa_scores[col].dtype in ['float64', 'float32']:
-            aa_scores[col] = aa_scores[col].round().astype('Int64')
     
     return aa_scores
