@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pandas as pd
 
 from sortscore.analysis.summary_stats import calculate_summary_stats
@@ -18,8 +16,7 @@ def test_calculate_summary_stats_returns_flat_sections():
 
     stats = calculate_summary_stats(
         scores_df,
-        SimpleNamespace(avg_method="simple-avg"),
-        score_col="avgscore",
+        "avgscore",
     )
 
     assert stats["overall"] == {"avg": 12, "min": 5, "max": 20}

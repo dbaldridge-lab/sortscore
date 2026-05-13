@@ -25,7 +25,7 @@ def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, An
 
 
 # TODO: #47 Separate DNA-level and AA-level stats into different functions or modes
-def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Optional[str] = None) -> Dict[str, Any]:
+def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str, Any]:
     """
     Calculate summary stats from variant scores.
     
@@ -37,10 +37,8 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
     ----------
     scores_df : pd.DataFrame
         DataFrame containing variant scores and annotations
-    experiment : ExperimentConfig
-        Experiment configuration containing metadata
-    score_col : Optional[str]
-        Score column name to use. If None, determined from experiment.avg_method
+    score_col : str
+        Score column name to use.
         
     Returns
     -------
@@ -49,19 +47,11 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
         
     Examples
     --------
-    >>> stats = calculate_summary_stats(scores_df, experiment)
-    >>> print(stats['all_avg'])  # Overall average score
+    >>> stats = calculate_summary_stats(scores_df, 'avgscore')
+    >>> print(stats['overall'])
     """
     stats: Dict[str, Any] = {}
-    
-    # Determine score column if not provided
-    if score_col is None:
-        if experiment.avg_method == 'simple-avg':
-            score_col = 'avgscore'
-        else:
-            score_col_suffix = experiment.avg_method.replace('-', '_')
-            score_col = f'avgscore_{score_col_suffix}'
-    
+
     if score_col not in scores_df.columns:
         logging.warning(f"Score column '{score_col}' not found in data")
         return stats
@@ -144,7 +134,7 @@ def save_summary_stats(
         
     Examples
     --------
-    >>> stats = calculate_summary_stats(scores_df, experiment)
+    >>> stats = calculate_summary_stats(scores_df, 'avgscore')
     >>> stats_file = save_summary_stats(stats, experiment, 'output/scores', logger)
     """
     stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_{stats_basename}.json")

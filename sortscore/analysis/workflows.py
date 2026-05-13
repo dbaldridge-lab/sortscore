@@ -13,7 +13,7 @@ from sortscore.analysis.annotation import annotate_scores_dataframe
 from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 from sortscore.analysis.statistics import calculate_replicate_statistics, round_score_columns, get_replicate_score_columns
 from sortscore.analysis.summary_stats import calculate_summary_stats, save_summary_stats
-from sortscore.analysis.aa_scores import process_and_save_aa_scores
+from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, process_and_save_aa_scores
 
 
 def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFrame:
@@ -109,7 +109,8 @@ def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Option
     )
     
     # Calculate and save statistics on the final processed DNA data
-    stats = calculate_summary_stats(scores_df_rounded, experiment)
+    score_col = _get_score_column_from_avg_method(experiment.avg_method)
+    stats = calculate_summary_stats(scores_df_rounded, score_col)
     save_summary_stats(
         stats,
         experiment,
@@ -184,7 +185,8 @@ def process_aa_workflow(experiment, output_dir: str, analysis_logger,
     
     if os.path.exists(aa_scores_file):
         final_scores_df = pd.read_csv(aa_scores_file)
-        stats = calculate_summary_stats(final_scores_df, experiment)
+        score_col = _get_score_column_from_avg_method(experiment.avg_method)
+        stats = calculate_summary_stats(final_scores_df, score_col)
         save_summary_stats(
             stats,
             experiment,

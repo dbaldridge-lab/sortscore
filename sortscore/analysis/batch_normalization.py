@@ -27,6 +27,7 @@ from typing import Dict, List, Tuple, Optional, Any, cast
 logger = logging.getLogger(__name__)
 
 from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, build_aa_scores_table
+from sortscore.analysis.summary_stats import calculate_summary_stats
 
 
 def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
@@ -93,6 +94,90 @@ def _build_batch_aa_scores(
         return pd.DataFrame()
 
     return pd.concat(aa_batch_frames, ignore_index=True)
+
+
+def _build_stage_section(
+    *,
+    global_values: Optional[Dict[str, Any]] = None,
+    tile_values: Optional[Dict[str, Dict[str, Any]]] = None,
+    factor_values: Optional[Dict[str, float]] = None,
+    factor_key: str = 'normalization_factor',
+) -> Dict[str, Any]:
+    stage: Dict[str, Any] = {}
+    if global_values:
+        stage['global'] = dict(global_values)
+
+    tile_keys = set()
+    if tile_values:
+        tile_keys.update(tile_values.keys())
+    if factor_values:
+        tile_keys.update(factor_values.keys())
+
+    for batch_key in sorted(tile_keys):
+        tile_stats: Dict[str, Any] = {}
+        if tile_values and batch_key in tile_values:
+            tile_stats.update(tile_values[batch_key])
+        if factor_values and batch_key in factor_values:
+            tile_stats[factor_key] = factor_values[batch_key]
+        stage[batch_key] = tile_stats
+
+    return stage
+
+
+def _build_final_batch_stats(normalized_scores: pd.DataFrame) -> Dict[str, Any]:
+    """Create final stats for global and per-tile normalized outputs."""
+    final_stats: Dict[str, Any] = {
+        'global': calculate_summary_stats(normalized_scores, 'avgscore'),
+    }
+    for batch_name, batch_df in normalized_scores.groupby('batch'):
+        final_stats[cast(str, batch_name)] = calculate_summary_stats(
+            batch_df,
+            'avgscore',
+        )
+    return final_stats
+
+
+def _build_normalization_stats(
+    *,
+    raw_tile_values: Optional[Dict[str, Dict[str, Any]]] = None,
+    raw_global_values: Optional[Dict[str, Any]] = None,
+    wt_stage_global_values: Optional[Dict[str, Any]] = None,
+    zscore_tile_values: Optional[Dict[str, Dict[str, Any]]] = None,
+    zscore_global_values: Optional[Dict[str, Any]] = None,
+    final_scores: pd.DataFrame,
+    wt_factors: Optional[Dict[str, float]] = None,
+    path_factors: Optional[Dict[str, float]] = None,
+    normalization_factors: Optional[Dict[str, float]] = None,
+) -> Dict[str, Any]:
+    stats: Dict[str, Any] = {}
+
+    stats['raw'] = _build_stage_section(
+        global_values=raw_global_values,
+        tile_values=raw_tile_values,
+    )
+
+    if wt_stage_global_values is not None or wt_factors is not None:
+        stats['wt_alignment'] = _build_stage_section(
+            global_values=wt_stage_global_values,
+            factor_values=wt_factors,
+        )
+
+    if zscore_global_values is not None or zscore_tile_values is not None or path_factors is not None:
+        stats['zscore'] = _build_stage_section(
+            global_values=zscore_global_values,
+            tile_values=zscore_tile_values,
+            factor_values=path_factors,
+            factor_key='pathogenic_normalization_factor',
+        )
+
+    if normalization_factors is not None:
+        scaling_stage = {'per_tile': {}}
+        for batch_name, factor in normalization_factors.items():
+            scaling_stage['per_tile'][batch_name] = {'normalization_factor': factor}
+        stats['scaling'] = scaling_stage
+
+    stats['final'] = _build_final_batch_stats(final_scores)
+    return stats
 
 
 def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
@@ -390,23 +475,21 @@ def apply_2pole_normalization(
                         normalized_scores.loc[batch_mask, col] * factor
                     )
     
-    # Create combined statistics
-    combined_stats = {
-        'syn_median_global_raw': A,
-        'non_median_global_raw': C,
-        'normalization_method': '2pole',
-        'pathogenic_control_type': pathogenic_control_type
-    }
-    
-    # Add experiment-specific stats and factors
-    for exp_name, stats in all_stats.items():
-        combined_stats[f'syn_median_{exp_name}_raw'] = stats.get('syn_median', np.nan)
-        combined_stats[f'non_avg_{exp_name}_raw'] = stats.get('non_avg', np.nan)
-        combined_stats[f'normalization_factor_{exp_name}'] = normalization_factors.get(exp_name, 1.0)
-    
-    # Recalculate final statistics from normalized data
-    final_stats = recalculate_final_statistics(normalized_scores, 'avgscore')
-    combined_stats.update(final_stats)
+    combined_stats = _build_normalization_stats(
+        raw_tile_values={
+            batch_name: {
+                'syn_median': stats.get('syn_median'),
+                'non_avg': stats.get('non_avg'),
+            }
+            for batch_name, stats in all_stats.items()
+        },
+        raw_global_values={
+            'syn_median': A,
+            'pathogenic_median': C,
+        },
+        final_scores=normalized_scores,
+        normalization_factors=normalization_factors,
+    )
     
     logger.info(f"2-pole normalization complete with factors: {normalization_factors}")
     return normalized_scores, combined_stats
@@ -539,28 +622,22 @@ def apply_zscore_2pole_normalization(
                         final_scores.loc[batch_mask, col] * factor
                     )
     
-    # Create combined statistics
-    combined_stats = {
-        'wt_dna_score_global_raw': A,
-        'syn_mean_global_zscore': syn_mean,
-        'syn_std_global_zscore': syn_std,
-        'non_avg_global_zscore_z': C,
-        'normalization_method': 'zscore_2pole',
-        'pathogenic_control_type': pathogenic_control_type
-    }
-    
-    # Add experiment-specific stats and factors
-    for exp_name, stats in all_stats.items():
-        combined_stats[f'wt_dna_score_{exp_name}_raw'] = stats.get('wt_dna_score', np.nan)
-        combined_stats[f'normalization_factor_wt_{exp_name}'] = wt_normalization_factors.get(exp_name, 1.0)
-    
-    for exp_name, stats in zscore_stats.items():
-        combined_stats[f'non_avg_{exp_name}_zscore_z'] = stats.get('non_avg_zscore', np.nan)
-        combined_stats[f'normalization_factor_path_{exp_name}'] = path_normalization_factors.get(exp_name, 1.0)
-    
-    # Recalculate final statistics from normalized data
-    final_stats = recalculate_final_statistics(final_scores, 'avgscore')
-    combined_stats.update(final_stats)
+    combined_stats = _build_normalization_stats(
+        raw_tile_values={
+            batch_name: {'wt_dna_score': stats.get('wt_dna_score')}
+            for batch_name, stats in all_stats.items()
+        },
+        raw_global_values={'wt_dna_score': A},
+        wt_stage_global_values={
+            'syn_mean': syn_mean,
+            'syn_std': syn_std,
+        },
+        zscore_tile_values=zscore_stats,
+        zscore_global_values={'non_avg_zscore': C},
+        final_scores=final_scores,
+        wt_factors=wt_normalization_factors,
+        path_factors=path_normalization_factors,
+    )
     
     logger.info("Z-score 2-pole normalization complete")
     return final_scores, combined_stats
@@ -686,26 +763,26 @@ def apply_zscore_center_normalization(
         if col in final_scores.columns and syn_std != 0:
             final_scores[col] = (final_scores[col] - syn_mean) / syn_std
     
-    # Create combined statistics (no pathogenic control type since not used)
-    combined_stats = {
-        f'{reference_type}_score_global_raw': global_reference_avg,
-        'syn_mean_global_ref_norm': syn_mean,
-        'syn_std_global_ref_norm': syn_std,
-        'normalization_method': 'zscore_center',
-        'reference_type': reference_type
-    }
-    
-    # Add experiment-specific stats and factors
-    for exp_name, stats in all_stats.items():
-        if reference_type == 'wt_dna':
-            combined_stats[f'wt_dna_score_{exp_name}_raw'] = stats.get('wt_dna_score', np.nan)
-        else:
-            combined_stats[f'syn_median_{exp_name}_raw'] = stats.get('syn_median', np.nan)
-        combined_stats[f'normalization_factor_{exp_name}'] = normalization_factors.get(exp_name, 1.0)
-    
-    # Recalculate final statistics from normalized data
-    final_stats = recalculate_final_statistics(final_scores, 'avgscore')
-    combined_stats.update(final_stats)
+    combined_stats = _build_normalization_stats(
+        raw_tile_values={
+            batch_name: (
+                {'wt_dna_score': stats.get('wt_dna_score')}
+                if reference_type == 'wt_dna'
+                else {'syn_median': stats.get('syn_median')}
+            )
+            for batch_name, stats in all_stats.items()
+        },
+        raw_global_values={
+            'reference_type': reference_type,
+            'reference_avg': global_reference_avg,
+        },
+        wt_stage_global_values={
+            'syn_mean': syn_mean,
+            'syn_std': syn_std,
+        },
+        final_scores=final_scores,
+        normalization_factors=normalization_factors,
+    )
     
     logger.info("Z-score centering normalization complete")
     return final_scores, combined_stats
