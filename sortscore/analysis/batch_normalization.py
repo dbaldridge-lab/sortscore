@@ -569,6 +569,7 @@ def apply_zscore_2pole_normalization(
                 syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
     syn_mean = np.mean(syn_scores) if syn_scores else 0.0
+    syn_median = float(np.median(syn_scores)) if syn_scores else np.nan
     syn_std = np.std(syn_scores, ddof=1) if len(syn_scores) > 1 else 1.0
     
     # Apply Z-score transformation
@@ -629,7 +630,8 @@ def apply_zscore_2pole_normalization(
         },
         raw_global_values={'wt_dna_score': A},
         wt_stage_global_values={
-            'syn_mean': syn_mean,
+            'syn_avg': syn_mean,
+            'syn_median': syn_median,
             'syn_std': syn_std,
         },
         zscore_tile_values=zscore_stats,
@@ -755,6 +757,7 @@ def apply_zscore_center_normalization(
         syn_scores = reference_normalized_scores['avgscore'].dropna().tolist()
     
     syn_mean = np.mean(syn_scores) if syn_scores else 0.0
+    syn_median = float(np.median(syn_scores)) if syn_scores else np.nan
     syn_std = np.std(syn_scores, ddof=1) if len(syn_scores) > 1 else 1.0
     
     # Apply z-score transformation (final normalization)
@@ -777,7 +780,8 @@ def apply_zscore_center_normalization(
             'reference_avg': global_reference_avg,
         },
         wt_stage_global_values={
-            'syn_mean': syn_mean,
+            'syn_avg': syn_mean,
+            'syn_median': syn_median,
             'syn_std': syn_std,
         },
         final_scores=final_scores,
@@ -786,70 +790,6 @@ def apply_zscore_center_normalization(
     
     logger.info("Z-score centering normalization complete")
     return final_scores, combined_stats
-
-
-def recalculate_final_statistics(
-    normalized_scores: pd.DataFrame, 
-    score_col: str
-) -> Dict[str, Any]:
-    """
-    Recalculate statistics from fully normalized score data.
-    
-    Parameters
-    ----------
-    normalized_scores : pd.DataFrame
-        Fully normalized scores DataFrame
-    score_col : str
-        Name of main score column to use for calculations
-        
-    Returns
-    -------
-    Dict[str, Any]
-        Dictionary of recalculated statistics
-    """
-    final_stats = {}
-    
-    # Global final statistics
-    if score_col in normalized_scores.columns:
-        scores = normalized_scores[score_col].dropna()
-        if len(scores) > 0:
-            final_stats['all_avg_global_final'] = float(scores.mean())
-            final_stats['all_min_global_final'] = float(scores.min())
-            final_stats['all_max_global_final'] = float(scores.max())
-
-    if 'annotate_aa' in normalized_scores.columns and score_col in normalized_scores.columns:
-        nonsense_subset = normalized_scores[normalized_scores['annotate_aa'] == 'nonsense']
-        if len(nonsense_subset) > 0:
-            nonsense_scores = nonsense_subset[score_col].dropna()
-            if len(nonsense_scores) > 0:
-                final_stats['nonsense_avg_global_final'] = float(nonsense_scores.mean())
-    
-    # Per-batch final statistics
-    for batch_name, batch_df in normalized_scores.groupby('batch'):
-        batch_prefix = f'{batch_name}_final'
-        
-        if score_col in batch_df.columns:
-            scores = batch_df[score_col].dropna()
-            if len(scores) > 0:
-                final_stats[f'all_avg_{batch_prefix}'] = float(scores.mean())
-        
-        # Missense average per batch
-        if 'annotate_aa' in batch_df.columns:
-            missense_subset = batch_df[batch_df['annotate_aa'] == 'missense_aa']
-            if len(missense_subset) > 0 and score_col in missense_subset.columns:
-                missense_scores = missense_subset[score_col].dropna()
-                if len(missense_scores) > 0:
-                    final_stats[f'missense_avg_{batch_prefix}'] = float(missense_scores.mean())
-        
-        # Nonsense average per batch  
-        if 'annotate_aa' in batch_df.columns:
-            nonsense_subset = batch_df[batch_df['annotate_aa'] == 'nonsense']
-            if len(nonsense_subset) > 0 and score_col in nonsense_subset.columns:
-                nonsense_scores = nonsense_subset[score_col].dropna()
-                if len(nonsense_scores) > 0:
-                    final_stats[f'nonsense_avg_{batch_prefix}'] = float(nonsense_scores.mean())
-    
-    return final_stats
 
 
 def generate_batch_visualizations(
@@ -883,19 +823,18 @@ def generate_batch_visualizations(
     # Determine score column to visualize
     score_col = 'avgscore'  # Default, could be made configurable
     
-    # Calculate WT score for colorbar reference if available
-    wt_score = None
     combined_stats = results.get('combined_stats', {})
-    
-    # Try to get normalized WT score from stats
-    if results['method'] == 'zscore_2pole':
-        # For z-score method, WT should be close to 0 after normalization
-        wt_score = 0.0
-    elif results['method'] == '2pole':
-        # For 2-pole method, try to get global synonymous median
-        wt_score = combined_stats.get('syn_median_global_raw')
-    
-    # Build colorbar ticks/labels informed by combined stats.
+
+    final_global_stats = combined_stats.get('final', {}).get('global', {})
+    wt_stats = final_global_stats.get('wt')
+    syn_wt_stats = final_global_stats.get('synonymous_wt')
+    if wt_stats is not None and 'avg' in wt_stats:
+        wt_score = wt_stats['avg']
+    elif syn_wt_stats is not None and 'avg' in syn_wt_stats:
+        wt_score = syn_wt_stats['avg']
+    else:
+        wt_score = None
+
     def _build_colorbar_ticks(score_series: pd.Series) -> Tuple[Optional[List[float]], Optional[List[str]]]:
         series = pd.to_numeric(score_series, errors='coerce').dropna()
         if len(series) == 0:
@@ -906,9 +845,18 @@ def generate_batch_visualizations(
 
         pathogenic_tick = None
         if config_obj.pathogenic_control_type == 'nonsense':
-            pathogenic_tick = combined_stats.get('nonsense_avg_global_final')
+            pathogenic_tick = (
+                combined_stats.get('final', {})
+                .get('global', {})
+                .get('nonsense', {})
+                .get('avg')
+            )
         if pathogenic_tick is None:
-            pathogenic_tick = combined_stats.get('non_avg_global_zscore_z')
+            pathogenic_tick = (
+                combined_stats.get('zscore', {})
+                .get('global', {})
+                .get('non_avg_zscore')
+            )
 
         ticks = [(data_min, f'{data_min:.1f}')]
         if wt_score is not None and pd.notna(wt_score):
