@@ -157,7 +157,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     method = batch_config.get('batch_normalization_method', 'zscore_2pole')
     pathogenic_control_type = batch_config.get('pathogenic_control_type', 'nonsense')
     pathogenic_variants = batch_config.get('pathogenic_variants', None)
-    output_dir = str(Path(str(batch_config.get('combined_output_dir', '.'))).expanduser().resolve())
+    base_output_dir = Path(str(batch_config.get('combined_output_dir', '.'))).expanduser().resolve()
     
     # Load all tile score tables from batch config entries.
     experiments = []
@@ -214,6 +214,8 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         raise ValueError(f"Unknown normalization method: {method}")
     
+    output_dir = str((base_output_dir / 'normalized' / method).resolve())
+
     logger.info(f"Applied {method} normalization to {len(normalized_scores)} variants")
     normalized_aa_scores = _build_batch_aa_scores(normalized_scores, experiments)
     

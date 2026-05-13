@@ -152,9 +152,9 @@ Specify your own list of pathogenic control variants.
 Batch processing generates:
 
 ### Score Files
-- `batch_scores.csv`: Combined normalized scores with batch tracking
-- `batch_aa_scores.csv`: Combined amino acid level normalized scores when AA aggregation is available
-- `batch_stats.json`: Comprehensive statistics and normalization factors
+- `<combined_output_dir>/normalized/<method>/scores/batch_scores.csv`: Combined normalized scores with batch tracking
+- `<combined_output_dir>/normalized/<method>/scores/batch_aa_scores.csv`: Combined amino acid level normalized scores when AA aggregation is available
+- `<combined_output_dir>/normalized/<method>/scores/batch_stats.json`: Statistics and normalization factors
 
 ### Visualizations  
 - Unified scaling: Single colorbar applies to all data  
