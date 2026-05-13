@@ -8,7 +8,7 @@ from sortscore.analysis.batch_normalization import save_batch_results
 
 
 def test_save_batch_results_preserves_decimal_score_precision(tmp_path):
-    output_dir = Path(tmp_path)
+    output_dir = Path(tmp_path) / "normalized" / "zscore_2pole"
     normalized_scores = pd.DataFrame(
         {
             "variant_seq": ["AAA"],
