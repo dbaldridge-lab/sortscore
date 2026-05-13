@@ -6,6 +6,7 @@ import pytest
 from sortscore.analysis.aa_scores import build_aa_scores_table
 from sortscore.analysis.batch_normalization import (
     _build_normalization_stats,
+    generate_batch_visualizations,
     run_batch_analysis,
     save_batch_results,
 )
@@ -105,7 +106,7 @@ def test_build_normalization_stats_returns_nested_stage_and_final_sections():
             "tile2": {"syn_median": 12.0},
         },
         raw_global_values={"wt_dna_score": 10.0},
-        wt_stage_global_values={"syn_mean": 11.0, "syn_std": 1.4142135623730951},
+        wt_stage_global_values={"syn_avg": 11.0, "syn_median": 11.0, "syn_std": 1.4142135623730951},
         zscore_tile_values={
             "tile1": {"non_avg_zscore": -2.0},
             "tile2": {},
@@ -122,13 +123,14 @@ def test_build_normalization_stats_returns_nested_stage_and_final_sections():
     assert stats["raw"]["global"]["wt_dna_score"] == 10.0
     assert stats["raw"]["tile1"]["wt_dna_score"] == 10.0
     assert stats["raw"]["tile2"]["syn_median"] == 12.0
-    assert stats["wt_alignment"]["global"]["syn_mean"] == 11.0
+    assert stats["wt_alignment"]["global"]["syn_avg"] == 11.0
+    assert stats["wt_alignment"]["global"]["syn_median"] == 11.0
     assert stats["wt_alignment"]["tile1"]["normalization_factor"] == 1.1
     assert stats["zscore"]["global"]["non_avg_zscore"] == -2.0
     assert stats["zscore"]["tile1"]["non_avg_zscore"] == -2.0
     assert stats["zscore"]["tile2"]["pathogenic_normalization_factor"] == 0.5
-    assert stats["final"]["global"]["overall"] == {"avg": 0, "min": -2, "max": 3}
-    assert stats["final"]["tile1"]["nonsense"] == {"avg": -2, "min": -2, "max": -2}
+    assert stats["final"]["global"]["overall"] == {"avg": 0.5, "min": -2.0, "max": 3.0, "std": 2.08}
+    assert stats["final"]["tile1"]["nonsense"] == {"avg": -2.0, "min": -2.0, "max": -2.0, "std": 0.0}
 
 
 def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
@@ -174,3 +176,48 @@ def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
     assert len(results["experiments"]) == 1
     assert results["experiments"][0].min_pos == 1
     assert not results["normalized_scores"].empty
+
+
+def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypatch, tmp_path):
+    calls = []
+
+    def _fake_plot_tiled_heatmap(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(
+        "sortscore.visualization.heatmaps.plot_tiled_heatmap",
+        _fake_plot_tiled_heatmap,
+    )
+
+    results = {
+        "method": "2pole",
+        "normalized_scores": pd.DataFrame(
+            {
+                "batch": ["tile1", "tile1"],
+                "avgscore": [1.0, 3.0],
+                "annotate_aa": ["synonymous", "nonsense"],
+            }
+        ),
+        "normalized_aa_scores": pd.DataFrame(),
+        "combined_stats": {
+            "final": {
+                "global": {
+                    "wt": {"avg": 1.5},
+                    "nonsense": {"avg": 2.5},
+                }
+            },
+        },
+        "experiments": [],
+    }
+    batch_config = {
+        "batch_normalization_method": "2pole",
+        "pathogenic_control_type": "nonsense",
+        "experiments": [],
+    }
+
+    generate_batch_visualizations(results, batch_config, str(tmp_path))
+
+    assert len(calls) == 1
+    assert calls[0]["wt_score"] == 1.5
+    assert calls[0]["tick_values"] == [1.0, 1.5, 2.5, 3.0]
+    assert calls[0]["tick_labels"] == ["1.0", "WT Avg", "(-) Control Avg", "3.0"]

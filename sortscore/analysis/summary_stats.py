@@ -17,10 +17,12 @@ def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, An
     scores = pd.to_numeric(df[score_col], errors='coerce').dropna()
     if scores.empty:
         return None
+    std = float(scores.std(ddof=1)) if len(scores) > 1 else 0.0
     return {
-        'avg': round(float(scores.mean())),
-        'min': round(float(scores.min())),
-        'max': round(float(scores.max())),
+        'avg': round(float(scores.mean()), 2),
+        'min': round(float(scores.min()), 2),
+        'max': round(float(scores.max()), 2),
+        'std': round(std, 2),
     }
 
 
