@@ -129,8 +129,20 @@ def test_build_normalization_stats_returns_nested_stage_and_final_sections():
     assert stats["zscore"]["global"]["non_avg_zscore"] == -2.0
     assert stats["zscore"]["tile1"]["non_avg_zscore"] == -2.0
     assert stats["zscore"]["tile2"]["pathogenic_normalization_factor"] == 0.5
-    assert stats["final"]["global"]["overall"] == {"avg": 0.5, "min": -2.0, "max": 3.0, "std": 2.08}
-    assert stats["final"]["tile1"]["nonsense"] == {"avg": -2.0, "min": -2.0, "max": -2.0, "std": 0.0}
+    assert stats["final"]["global"]["overall"] == {
+        "avg": 0.5,
+        "median": 0.5,
+        "min": -2.0,
+        "max": 3.0,
+        "std": 2.08,
+    }
+    assert stats["final"]["tile1"]["nonsense"] == {
+        "avg": -2.0,
+        "median": -2.0,
+        "min": -2.0,
+        "max": -2.0,
+        "std": 0.0,
+    }
 
 
 def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
