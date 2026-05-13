@@ -17,6 +17,29 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
+## [0.1.0] - 2026-05-12
+
+### Added
+- First stable release after the alpha/beta publishing cycle and successful testing by external users.
+- Batch amino acid score outputs for combined normalization runs.
+- Average positional score bar in batch heatmap outputs.
+- GitHub Actions workflow for pull request pytest runs.
+- Integration coverage for `run_batch_analysis(...)` batch-config loading.
+
+### Changed
+- Promoted package metadata from beta to stable release status.
+- Simplified batch output naming by removing date/output suffixes from score file paths and related tests.
+- Updated batch visualization layout, including grid refinements and removal of the batch figure title.
+- Represent no sequence difference explicitly as `=` during annotation and parsing.
+- Preserve synonymous/no-difference rows in amino acid score outputs.
+- Write batch normalization outputs under `normalized/<method>/`.
+- Simplify summary stats output to focus on the scored file and expose normalization inputs directly in batch stats.
+
+### Fixed
+- Preserved decimal precision in batch score exports, including `score.r#b#`, replicate score columns, and `avgscore`.
+- Preserved decimal precision in AA score statistics exports, including `SD_codon`, `SD_rep`, `SEM`, and confidence interval columns.
+- Stopped rounding scores before plotting and corrected global pathogenic heatmap tick handling.
+
 ## [0.1.0b3] - 2026-03-11
 
 ### Added
@@ -63,7 +86,8 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
-[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b3...HEAD
+[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b3...0.1.0
 [0.1.0b1]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0a1...0.1.0b1
 [0.1.0a1]: https://github.com/dbaldridge-lab/sortscore/releases/tag/0.1.0a1
 [0.1.0b2]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b1...0.1.0b2

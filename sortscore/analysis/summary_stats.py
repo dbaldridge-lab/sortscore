@@ -20,6 +20,7 @@ def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, An
     std = float(scores.std(ddof=1)) if len(scores) > 1 else 0.0
     return {
         'avg': round(float(scores.mean()), 2),
+        'median': round(float(scores.median()), 2),
         'min': round(float(scores.min()), 2),
         'max': round(float(scores.max()), 2),
         'std': round(std, 2),
