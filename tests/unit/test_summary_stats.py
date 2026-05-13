@@ -19,7 +19,7 @@ def test_calculate_summary_stats_returns_flat_sections():
         "avgscore",
     )
 
-    assert stats["overall"] == {"avg": 11.67, "min": 5.0, "max": 20.0, "std": 7.64}
-    assert stats["synonymous_wt"] == {"avg": 10.0, "min": 10.0, "max": 10.0, "std": 0.0}
-    assert stats["missense"] == {"avg": 20.0, "min": 20.0, "max": 20.0, "std": 0.0}
-    assert stats["nonsense"] == {"avg": 5.0, "min": 5.0, "max": 5.0, "std": 0.0}
+    assert stats["overall"] == {"avg": 11.67, "median": 10.0, "min": 5.0, "max": 20.0, "std": 7.64}
+    assert stats["synonymous_wt"] == {"avg": 10.0, "median": 10.0, "min": 10.0, "max": 10.0, "std": 0.0}
+    assert stats["missense"] == {"avg": 20.0, "median": 20.0, "min": 20.0, "max": 20.0, "std": 0.0}
+    assert stats["nonsense"] == {"avg": 5.0, "median": 5.0, "min": 5.0, "max": 5.0, "std": 0.0}
