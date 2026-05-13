@@ -1,7 +1,7 @@
 """
 Summary stats calculation and export for Sort-seq analysis.
 
-This module provides functions for calculating comprehensive summary stats
+This module provides functions for calculating summary stats
 from Sort-seq variant analysis results and saving them to JSON format.
 """
 import json
@@ -11,10 +11,23 @@ import pandas as pd
 from typing import Dict, Any, Optional
 from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 
+def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, Any]]:
+    if score_col not in df.columns or df.empty:
+        return None
+    scores = pd.to_numeric(df[score_col], errors='coerce').dropna()
+    if scores.empty:
+        return None
+    return {
+        'avg': round(float(scores.mean())),
+        'min': round(float(scores.min())),
+        'max': round(float(scores.max())),
+    }
+
+
 # TODO: #47 Separate DNA-level and AA-level stats into different functions or modes
 def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Optional[str] = None) -> Dict[str, Any]:
     """
-    Calculate comprehensive summary stats from variant scores.
+    Calculate summary stats from variant scores.
     
     This function computes stats for different variant categories including
     overall stats, wild-type scores, synonymous variants, nonsense variants,
@@ -39,7 +52,7 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
     >>> stats = calculate_summary_stats(scores_df, experiment)
     >>> print(stats['all_avg'])  # Overall average score
     """
-    stats = {}
+    stats: Dict[str, Any] = {}
     
     # Determine score column if not provided
     if score_col is None:
@@ -52,67 +65,43 @@ def calculate_summary_stats(scores_df: pd.DataFrame, experiment, score_col: Opti
     if score_col not in scores_df.columns:
         logging.warning(f"Score column '{score_col}' not found in data")
         return stats
-    
-    # Overall stats
-    mean_val = scores_df[score_col].mean()
-    min_val = scores_df[score_col].min()
-    max_val = scores_df[score_col].max()
-    stats['all_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-    stats['all_min'] = round(float(min_val)) if pd.notna(min_val) else None
-    stats['all_max'] = round(float(max_val)) if pd.notna(max_val) else None
-    
+
+    overall_summary = _summarize_subset(scores_df, score_col)
+    if overall_summary is not None:
+        stats['overall'] = overall_summary
+
     # Add annotation-based stats if available
     if 'annotate_dna' in scores_df.columns:
-        # WT stats from DNA level
         wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
-        if len(wt_subset) > 0:
-            stats['wt_dna'] = round(float(mean_val)) if pd.notna(mean_val) else None
-        
-        # Synonymous (WT) stats from DNA level
-        syn_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']
-        if len(syn_subset) > 0:
-            mean_val = syn_subset[score_col].mean()
-            min_val = syn_subset[score_col].min()
-            max_val = syn_subset[score_col].max()
-            stats['synonymous_wt_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-            stats['synonymous_wt_min'] = round(float(min_val)) if pd.notna(min_val) else None
-            stats['synonymous_wt_max'] = round(float(max_val)) if pd.notna(max_val) else None
-    
-    # Missense and nonsense: use AA-aggregated scores with annotate_aa
-    if 'aa_seq_diff' in scores_df.columns:
+        wt_summary = _summarize_subset(wt_subset, score_col)
+
+        synonymous_wt_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']
+        synonymous_wt_summary = _summarize_subset(synonymous_wt_subset, score_col)
+
+        if wt_summary is not None:
+            stats['wt'] = wt_summary
+        if synonymous_wt_summary is not None:
+            stats['synonymous_wt'] = synonymous_wt_summary
+
+    # Summarize AA-level categories from the file being described.
+    aa_scores: Optional[pd.DataFrame] = None
+    if 'dna_seq_diff' in scores_df.columns and 'aa_seq_diff' in scores_df.columns:
         aa_scores = aggregate_synonymous_variants(scores_df)
-        if score_col in aa_scores.columns:
-            # Synonymous stats from AA level (aggregated synonymous variants)
-            syn_aa_subset = aa_scores[aa_scores['annotate_aa'] == 'synonymous']
-            if len(syn_aa_subset) > 0:
-                mean_val = syn_aa_subset[score_col].mean()
-                min_val = syn_aa_subset[score_col].min()
-                max_val = syn_aa_subset[score_col].max()
-                #TODO: #47 This currently gets added to DNA stats
-                stats['syn_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-                stats['syn_min'] = round(float(min_val)) if pd.notna(min_val) else None
-                stats['syn_max'] = round(float(max_val)) if pd.notna(max_val) else None
-            
-            # Nonsense stats from AA level
-            nonsense_subset = aa_scores[aa_scores['annotate_aa'] == 'nonsense']
-            if len(nonsense_subset) > 0:
-                mean_val = nonsense_subset[score_col].mean()
-                min_val = nonsense_subset[score_col].min()
-                max_val = nonsense_subset[score_col].max()
-                stats['nonsense_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-                stats['nonsense_min'] = round(float(min_val)) if pd.notna(min_val) else None
-                stats['nonsense_max'] = round(float(max_val)) if pd.notna(max_val) else None
-            
-            # Missense stats from AA level
-            missense_subset = aa_scores[aa_scores['annotate_aa'] == 'missense_aa']
-            if len(missense_subset) > 0:
-                mean_val = missense_subset[score_col].mean()
-                min_val = missense_subset[score_col].min()
-                max_val = missense_subset[score_col].max()
-                stats['missense_avg'] = round(float(mean_val)) if pd.notna(mean_val) else None
-                stats['missense_min'] = round(float(min_val)) if pd.notna(min_val) else None
-                stats['missense_max'] = round(float(max_val)) if pd.notna(max_val) else None
-    
+    elif 'annotate_aa' in scores_df.columns:
+        aa_scores = scores_df
+
+    if aa_scores is not None and score_col in aa_scores.columns:
+        nonsense_subset = aa_scores[aa_scores['annotate_aa'] == 'nonsense']
+        nonsense_summary = _summarize_subset(nonsense_subset, score_col)
+
+        missense_subset = aa_scores[aa_scores['annotate_aa'] == 'missense_aa']
+        missense_summary = _summarize_subset(missense_subset, score_col)
+
+        if nonsense_summary is not None:
+            stats['nonsense'] = nonsense_summary
+        if missense_summary is not None:
+            stats['missense'] = missense_summary
+
     return stats
 
 
