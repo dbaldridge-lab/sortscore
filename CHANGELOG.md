@@ -17,6 +17,20 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
+## [0.2.0] - 2026-06-15
+
+### Added
+- More specific DNA-level variant annotations for single-amino-acid effects: `snv`, `dinucleotide`, and `trinucleotide`.
+
+### Changed
+- Represent synonymous amino-acid no-change events with positional strings such as `A.2.=` instead of bare `=`.
+- Classify variants with multiple amino-acid changes as `multiple_aa`.
+- Remove the implicit conversion of `X` to `*` when formatting sequence differences, so stop-codon notation is no longer inferred automatically.
+
+### Fixed
+- Ensure pre-annotated amino-acid no-change variants such as `M1M` are preserved as positional no-change strings.
+- Raise explicit errors for invalid amino-acid and DNA difference strings during classification instead of silently misclassifying them.
+
 ## [0.1.0] - 2026-05-12
 
 ### Added
@@ -86,7 +100,8 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
-[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b3...0.1.0
 [0.1.0b1]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0a1...0.1.0b1
 [0.1.0a1]: https://github.com/dbaldridge-lab/sortscore/releases/tag/0.1.0a1

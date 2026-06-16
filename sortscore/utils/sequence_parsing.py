@@ -146,11 +146,37 @@ def translate_dna(dna_sequence: str) -> str:
     dna_seq = Seq(dna_sequence)
     return str(dna_seq.translate())
 
-def compare_to_reference(ref_seq: str, sequence: str, no_change_marker: str = '') -> str:
+def format_sequence_diff(ref_char: str, position: int, alt_char: str) -> str:
+    """Format one sequence difference as `ref.position.alt`."""
+    return f'{ref_char}.{position}.{alt_char}'
+
+
+def split_sequence_differences(sequence_diff: str) -> List[str]:
+    """Split a difference string into individual changes."""
+    if not sequence_diff:
+        return []
+    return [change.strip() for change in sequence_diff.split(',') if change.strip()]
+
+
+def count_sequence_differences(sequence_diff: str) -> int:
+    """Count listed sequence differences; exact WT `=` returns zero."""
+    changes = split_sequence_differences(sequence_diff)
+    if changes == ['=']:
+        return 0
+    return len(changes)
+
+
+def parse_sequence_difference(sequence_diff: str) -> tuple[str, int, str]:
+    """Parse one sequence difference in `ref.position.alt` format."""
+    match = re.match(r'^([^.,]+)\.(\d+)\.([^.,]+)$', sequence_diff.strip())
+    if not match:
+        raise ValueError(f"Invalid sequence difference: '{sequence_diff}'")
+    ref_char, position, alt_char = match.groups()
+    return ref_char, int(position), alt_char
+
+def compare_to_reference(ref_seq: str, sequence: str) -> str:
     """
     Compare a protein sequence to a reference and report differences.
-    
-    Stop codons are represented as '*'.
 
     Parameters
     ----------
@@ -163,26 +189,43 @@ def compare_to_reference(ref_seq: str, sequence: str, no_change_marker: str = ''
     -------
     differences : str
         Comma-separated string of differences in the format 'ref.position.alt'.
-        Stop codons are shown as '*' (e.g., 'Q.10.*' for a stop-gained variant).
 
     Examples
     --------
     >>> compare_to_reference('MA', 'MT')
     'A.2.T'
-    >>> compare_to_reference('MQ', 'MX')  # X (stop codon) becomes *
+    >>> compare_to_reference('MQ', 'M*')
     'Q.2.*'
     """
     differences = []
     min_length = min(len(ref_seq), len(sequence))
     for i in range(min_length):
         if ref_seq[i] != sequence[i]:
-            # Map X (stop codon) to * for standard notation
-            ref_aa = '*' if ref_seq[i] == 'X' else ref_seq[i]
-            var_aa = '*' if sequence[i] == 'X' else sequence[i]
-            difference = f'{ref_aa}.{i+1}.{var_aa}'
-            differences.append(difference)
+            differences.append(format_sequence_diff(ref_seq[i], i + 1, sequence[i]))
     if not differences:
-        return no_change_marker
+        return '='
+    return ', '.join(differences)
+
+
+def compare_aa_from_dna_reference(ref_dna_seq: str, variant_dna_seq: str) -> str:
+    """
+    Compare a DNA variant against a DNA reference and express AA-level effects.
+
+    Synonymous codon changes are represented with positional no-change strings,
+    e.g. `A.2.=`.
+    """
+    wt_codons = get_codons(ref_dna_seq)
+    variant_codons = get_codons(variant_dna_seq)
+    differences = []
+    for i, (wt_codon, var_codon) in enumerate(zip(wt_codons, variant_codons), start=1):
+        if wt_codon == var_codon:
+            continue
+        wt_aa = translate_dna(wt_codon)
+        var_aa = translate_dna(var_codon)
+        alt = '=' if wt_aa == var_aa else var_aa
+        differences.append(format_sequence_diff(wt_aa, i, alt))
+    if not differences:
+        return '='
     return ', '.join(differences)
 
 def get_codons(dna_seq: str) -> List[str]:
