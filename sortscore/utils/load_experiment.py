@@ -524,13 +524,14 @@ class ExperimentConfig:
         from the wild-type sequence, and uses the existing annotation function to determine annotation types.
         """
         from sortscore.analysis.annotation import NO_DIFF_MARKER
-        from sortscore.utils.sequence_parsing import translate_dna
+        from sortscore.utils.sequence_parsing import format_sequence_diff, translate_dna
         
         # Get the wild-type AA sequence for annotation
         wt_aa_seq = translate_dna(self.wt_seq)
         
         for rep_dict in self.counts.values():
-            for df in rep_dict.values():
+            for bin_id in list(rep_dict.keys()):
+                df = rep_dict[bin_id]
                 aa_seq_diffs = []
                 
                 for variant_seq in df['variant_seq']:
@@ -553,20 +554,17 @@ class ExperimentConfig:
                             f"expected '{wt_aa_seq[position - 1]}' at position {position}, found '{ref_aa}'."
                         )
 
-                    # Only add difference if alt_aa is different from ref_aa
                     if ref_aa != alt_aa:
-                        aa_seq_diff = f"{ref_aa}.{position}.{alt_aa}"
+                        aa_seq_diff = format_sequence_diff(ref_aa, position, alt_aa)
                         aa_seq_diffs.append(aa_seq_diff)
                     else:
-                        # Mark no-change variants explicitly.
-                        aa_seq_diffs.append(NO_DIFF_MARKER)
+                        aa_seq_diffs.append(format_sequence_diff(ref_aa, position, NO_DIFF_MARKER))
                 
-                # Add the aa_seq_diff column
+                df = df.copy()
                 df['aa_seq_diff'] = aa_seq_diffs
-                
-                # Add annotation categories
+
                 from sortscore.analysis.annotation import add_variant_categories
-                df = add_variant_categories(df)
+                rep_dict[bin_id] = add_variant_categories(df)
     
     # TODO: #11 Check this logic when min or max position is not provided.
     def _detect_position_range(self) -> None:
@@ -628,7 +626,7 @@ class ExperimentConfig:
             'aa' for amino acid variants, 'codon' for multiple nucleotide changes in single frame, 'snv' for single nucleotide variants.
         """
         from sortscore.analysis.annotation import NO_DIFF_MARKER
-        from sortscore.utils.sequence_parsing import compare_to_reference, translate_dna
+        from sortscore.utils.sequence_parsing import compare_aa_from_dna_reference, compare_to_reference, translate_dna
         
         # AA annotation
         if mutagenesis_type == 'aa':
@@ -638,18 +636,17 @@ class ExperimentConfig:
             df['aa_seq'] = df['variant_seq'].apply(translate_dna)  # Translate DNA to AA
             # DNA annotation
             df['dna_seq_diff'] = df['variant_seq'].apply(
-                lambda x: compare_to_reference(wt_ref_seq, x, no_change_marker=NO_DIFF_MARKER)
-            )
-            df['dna_diff_count'] = df['dna_seq_diff'].apply(
-                lambda x: 0 if x == NO_DIFF_MARKER else x.count(',') + 1
+                lambda x: compare_to_reference(wt_ref_seq, x)
             )
             
-        df['aa_seq_diff'] = df['aa_seq'].apply(
-            lambda x: compare_to_reference(wt_aa_seq, x, no_change_marker=NO_DIFF_MARKER)
-        )
-        df['aa_diff_count'] = df['aa_seq_diff'].apply(
-            lambda x: 0 if x == NO_DIFF_MARKER else x.count(',') + 1
-        )
+        if mutagenesis_type in {'codon', 'snv'}:
+            df['aa_seq_diff'] = df['variant_seq'].apply(
+                lambda x: compare_aa_from_dna_reference(wt_ref_seq, x)
+            )
+        else:
+            df['aa_seq_diff'] = df['aa_seq'].apply(
+                lambda x: compare_to_reference(wt_aa_seq, x)
+            )
 
     def _validate_mutagenesis_type_against_counts(self) -> None:
         """

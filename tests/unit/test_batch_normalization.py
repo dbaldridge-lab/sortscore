@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from sortscore.analysis.aa_scores import build_aa_scores_table
+from sortscore.analysis.annotation import annotate_scores_dataframe
 from sortscore.analysis.batch_normalization import (
     _build_normalization_stats,
     generate_batch_visualizations,
@@ -91,7 +92,7 @@ def test_build_normalization_stats_returns_nested_stage_and_final_sections():
     raw_scores = pd.DataFrame(
         {
             "batch": ["tile1", "tile1", "tile2", "tile2"],
-            "aa_seq_diff": ["=", "Q.2.*", "=", "A.3.S"],
+            "aa_seq_diff": ["=", "Q.2.*", "A.2.=", "A.3.S"],
             "annotate_aa": ["synonymous", "nonsense", "synonymous", "missense_aa"],
             "annotate_dna": ["wt_dna", "missense_dna", "synonymous", "missense_dna"],
             "avgscore": [10.0, 2.0, 12.0, 20.0],
@@ -150,19 +151,21 @@ def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
     scores_dir = tile_output_dir / "scores"
     scores_dir.mkdir(parents=True)
 
-    pd.DataFrame(
-        {
-            "variant_seq": ["AAA", "AAG", "TAA"],
-            "dna_seq_diff": ["=", "A.1.G", "T.1.A"],
-            "aa_seq_diff": ["=", "K.1.R", "Q.1.*"],
-            "annotate_dna": ["wt_dna", "synonymous", "missense_dna"],
-            "annotate_aa": ["synonymous", "synonymous", "nonsense"],
-            "avgscore": [10.0, 12.0, 2.0],
-            "avgscore_rep_weighted": [10.0, 12.0, 2.0],
-            "Rep1.score": [10.0, 12.0, 2.0],
-            "Rep2.score": [10.0, 12.0, 2.0],
-        }
-    ).to_csv(scores_dir / "tile1_dna_scores.csv", index=False)
+    scores_df = annotate_scores_dataframe(
+        pd.DataFrame(
+            {
+                "variant_seq": ["AAA", "AAG", "TAA"],
+                "avgscore": [10.0, 12.0, 2.0],
+                "avgscore_rep_weighted": [10.0, 12.0, 2.0],
+                "Rep1.score": [10.0, 12.0, 2.0],
+                "Rep2.score": [10.0, 12.0, 2.0],
+            }
+        ),
+        "AAA",
+        mutagenesis_type="codon",
+    )
+
+    scores_df.to_csv(scores_dir / "tile1_dna_scores.csv", index=False)
 
     results = run_batch_analysis(
         {

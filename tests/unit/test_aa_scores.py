@@ -6,9 +6,9 @@ from sortscore.analysis.variant_aggregation import aggregate_aa_data
 
 def assert_synonymous_no_diff_group_retained(df: pd.DataFrame, score_col: str = "avgscore") -> None:
     """Assert that synonymous no-diff rows collapse into a single retained AA group."""
-    assert set(df["aa_seq_diff"]) == {"=", "A.2.S"}
+    assert set(df["aa_seq_diff"]) == {"A.2.=", "A.2.S"}
     syn_rows = df[
-        (df["aa_seq_diff"] == "=") &
+        (df["aa_seq_diff"] == "A.2.=") &
         (df["annotate_aa"] == "synonymous")
     ]
     assert len(syn_rows) == 1
@@ -20,7 +20,7 @@ def assert_synonymous_no_diff_group_retained(df: pd.DataFrame, score_col: str = 
 def test_build_aa_scores_table_retains_synonymous_no_diff_rows():
     scores_df = pd.DataFrame(
         {
-            "aa_seq_diff": ["=", "=", "A.2.S"],
+            "aa_seq_diff": ["A.2.=", "A.2.=", "A.2.S"],
             "annotate_aa": ["synonymous", "synonymous", "missense_aa"],
             "avgscore": [10.0, 14.0, 30.0],
             "avgscore_rep_weighted": [11.0, 15.0, 31.0],
@@ -37,7 +37,7 @@ def test_build_aa_scores_table_retains_synonymous_no_diff_rows():
 def test_aggregate_aa_data_retains_synonymous_no_diff_rows():
     scores_df = pd.DataFrame(
         {
-            "aa_seq_diff": ["=", "=", "A.2.S"],
+            "aa_seq_diff": ["A.2.=", "A.2.=", "A.2.S"],
             "annotate_aa": ["synonymous", "synonymous", "missense_aa"],
             "avgscore": [10.0, 14.0, 30.0],
         }
