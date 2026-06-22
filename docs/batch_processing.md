@@ -1,28 +1,25 @@
 # Batch Processing Guide
 
-This guide provides detailed instructions for combining and normalizing multiple Sort-seq experiments using the batch processing functionality in sortscore.
+This guide provides detailed instructions for cross-tile normalization across
+multiple Sort-seq experiments.
 
 ## Overview
 
-Batch processing enables you to:
-- **Combine multiple experiments** covering different regions of the same protein (tiled design)
-- **Apply cross-experiment normalization** to enable meaningful comparisons
-- **Generate unified visualizations** with proper position mapping
-- **Standardize scoring scales** across experimental batches
+This workflow enables you to:
+1. Standardize scoring scales across multiple tiled experiments
+2. Generate unified visualizations with proper position mapping
 
-## When to Use Batch Processing
+## When to Use Cross-Tile Normalization
 
-- Tiled experiments: Multiple experiments covering non-overlapping regions
-- Technical replicates: Same experimental conditions run at different times
-- Cross-platform comparisons: Normalizing experiments run on different instruments
-- Large protein analysis: Experiments divided by protein domains or regions
+- Tiled experiments: Profiling a large region by splitting it across multiple short-read sequencing tiles
+- Large protein analysis: Experiments divided by protein domains or regions, with the caveat that current heatmaps may be sparse
 
 ## Quick Start
 
 1. Run tiled scoring to generate tile outputs
 2. List 2 or more tiles in experimental_setup file
 3. Create a `batch_config.json` with an `experiments` list of tile output directories
-4. Run batch analysis:
+4. Run cross-tile normalization:
    ```bash
    sortscore score -n my_experiment -e experiment_setup.csv -c experiment_config.json
    sortscore norm -c batch_config.json

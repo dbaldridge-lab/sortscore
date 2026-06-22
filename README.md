@@ -12,12 +12,12 @@ pip install sortscore
 Run a standard variant scoring analysis:
 
 ```bash
-sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
+sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 If the `sortscore` command is not on your `PATH`, run:
 
 ```bash
-python -m sortscore -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
+python -m sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
 
 ## Example Heatmaps

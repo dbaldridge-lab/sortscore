@@ -27,8 +27,7 @@ sortscore score [options]
 | `--relative-path-base` | - | str | Base directory for resolving relative paths when this setting is applied: `setup` or `cwd` | setup |
 | `--pos-color` | `-p` | flag | See [visualization.md](visualization.md) for exporting positional averages with colors for protein structure visualization | False |
 | `--fig-format` | - | str | Output format for figures: png, svg, pdf | png |
-
-Batch normalization is routed through:
+Run cross-tile normalization with:
 
 ```bash
 sortscore norm -c batch_config.json
@@ -36,7 +35,11 @@ sortscore norm -c batch_config.json --method zscore_2pole
 sortscore norm -c batch_config.json --output-dir /path/to/combined
 ```
 
-`norm` expects a batch config JSON containing an `experiments` list with tile `output_dir` entries.
+Use the helper command for related scoring tools:
+
+```bash
+sortscore integrate lilace --input path/to/batch_scores.csv --output Lilace_input_counts.csv --batch tile4
+```
 
 Path resolution note:
 - `--output-dir` (CLI) uses the current working directory as the base for relative paths.
