@@ -1,0 +1,297 @@
+---
+title: "Lilace Scoring Demo"
+format:
+  gfm:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: true
+---
+
+# Use sortscore Output as Lilace Input
+
+The code in this notebook is adapted from the Lilace vignette to demonstrate how to utilize sortscore output as an input for this workflow.
+
+Cite: Freudenberg, J., Rao, J., Howard, M. K., Macdonald, C., Greenwald, N. F., Coyote-Maestas, W., & Pimentel, H. (2026). Accurate variant effect estimation in FACS-based deep mutational scanning data with Lilace. Genome Biology, 27(1), 48. https://doi.org/10.1186/s13059-026-03934-1
+
+Reference vignette: [Introduction to Lilace](https://pimentellab.com/lilace/articles/intro.html).
+
+0. The `sortscore integrate` command is used to return a Lilace-ready counts table.
+1. Import scores and metadata from sortscore into Lilace's input format.
+2. Normalize according to cell sorting percentages, if needed.
+3. Run Lilace.
+4. Review the output scores.
+
+
+## Parameters
+
+Edit these values before running the analysis for a new dataset.
+
+```{r}
+#| label: parameters
+#| echo: true
+
+# Paths below are repo-relative unless you provide an absolute path.
+counts_path <- "demo_data/external_tools/Lilace_input_counts.csv"
+working_dir <- "demo_data/external_tools/Lilace"
+input_scores_path <- "demo_data/_test_outputs/multitile_output/normalized/zscore_2pole/scores/batch_aa_scores.csv"
+
+# Optional filter for tiled experiments. Set to NULL to include all batches.
+batch_name <- "tile1"
+
+# Export type for `sortscore integrate lilace`.
+mutagenesis_type <- "aa" # set to "codon" for dna score tables
+
+sortscore_python <- "venv/bin/python" # path to an interpreter with sortscore installed
+
+# Set to TRUE if you want Lilace counts normalized to sorting proportions.
+use_sort_normalization <- FALSE
+
+# Sorting proportions aligned to the integrated Lilace count columns (`c_0`, `c_1`, ...).
+sort_prop_values <- c(0.25, 0.25, 0.25, 0.25)
+
+control_label <- "synonymous"
+n_parallel_chains <- 4
+seed <- 1
+```
+
+## Installation
+
+The Lilace vignette recommends installing `cmdstanr` first, then `CmdStan`, and finally Lilace itself.
+
+```{r}
+#| include: false
+if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+  install.packages(
+    "cmdstanr",
+    repos = c("https://stan-dev.r-universe.dev", getOption("repos"))
+  )
+}
+```
+
+```{r}
+#| include: false
+library(cmdstanr)
+
+if (is.null(cmdstan_version(error_on_NA = FALSE))) {
+  install_cmdstan(cores = 2)
+}
+
+cmdstan_version()
+```
+
+```{r}
+#| include: false
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+if (!requireNamespace("lilace", quietly = TRUE)) {
+  remotes::install_github("pimentellab/lilace")
+}
+```
+
+
+## Setup
+
+Once the remaining required packages are installed, load them in the setup chunk below.
+
+```{r}
+#| include: false
+library(here)
+here::i_am("demo_data/external_tools/Lilace/Lilace.qmd")
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tibble)
+library(lilace)
+```
+
+## Generate Input File
+
+### Use sortscore output to get Lilace input counts
+
+Generates the Lilace input counts file from a sortscore scores table.
+
+```{r}
+#| message: true
+integrate_args <- c(
+  "-m", "sortscore", "integrate", "lilace",
+  "--input", here::here(input_scores_path),
+  "--output", here::here(counts_path),
+  "--mutagenesis-type", mutagenesis_type
+)
+
+if (!is.null(batch_name) && nzchar(batch_name)) {
+  integrate_args <- c(integrate_args, "--batch", batch_name)
+}
+
+sortscore_python_path <- if (grepl("^(/|~)", sortscore_python)) {
+  path.expand(sortscore_python)
+} else {
+  here::here(sortscore_python)
+}
+
+system2(sortscore_python_path, integrate_args)
+```
+
+### Load input counts
+
+The `sortscore integrate lilace` preprocessing step produces one row per variant per replicate, including `variant_id`, `mutation_type`, `position`, and Lilace count columns corresponding to the FACS bins.
+
+```{r}
+counts_file <- here::here(counts_path)
+working_dir_path <- here::here(working_dir)
+
+raw_counts <- readr::read_csv(counts_file, show_col_types = FALSE)
+
+dplyr::glimpse(raw_counts)
+head(raw_counts)
+```
+
+
+### Prepare counts for Lilace
+
+The integrated input file already includes Lilace's `variant_id`, `mutation_type`, `position`, `replicate`, and `c_0`, `c_1`, ... count columns. The step below detects those count columns and separates any extra metadata.
+
+```{r}
+stopifnot(all(c("variant_id", "mutation_type", "position", "replicate") %in% names(raw_counts)))
+
+count_col_names <- names(raw_counts)[grepl("^c_[0-9]+$", names(raw_counts))]
+stopifnot(length(count_col_names) > 0)
+
+lilace_counts <- raw_counts |>
+  dplyr::select(
+    variant_id,
+    mutation_type,
+    position,
+    replicate,
+    dplyr::all_of(count_col_names)
+  )
+
+lilace_counts[count_col_names] <- lapply(
+  lilace_counts[count_col_names],
+  function(col) as.integer(round(col))
+)
+
+metadata_cols <- raw_counts |>
+  dplyr::select(-replicate, -dplyr::all_of(count_col_names))
+
+lilace_counts |>
+  dplyr::arrange(position, variant_id, replicate) |>
+  head()
+
+metadata_cols |>
+  dplyr::arrange(position, variant_id) |>
+  head()
+```
+
+Convert the counts table into a Lilace object.
+
+```{r}
+lilace_obj <- lilace::lilace_from_counts(
+  variant_id = lilace_counts$variant_id,
+  mutation_type = lilace_counts$mutation_type,
+  position = lilace_counts$position,
+  replicate = lilace_counts$replicate,
+  counts = lilace_counts |> dplyr::select(dplyr::all_of(count_col_names)),
+  metadata = metadata_cols
+)
+
+head(lilace_obj$data)
+```
+
+## Run Lilace
+
+Optionally normalize to the FACS sorting proportions.
+
+```{r}
+#| label: normalize sorting proportions
+if (use_sort_normalization) {
+  stopifnot(length(sort_prop_values) == length(count_col_names))
+  sort_props <- stats::setNames(sort_prop_values, count_col_names)
+
+  lilace_obj <- lilace::lilace_sorting_normalize(
+    lilace_obj,
+    sort_props,
+    rep_specific = FALSE
+  )
+}
+
+if (use_sort_normalization) {
+  head(lilace_obj$normalized_data)
+}
+```
+
+Fit the Lilace model. Per the Lilace vignette, synonymous variants are used as the negative control group by default.
+
+```{r}
+#| label: fit model
+#| warning: true
+#| message: true
+lilace_obj <- lilace::lilace_fit_model(
+  lilace_obj,
+  output_dir = working_dir_path,
+  control_label = control_label,
+  control_correction = TRUE,
+  use_positions = TRUE,
+  pseudocount = TRUE,
+  n_parallel_chains = n_parallel_chains,
+  seed = seed
+)
+```
+
+Read the exported scores table.
+
+```{r}
+#| label: read scores
+scores <- readr::read_tsv(
+  file.path(working_dir_path, "lilace_output", "variant_scores.tsv"),
+  show_col_types = FALSE
+)
+
+head(scores)
+```
+
+Basic summary views.
+
+```{r}
+#| label: summarize
+scores |>
+  dplyr::count(type, sort = TRUE)
+
+scores |>
+  dplyr::arrange(lfsr, dplyr::desc(abs(effect))) %>%
+  dplyr::select(variant, type, position, effect, effect_se, lfsr, discovery05) %>%
+  head(20)
+```
+
+Optional diagnostic plots from Lilace.
+
+```{r}
+#| label: plots
+lilace::lilace_score_density(
+  scores,
+  savedir = working_dir_path,
+  score.col = "effect",
+  name = "score_histogram",
+  hist = TRUE,
+  scale.free = TRUE
+)
+
+heatmap_scores <- scores |>
+  dplyr::mutate(
+    wildtype = stringr::str_extract(variant, "^[^.]+"),
+    mutation = stringr::str_extract(variant, "[^.]+$")
+  )
+
+lilace::lilace_score_heatmap(
+  heatmap_scores,
+  savedir = working_dir_path,
+  score.col = "effect",
+  name = "score_heatmap"
+)
+```

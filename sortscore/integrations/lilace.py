@@ -2,10 +2,21 @@
 Lilace export helpers.
 """
 import re
+from typing import Literal
 from pathlib import Path
 import pandas as pd
 
 COUNT_COLUMN_PATTERN = re.compile(r"^count\.r(?P<replicate>\d+)b(?P<bin>\d+)$")
+POSITION_PATTERN = re.compile(r"(?P<position>\d+)")
+
+
+def _get_mutagenesis_columns(mutagenesis_type: Literal["aa", "codon"]) -> tuple[str, str]:
+    """Return the variant and annotation column names for one Lilace export type."""
+    if mutagenesis_type == "aa":
+        return "aa_seq_diff", "annotate_aa"
+    if mutagenesis_type == "codon":
+        return "dna_seq_diff", "annotate_dna"
+    raise ValueError(f"Unsupported Lilace export mutagenesis_type: {mutagenesis_type}")
 
 
 def _extract_count_layout(df: pd.DataFrame) -> dict[int, dict[int, str]]:
@@ -58,12 +69,41 @@ def _extract_count_layout(df: pd.DataFrame) -> dict[int, dict[int, str]]:
     return replicate_bins
 
 
+def _get_position_values(
+    score_table: pd.DataFrame,
+    *,
+    variant_column: str,
+) -> pd.Series:
+    """
+    Return per-row amino-acid positions for Lilace export.
+
+    Parameters
+    ----------
+    score_table : pd.DataFrame
+        Input score table that may already contain a ``position`` column.
+    variant_column : str
+        Column containing variant identifiers from which positions can be parsed.
+
+    Returns
+    -------
+    pd.Series
+        Position values aligned to ``score_table`` rows. Rows without a parsed
+        position are returned as missing values.
+    """
+    if "position" in score_table.columns:
+        return pd.to_numeric(score_table["position"], errors="coerce")
+
+    return pd.to_numeric(
+        score_table[variant_column].astype(str).str.extract(POSITION_PATTERN)["position"],
+        errors="coerce",
+    )
+
+
 def _build_lilace_input_table(
     score_table: pd.DataFrame,
     *,
+    mutagenesis_type: Literal["aa", "codon"] = "aa",
     batch: str | None = None,
-    variant_column: str = "aa_seq_diff",
-    annotation_column: str = "annotate_aa",
     batch_column: str = "batch",
     metadata_columns: dict[str, str] | None = None,
     metadata_constants: dict[str, object] | None = None,
@@ -77,15 +117,12 @@ def _build_lilace_input_table(
         sortscore score table containing a variant identifier, an annotation
         column, count columns named like ``count.r<replicate>b<bin>``, and
         optionally a batch label plus extra metadata columns to preserve.
+    mutagenesis_type : {"aa", "codon"}, default "aa"
+        Whether to export amino-acid level or codon-level variant identifiers and
+        annotations into the Lilace table.
     batch : str | None, default None
-        Optional batch or tile label to export, for example ``tile4``. When not
+        Optional batch or tile label to export, e.g. ``tile4``. When not
         provided, the full input table is used.
-    variant_column : str, default "aa_seq_diff"
-        Column holding the variant identifier that should be preserved in the
-        Lilace output.
-    annotation_column : str, default "annotate_aa"
-        Column holding the amino-acid annotation to preserve in the Lilace
-        output.
     batch_column : str, default "batch"
         Column containing batch or tile labels used to filter the input table
         when ``batch`` is provided.
@@ -100,7 +137,7 @@ def _build_lilace_input_table(
     pd.DataFrame
         Lilace-compatible table with one row per variant per replicate and
         columns for the variant id, annotation, replicate number, and
-        ``bin1``, ``bin2``, ... count values.
+        ``c_0``, ``c_1``, ... count values.
 
     Raises
     ------
@@ -109,6 +146,7 @@ def _build_lilace_input_table(
         columns are malformed, or the filtered table contains duplicate
         variant identifiers.
     """
+    variant_column, annotation_column = _get_mutagenesis_columns(mutagenesis_type)
     required_columns = {variant_column, annotation_column}
     if batch is not None:
         required_columns.add(batch_column)
@@ -123,6 +161,13 @@ def _build_lilace_input_table(
         filtered = filtered.loc[filtered[batch_column] == batch].copy()
         if filtered.empty:
             raise ValueError(f"No rows found where {batch_column!r} == {batch!r}.")
+    filtered["position"] = _get_position_values(filtered, variant_column=variant_column)
+    filtered = filtered.loc[filtered["position"].notna()].copy()
+    if filtered.empty:
+        raise ValueError(
+            f"No rows with usable position values remained after filtering {variant_column}."
+        )
+    filtered["position"] = filtered["position"].astype(int)
 
     replicate_bins = _extract_count_layout(filtered)
     duplicate_mask = filtered[variant_column].duplicated(keep=False)
@@ -136,7 +181,7 @@ def _build_lilace_input_table(
     output_rows: list[dict[str, object]] = []
     sorted_replicates = sorted(replicate_bins)
     sorted_bins = sorted(next(iter(replicate_bins.values())))
-    output_bin_columns = [f"bin{bin_number}" for bin_number in sorted_bins]
+    output_bin_columns = [f"c_{index}" for index, _ in enumerate(sorted_bins)]
     metadata_columns = metadata_columns or {}
     metadata_output_columns = list(metadata_columns)
     metadata_constants = metadata_constants or {}
@@ -144,12 +189,13 @@ def _build_lilace_input_table(
     for _, row in filtered.sort_values(variant_column, kind="stable").iterrows():
         for replicate in sorted_replicates:
             output_row: dict[str, object] = {
-                variant_column: row[variant_column],
-                annotation_column: row[annotation_column],
+                "variant_id": row[variant_column],
+                "mutation_type": row[annotation_column],
+                "position": row["position"],
                 "replicate": replicate,
             }
-            for bin_number in sorted_bins:
-                output_row[f"bin{bin_number}"] = row[replicate_bins[replicate][bin_number]]
+            for index, bin_number in enumerate(sorted_bins):
+                output_row[f"c_{index}"] = row[replicate_bins[replicate][bin_number]]
             for metadata_output_column in metadata_output_columns:
                 output_row[metadata_output_column] = row[metadata_columns[metadata_output_column]]
             output_row.update(metadata_constants)
@@ -158,15 +204,16 @@ def _build_lilace_input_table(
     output = pd.DataFrame(
         output_rows,
         columns=[
-            variant_column,
-            annotation_column,
+            "variant_id",
+            "mutation_type",
+            "position",
             "replicate",
             *output_bin_columns,
             *metadata_output_columns,
             *metadata_constants.keys(),
         ],
     )
-    output.sort_values([variant_column, "replicate"], inplace=True, kind="stable")
+    output.sort_values(["variant_id", "replicate"], inplace=True, kind="stable")
     output.reset_index(drop=True, inplace=True)
     return output
 
@@ -175,9 +222,8 @@ def score_table_to_lilace_csv(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    batch: str,
-    variant_column: str = "aa_seq_diff",
-    annotation_column: str = "annotate_aa",
+    mutagenesis_type: Literal["aa", "codon"] = "aa",
+    batch: str | None = None,
     batch_column: str = "batch",
     metadata_columns: dict[str, str] | None = None,
     metadata_constants: dict[str, object] | None = None,
@@ -192,12 +238,11 @@ def score_table_to_lilace_csv(
         Path to the source score table CSV file.
     output_path : str | Path
         Destination path for the Lilace-compatible CSV file.
-    batch : str
-        Batch or tile label to export from the input file.
-    variant_column : str, default "aa_seq_diff"
-        Variant identifier column to preserve in the Lilace output.
-    annotation_column : str, default "annotate_aa"
-        Annotation column to preserve in the Lilace output.
+    mutagenesis_type : {"aa", "codon"}, default "aa"
+        Whether to export amino-acid level or codon-level variant identifiers and
+        annotations into the Lilace table.
+    batch : str | None, default None
+        Optional batch or tile label to export from the input file.
     batch_column : str, default "batch"
         Column containing batch or tile labels in the input CSV.
     metadata_columns : dict[str, str] | None, default None
@@ -222,9 +267,8 @@ def score_table_to_lilace_csv(
     batch_scores = pd.read_csv(input_path)
     lilace_input = _build_lilace_input_table(
         batch_scores,
+        mutagenesis_type=mutagenesis_type,
         batch=batch,
-        variant_column=variant_column,
-        annotation_column=annotation_column,
         batch_column=batch_column,
         metadata_columns=metadata_columns,
         metadata_constants=metadata_constants,
