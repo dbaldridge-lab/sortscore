@@ -43,5 +43,10 @@ Batch Normalization Heatmap
 
 - [Single Experiment Scoring Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/single_experiment_demo.ipynb)
 - [Batch Normalization Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/tiled_demo.ipynb)
+
+## Example Config Files
 - [Example Config](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/config.json)
 - [Example Experiment Setup](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/experiment_setup.csv)
+
+## Integrations
+- [Lilace Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/external_tools/Lilace/Lilace.md)
