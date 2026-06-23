@@ -59,7 +59,7 @@ Example batch config options are shown below. The `experiments` list is required
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `experiments` | list | required | Tile entries for normalization. Each entry must include `tile` (int), `output_dir`, `wt_seq`, `min_pos`, and `max_pos`. |
-| `batch_normalization_method` | string | `"zscore_2pole"` | Normalization method: `"zscore_2pole"`, `"2pole"`, or `"zscore_center"` |
+| `batch_normalization_method` | string | `"zscore_2pole"` | Normalization method: `"zscore_2pole"`, `"linear_range"`, or `"zscore_onepole"` |
 | `pathogenic_control_type` | string | `"nonsense"` | Type of pathogenic control: `"nonsense"` or `"custom"` |
 | `pathogenic_variants` | list | `null` | Custom pathogenic variants (required when `pathogenic_control_type` is `"custom"`) |
 | `combined_output_dir` | string | `"./normalized"` | Output directory for combined results |
@@ -149,7 +149,7 @@ Specify your own list of pathogenic control variants.
 Batch processing generates:
 
 ### Score Files
-- `<combined_output_dir>/normalized/<method>/scores/batch_scores.csv`: Combined normalized scores with batch tracking
+- `<combined_output_dir>/normalized/<method>/scores/batch_dna_scores.csv`: Combined normalized DNA-level scores with batch tracking when DNA scores are available
 - `<combined_output_dir>/normalized/<method>/scores/batch_aa_scores.csv`: Combined amino acid level normalized scores when AA aggregation is available
 - `<combined_output_dir>/normalized/<method>/scores/batch_stats.json`: Statistics and normalization factors
 

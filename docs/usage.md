@@ -183,7 +183,7 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 | Key                        | Type      | Description                                                              |
 |---------------------------|-----------|--------------------------------------------------------------------------|
 | experiments               | list      | Required list of experiment entries. Each entry includes `tile`, `output_dir`, `wt_seq`, `min_pos`, `max_pos`. |
-| batch_normalization_method| str       | "zscore_2pole" (default), "2pole", or "zscore_center"                |
+| batch_normalization_method| str       | "zscore_2pole" (default), "linear_range", or "zscore_onepole"                |
 | pathogenic_control_type   | str       | "nonsense" (default) or "custom"                                       |
 | pathogenic_variants       | list      | Custom pathogenic variants (required when using "custom")              |
 | combined_output_dir       | str       | Directory for final combined results                                     |

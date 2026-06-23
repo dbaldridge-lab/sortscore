@@ -1,8 +1,8 @@
 """
-Main entry point for Sort-seq batch variant analysis.
+Main entry point for Sort-seq cross-tile normalization.
 
-This script loads batch configuration, orchestrates normalization across multiple experiments,
-and generates combined outputs.
+This script loads the batch configuration, orchestrates normalization across
+multiple tile outputs, and generates combined results.
 
 Usage:
     sortscore norm --config path/to/batch_config.json
@@ -19,16 +19,16 @@ from sortscore.analysis.batch_normalization import run_batch_analysis, save_batc
 
 
 def main():
-    """Main entry point for batch analysis."""
+    """Main entry point for cross-tile normalization."""
     # Configure logging
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
     
-    parser = argparse.ArgumentParser(description="Run Sort-seq batch variant analysis.")
+    parser = argparse.ArgumentParser(description="Run Sort-seq cross-tile normalization.")
     parser.add_argument('-c', '--config', type=str, required=True, 
                        help='Path to batch configuration JSON file')
     parser.add_argument('-o', '--output-dir', type=str,
                        help='Override combined output directory from batch config JSON')
-    parser.add_argument('--method', type=str, choices=['zscore_2pole', '2pole', 'zscore_center'],
+    parser.add_argument('--method', type=str, choices=['zscore_2pole', 'linear_range', 'zscore_onepole'],
                        help='Override normalization method from batch config JSON')
     args = parser.parse_args()
 
@@ -49,7 +49,7 @@ def main():
     try:
         batch_config_dict = batch_config.get_batch_config_dict()
         results = run_batch_analysis(batch_config_dict)
-        logging.info(f"Batch analysis complete using {results['method']} normalization")
+        logging.info(f"Cross-tile normalization complete using {results['method']}")
     except Exception as e:
         logging.error(f"Failed to run batch analysis: {e}")
         sys.exit(1)
@@ -57,9 +57,9 @@ def main():
     # Save results
     try:
         save_batch_results(results, results['output_dir'])
-        logging.info(f"Batch results saved to {results['output_dir']}")
+        logging.info(f"Cross-tile results saved to {results['output_dir']}")
     except Exception as e:
-        logging.error(f"Failed to save batch results: {e}")
+        logging.error(f"Failed to save cross-tile results: {e}")
         sys.exit(1)
     
     # Generate visualizations
@@ -74,7 +74,7 @@ def main():
         logging.error(f"Failed to generate visualizations: {e}")
         # Don't exit on visualization failure, just warn
     
-    print(f"Batch analysis complete! Combined results saved to {results['output_dir']}")
+    print(f"Cross-tile normalization complete! Results saved to {results['output_dir']}")
 
 
 if __name__ == "__main__":

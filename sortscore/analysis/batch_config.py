@@ -26,7 +26,7 @@ class BatchConfig:
     Attributes
     ----------
     batch_normalization_method : str, optional
-        Normalization method to use ('zscore_2pole', '2pole', or 'zscore_center'), default 'zscore_2pole'
+        Normalization method to use ('zscore_2pole', 'linear_range', or 'zscore_onepole'), default 'zscore_2pole'
     pathogenic_control_type : str, optional
         Type of pathogenic control ('nonsense' or 'custom'), default 'nonsense'  
     pathogenic_variants : Optional[List[str]], optional
@@ -137,7 +137,7 @@ class BatchConfig:
                 raise FileNotFoundError(f"experiments[{idx}] output_dir does not exist: {out_dir}")
         
         # Validate normalization method
-        valid_methods = ['zscore_2pole', '2pole', 'zscore_center']
+        valid_methods = ['zscore_2pole', 'linear_range', 'zscore_onepole']
         if self.batch_normalization_method not in valid_methods:
             raise ValueError(f"Invalid normalization method: {self.batch_normalization_method}. "
                            f"Must be one of: {valid_methods}")
