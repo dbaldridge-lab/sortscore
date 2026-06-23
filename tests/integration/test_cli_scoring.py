@@ -51,8 +51,6 @@ def test_sortscore_cli_runs_and_outputs(config_dict, cleanup_outputs, isolated_r
         assert output_root.exists(), f"Expected output directory to exist: {output_root}"
         missing = [str(p) for p in expected_files if not p.exists()]
         assert not missing, f"Missing expected fresh output files:\n" + "\n".join(missing)
-
-
 def test_sortscore_cli_multitile_writes_tile_scores(config_dict, batch_config_dict, isolated_runtime_env):
     """Tiled scoring should emit per-tile score outputs."""
     workdir = (REPO_ROOT / "_test_outputs").resolve()

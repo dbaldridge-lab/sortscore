@@ -38,7 +38,7 @@ sortscore norm -c batch_config.json --output-dir /path/to/combined
 Use the helper command for related scoring tools:
 
 ```bash
-sortscore integrate lilace --input path/to/batch_scores.csv --output Lilace_input_counts.csv --batch tile4
+sortscore integrate lilace --input path/to/score_table.csv --output Lilace_input_counts.csv --batch tile4
 ```
 
 Path resolution note:

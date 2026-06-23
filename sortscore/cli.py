@@ -5,11 +5,12 @@ import sys
 
 
 def _print_usage() -> None:
-    print("Usage: sortscore <score|norm> [args]")
+    print("Usage: sortscore <score|norm|integrate> [args]")
     print("")
     print("Commands:")
-    print("  score                Run single-experiment scoring workflow")
-    print("  norm                 Run batch normalization workflow")
+    print("  score                Score a single experiment")
+    print("  norm                 Normalize across tiles")
+    print("  integrate            Export helper files for running related scoring tools")
     print("")
     print("Use 'sortscore <command> --help' for command-specific arguments.")
 
@@ -41,6 +42,11 @@ def main(argv=None):
     if command == "norm":
         from sortscore.run_batch_analysis import main as normalize_main
         _dispatch(normalize_main, command_args)
+        return
+
+    if command == "integrate":
+        from sortscore.run_integration import main as integrate_main
+        _dispatch(integrate_main, command_args)
         return
 
     print(f"Unknown command: {command}")

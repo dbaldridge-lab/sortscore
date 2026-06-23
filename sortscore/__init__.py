@@ -12,8 +12,12 @@ __email__ = "c.chitwood@wustl.edu"
 # Import main classes for convenience
 from .utils.load_experiment import ExperimentConfig
 from .analysis.score import calculate_full_activity_scores
+from .integrations.lilace import (
+    score_table_to_lilace_csv,
+)
 
 __all__ = [
-    "ExperimentConfig", 
-    "calculate_full_activity_scores"
+    "ExperimentConfig",
+    "calculate_full_activity_scores",
+    "score_table_to_lilace_csv",
 ]
