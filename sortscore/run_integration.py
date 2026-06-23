@@ -20,6 +20,7 @@ def _build_lilace_input(args: argparse.Namespace) -> Path:
     return score_table_to_lilace_csv(
         args.input,
         args.output,
+        mutagenesis_type=args.mutagenesis_type,
         batch=args.batch,
         metadata_columns=metadata_columns,
         metadata_constants=metadata_constants,
@@ -38,6 +39,12 @@ def main() -> None:
     )
     lilace_parser.add_argument("-i", "--input", required=True, help="Path to a sortscore score table CSV")
     lilace_parser.add_argument("-o", "--output", required=True, help="Path for the Lilace input CSV")
+    lilace_parser.add_argument(
+        "--mutagenesis-type",
+        choices=["aa", "codon"],
+        default="aa",
+        help="Mutagenesis type to export",
+    )
     lilace_parser.add_argument(
         "-b",
         "--batch",

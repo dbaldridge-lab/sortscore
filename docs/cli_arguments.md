@@ -38,8 +38,12 @@ sortscore norm -c batch_config.json --output-dir /path/to/combined
 Use the helper command for related scoring tools:
 
 ```bash
-sortscore integrate lilace --input path/to/score_table.csv --output Lilace_input_counts.csv --batch tile4
+sortscore integrate lilace --input path/to/aa_scores.csv --output Lilace_input_counts.csv
+sortscore integrate lilace --input path/to/batch_aa_scores.csv --output Lilace_input_counts.csv --batch tile4
+sortscore integrate lilace --input path/to/batch_dna_scores.csv --output Lilace_input_counts.csv --mutagenesis-type codon --batch tile4
 ```
+
+`lilace` writes `variant_id`, `mutation_type`, `position`, `replicate`, and bin count columns. `--batch` is optional, and `--mutagenesis-type` defaults to `aa`.
 
 Path resolution note:
 - `--output-dir` (CLI) uses the current working directory as the base for relative paths.

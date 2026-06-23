@@ -48,13 +48,14 @@ def test_sortscore_cli_integrate_lilace_writes_input_file(tmp_path, isolated_run
 
     exported = pd.read_csv(output_path)
     assert list(exported.columns) == [
-        "aa_seq_diff",
-        "annotate_aa",
+        "variant_id",
+        "mutation_type",
+        "position",
         "replicate",
-        "bin1",
-        "bin2",
-        "bin3",
-        "bin4",
+        "c_0",
+        "c_1",
+        "c_2",
+        "c_3",
         "sortscore_score",
         "sortscore_score_column",
     ]
