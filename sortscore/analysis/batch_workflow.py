@@ -50,9 +50,9 @@ def run_batch_mode(config_path: str) -> None:
     # Save results
     try:
         save_batch_results(results, results['output_dir'])
-        logging.info(f"Batch results saved to {results['output_dir']}")
+        logging.info(f"Cross-tile results saved to {results['output_dir']}")
     except Exception as e:
-        logging.error(f"Failed to save batch results: {e}")
+        logging.error(f"Failed to save cross-tile results: {e}")
         sys.exit(1)
     
     # Generate visualizations

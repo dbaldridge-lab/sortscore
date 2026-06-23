@@ -34,7 +34,7 @@ def test_save_batch_results_preserves_decimal_score_precision(tmp_path):
 
     save_batch_results(results, str(output_dir))
 
-    saved_scores = pd.read_csv(output_dir / "scores" / "batch_scores.csv")
+    saved_scores = pd.read_csv(output_dir / "scores" / "batch_dna_scores.csv")
     for col, expected in {
         "score.r1b1": 1.25,
         "score.r1b2": 2.75,
@@ -228,7 +228,7 @@ def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypat
     )
 
     results = {
-        "method": "2pole",
+        "method": "linear_range",
         "normalized_scores": pd.DataFrame(
             {
                 "batch": ["tile1", "tile1"],
@@ -238,17 +238,20 @@ def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypat
         ),
         "normalized_aa_scores": pd.DataFrame(),
         "combined_stats": {
-            "final": {
-                "global": {
-                    "wt": {"avg": 1.5},
-                    "nonsense": {"avg": 2.5},
+            "dna": {
+                "final": {
+                    "global": {
+                        "wt": {"avg": 1.5},
+                        "nonsense": {"avg": 2.5},
+                    }
                 }
             },
+            "aa": {},
         },
         "experiments": [],
     }
     batch_config = {
-        "batch_normalization_method": "2pole",
+        "batch_normalization_method": "linear_range",
         "pathogenic_control_type": "nonsense",
         "experiments": [],
     }

@@ -26,10 +26,8 @@ from typing import Dict, List, Tuple, Optional, Any, cast
 
 logger = logging.getLogger(__name__)
 
-from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, build_aa_scores_table
+from sortscore.analysis.aa_scores import _get_score_column_from_avg_method
 from sortscore.analysis.summary_stats import calculate_summary_stats
-
-
 def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
     """Ensure a canonical `avgscore` column exists for normalization steps."""
     if 'avgscore' in scores_df.columns:
@@ -57,43 +55,6 @@ def _coerce_score_columns_to_float(scores_df: pd.DataFrame) -> pd.DataFrame:
     for col in _score_columns(out):
         out[col] = pd.to_numeric(out[col], errors='coerce').astype(float)
     return out
-
-
-def _build_batch_aa_scores(
-    normalized_scores: pd.DataFrame,
-    experiments: List[Any],
-) -> pd.DataFrame:
-    """Aggregate normalized batch results to AA level for each batch separately."""
-
-    experiment_by_batch = {
-        f"tile{idx}": experiment
-        for idx, experiment in enumerate(experiments, start=1)
-    }
-
-    aa_batch_frames = []
-    for batch_name, batch_df in normalized_scores.groupby('batch'):
-        if 'aa_seq_diff' not in batch_df.columns:
-            continue
-
-        batch_name = cast(str, batch_name)
-        if batch_name not in experiment_by_batch:
-            raise ValueError(f"Missing experiment metadata for batch '{batch_name}'")
-        experiment = experiment_by_batch[batch_name]
-        score_col = _get_score_column_from_avg_method(experiment.avg_method)
-        if score_col not in batch_df.columns:
-            raise ValueError(
-                f"Batch '{batch_name}' is missing expected score column '{score_col}' "
-                f"for avg_method '{experiment.avg_method}'"
-            )
-
-        aa_df = build_aa_scores_table(batch_df, score_col)
-        aa_df['batch'] = batch_name
-        aa_batch_frames.append(aa_df)
-
-    if not aa_batch_frames:
-        return pd.DataFrame()
-
-    return pd.concat(aa_batch_frames, ignore_index=True)
 
 
 def _build_stage_section(
@@ -135,6 +96,18 @@ def _build_final_batch_stats(normalized_scores: pd.DataFrame) -> Dict[str, Any]:
             'avgscore',
         )
     return final_stats
+
+
+def _get_heatmap_wt_marker(track_stats: Dict[str, Any]) -> Optional[float]:
+    """Return the WT reference score for one normalized score track."""
+    final_global_stats = track_stats.get('final', {}).get('global', {})
+    wt_stats = final_global_stats.get('wt')
+    syn_wt_stats = final_global_stats.get('synonymous_wt')
+    if wt_stats is not None and 'avg' in wt_stats:
+        return wt_stats['avg']
+    if syn_wt_stats is not None and 'avg' in syn_wt_stats:
+        return syn_wt_stats['avg']
+    return None
 
 
 def _build_normalization_stats(
@@ -180,24 +153,49 @@ def _build_normalization_stats(
     return stats
 
 
-def _load_scores_from_output_dir(output_dir: str) -> pd.DataFrame:
-    """Load best available score CSV from `output_dir/scores`."""
+def _load_score_tables_from_output_dir(output_dir: str) -> Dict[str, pd.DataFrame]:
+    """Load available DNA and AA score CSVs from `output_dir/scores`."""
     scores_dir = Path(output_dir).expanduser().resolve() / 'scores'
     if not scores_dir.exists():
         raise FileNotFoundError(f"Scores directory not found: {scores_dir}")
 
     dna_files = sorted(scores_dir.glob("*_dna_scores.csv"))
     aa_files = sorted(scores_dir.glob("*_aa_scores.csv"))
-    candidate = None
-    if dna_files:
-        candidate = dna_files[-1]
-    elif aa_files:
-        candidate = aa_files[-1]
-    else:
+    if not dna_files and not aa_files:
         raise FileNotFoundError(f"No score CSV found in {scores_dir}")
 
-    scores_df = pd.read_csv(candidate)
-    return _ensure_avgscore_column(scores_df)
+    score_tables: Dict[str, pd.DataFrame] = {}
+    if dna_files:
+        score_tables['dna'] = _ensure_avgscore_column(pd.read_csv(dna_files[-1]))
+    if aa_files:
+        score_tables['aa'] = _ensure_avgscore_column(pd.read_csv(aa_files[-1]))
+    return score_tables
+
+
+def _run_normalization(
+    all_scores: Dict[str, pd.DataFrame],
+    all_stats: Dict[str, Dict[str, float]],
+    experiments: List[Any],
+    method: str,
+    pathogenic_control_type: str,
+    pathogenic_variants: Optional[List[str]],
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """Normalize one set of score tables using the selected method."""
+    combined_scores = combine_raw_scores(all_scores)
+
+    if method == 'linear_range':
+        return apply_linear_range_normalization(
+            combined_scores, all_stats, experiments, pathogenic_control_type, pathogenic_variants
+        )
+    if method == 'zscore_2pole':
+        return apply_zscore_2pole_normalization(
+            combined_scores, all_stats, experiments, pathogenic_control_type, pathogenic_variants
+        )
+    if method == 'zscore_onepole':
+        return apply_zscore_onepole_normalization(
+            combined_scores, all_stats, experiments
+        )
+    raise ValueError(f"Unknown normalization method: {method}")
 
 
 def _get_position_range_from_config(experiment_cfg: Dict[str, Any], experiment_idx: int) -> Tuple[int, int]:
@@ -246,24 +244,26 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
     
     # Load all tile score tables from batch config entries.
     experiments = []
-    all_scores = {}
-    all_stats = {}
+    all_scores: Dict[str, Dict[str, pd.DataFrame]] = {'dna': {}, 'aa': {}}
+    all_stats: Dict[str, Dict[str, Dict[str, float]]] = {'dna': {}, 'aa': {}}
 
     for idx, cfg in enumerate(experiment_entries, 1):
         try:
             tile = int(cfg['tile'])
             output_dir_i = str(Path(str(cfg['output_dir'])).expanduser().resolve())
-            scores_df = _load_scores_from_output_dir(output_dir_i)
+            score_tables = _load_score_tables_from_output_dir(output_dir_i)
             batch_name = f"tile{idx}"
 
             mutagenesis_type = cfg.get('mutagenesis_type')
             if mutagenesis_type is None:
-                mutagenesis_type = 'codon' if 'dna_seq_diff' in scores_df.columns else 'aa'
+                dna_scores_df = score_tables.get('dna')
+                mutagenesis_type = 'codon' if dna_scores_df is not None else 'aa'
 
             avg_method = cfg.get('avg_method', 'rep-weighted')
             min_pos, max_pos = _get_position_range_from_config(cfg, idx - 1)
-            all_scores[batch_name] = scores_df
-            all_stats[batch_name] = extract_experiment_stats(scores_df, avg_method)
+            for track_name, scores_df in score_tables.items():
+                all_scores[track_name][batch_name] = scores_df
+                all_stats[track_name][batch_name] = extract_experiment_stats(scores_df, avg_method)
             experiments.append(
                 SimpleNamespace(
                     tile=tile,
@@ -279,34 +279,29 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Failed to load batch config entry {idx}: {e}")
             raise
-    
-    # Combine raw scores with batch tracking
-    combined_scores = combine_raw_scores(all_scores)
-    
-    # Apply selected normalization method
-    if method == '2pole':
-        normalized_scores, combined_stats = apply_2pole_normalization(
-            combined_scores, all_stats, experiments, pathogenic_control_type, pathogenic_variants
-        )
-    elif method == 'zscore_2pole':
-        normalized_scores, combined_stats = apply_zscore_2pole_normalization(
-            combined_scores, all_stats, experiments, pathogenic_control_type, pathogenic_variants
-        )
-    elif method == 'zscore_center':
-        normalized_scores, combined_stats = apply_zscore_center_normalization(
-            combined_scores, all_stats, experiments
-        )
-    else:
-        raise ValueError(f"Unknown normalization method: {method}")
-    
-    output_dir = str((base_output_dir / 'normalized' / method).resolve())
 
-    logger.info(f"Applied {method} normalization to {len(normalized_scores)} variants")
-    normalized_aa_scores = _build_batch_aa_scores(normalized_scores, experiments)
-    
+    output_dir = str((base_output_dir / 'normalized' / method).resolve())
+    normalized_results: Dict[str, pd.DataFrame] = {'dna': pd.DataFrame(), 'aa': pd.DataFrame()}
+    combined_stats: Dict[str, Dict[str, Any]] = {'dna': {}, 'aa': {}}
+
+    for track_name in ('dna', 'aa'):
+        if not all_scores[track_name]:
+            continue
+        normalized_results[track_name], combined_stats[track_name] = _run_normalization(
+            all_scores[track_name],
+            all_stats[track_name],
+            experiments,
+            method,
+            pathogenic_control_type,
+            pathogenic_variants,
+        )
+        logger.info(
+            f"Normalized {len(normalized_results[track_name])} {track_name.upper()} rows with {method}"
+        )
+
     return {
-        'normalized_scores': normalized_scores,
-        'normalized_aa_scores': normalized_aa_scores,
+        'normalized_scores': normalized_results['dna'],
+        'normalized_aa_scores': normalized_results['aa'],
         'combined_stats': combined_stats,
         'method': method,
         'experiments': experiments,
@@ -365,6 +360,8 @@ def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[s
     if score_col not in scores_df.columns:
         logger.warning(f"Score column {score_col} not found, using 'avgscore'")
         score_col = 'avgscore'
+    if 'annotate_aa' not in scores_df.columns:
+        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
     # WT DNA score (if available)
     if 'annotate_dna' in scores_df.columns:
@@ -373,10 +370,9 @@ def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[s
             stats['wt_dna_score'] = float(wt_subset[score_col].mean())
     
     # Synonymous median
-    if 'annotate_dna' in scores_df.columns:
-        syn_subset = scores_df[scores_df['annotate_dna'] == 'synonymous']
-        if len(syn_subset) > 0:
-            stats['syn_median'] = float(syn_subset[score_col].median())
+    syn_subset = scores_df[scores_df['annotate_aa'] == 'synonymous']
+    if len(syn_subset) > 0:
+        stats['syn_median'] = float(syn_subset[score_col].median())
     
     # Nonsense average  
     if 'annotate_aa' in scores_df.columns:
@@ -393,7 +389,7 @@ def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[s
     return stats
 
 
-def apply_2pole_normalization(
+def apply_linear_range_normalization(
     combined_scores: pd.DataFrame, 
     all_stats: Dict[str, Dict[str, float]],
     experiments: List[Any],
@@ -401,7 +397,7 @@ def apply_2pole_normalization(
     pathogenic_variants: Optional[List[str]] = None
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    Apply 2-pole normalization method.
+    Apply linear-range normalization method.
     
     Parameters
     ----------
@@ -421,7 +417,9 @@ def apply_2pole_normalization(
     Tuple[pd.DataFrame, Dict[str, Any]]
         Normalized scores DataFrame and combined statistics
     """
-    logger.info("Applying 2-pole normalization")
+    logger.info("Applying linear-range normalization")
+    if 'annotate_aa' not in combined_scores.columns:
+        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
     # Calculate global medians
     syn_scores = []
@@ -429,10 +427,9 @@ def apply_2pole_normalization(
     
     for batch_name, batch_df in combined_scores.groupby('batch'):
         # Synonymous scores
-        if 'annotate_dna' in batch_df.columns:
-            syn_subset = batch_df[batch_df['annotate_dna'] == 'synonymous']
-            if len(syn_subset) > 0:
-                syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
         
         # Pathogenic scores
         if pathogenic_control_type == 'nonsense':
@@ -491,7 +488,7 @@ def apply_2pole_normalization(
         normalization_factors=normalization_factors,
     )
     
-    logger.info(f"2-pole normalization complete with factors: {normalization_factors}")
+    logger.info(f"Linear-range normalization complete with factors: {normalization_factors}")
     return normalized_scores, combined_stats
 
 
@@ -524,6 +521,8 @@ def apply_zscore_2pole_normalization(
         Normalized scores DataFrame and combined statistics
     """
     logger.info("Applying z-score scaled 2-pole normalization")
+    if 'annotate_aa' not in combined_scores.columns:
+        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
     # Calculate global WT average
     wt_scores = []
@@ -563,10 +562,9 @@ def apply_zscore_2pole_normalization(
     # Calculate synonymous distribution and apply z-score transformation
     syn_scores = []
     for batch_name, batch_df in wt_normalized_scores.groupby('batch'):
-        if 'annotate_dna' in batch_df.columns:
-            syn_subset = batch_df[batch_df['annotate_dna'] == 'synonymous']
-            if len(syn_subset) > 0:
-                syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
     syn_mean = np.mean(syn_scores) if syn_scores else 0.0
     syn_median = float(np.median(syn_scores)) if syn_scores else np.nan
@@ -645,7 +643,7 @@ def apply_zscore_2pole_normalization(
     return final_scores, combined_stats
 
 
-def apply_zscore_center_normalization(
+def apply_zscore_onepole_normalization(
     combined_scores: pd.DataFrame,
     all_stats: Dict[str, Dict[str, float]],
     experiments: List[Any]
@@ -678,36 +676,28 @@ def apply_zscore_center_normalization(
     if len(set(mutagenesis_types)) > 1:
         raise ValueError(f"All experiments must have the same mutagenesis_type. Found: {set(mutagenesis_types)}")
     mutagenesis_type = mutagenesis_types[0]
+    if 'annotate_aa' not in combined_scores.columns:
+        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
     # Calculate global reference scores for normalization
     reference_scores = []
     reference_type = None
     
     if mutagenesis_type in {'codon', 'snv'}:
-        # For DNA variants, prefer wt_dna if available, otherwise use synonymous
+        # For DNA variants, prefer wt_dna if available.
         for batch_name, batch_df in combined_scores.groupby('batch'):
             if 'annotate_dna' in batch_df.columns:
                 wt_subset = batch_df[batch_df['annotate_dna'] == 'wt_dna']
                 if len(wt_subset) > 0:
                     reference_scores.extend(wt_subset['avgscore'].dropna().tolist())
                     reference_type = 'wt_dna'
-        
-        # Fallback to synonymous if no wt_dna found
-        if not reference_scores:
-            for batch_name, batch_df in combined_scores.groupby('batch'):
-                if 'annotate_dna' in batch_df.columns:
-                    syn_subset = batch_df[batch_df['annotate_dna'] == 'synonymous']
-                    if len(syn_subset) > 0:
-                        reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
-                        reference_type = 'synonymous'
-    else:
-        # For AA variants, use synonymous variants as reference
+
+    if not reference_scores:
         for batch_name, batch_df in combined_scores.groupby('batch'):
-            if 'annotate_dna' in batch_df.columns:
-                syn_subset = batch_df[batch_df['annotate_dna'] == 'synonymous']
-                if len(syn_subset) > 0:
-                    reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
-                    reference_type = 'synonymous'
+            syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+            if len(syn_subset) > 0:
+                reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
+                reference_type = 'synonymous'
     
     if not reference_scores:
         raise ValueError("No reference variants found for normalization. Need either wt_dna or synonymous variants.")
@@ -747,10 +737,9 @@ def apply_zscore_center_normalization(
     # Calculate synonymous distribution for z-score transformation
     syn_scores = []
     for batch_name, batch_df in reference_normalized_scores.groupby('batch'):
-        if 'annotate_dna' in batch_df.columns:
-            syn_subset = batch_df[batch_df['annotate_dna'] == 'synonymous']
-            if len(syn_subset) > 0:
-                syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
     if not syn_scores:
         logger.warning("No synonymous variants found for z-score transformation, using all variants")
@@ -824,18 +813,14 @@ def generate_batch_visualizations(
     score_col = 'avgscore'  # Default, could be made configurable
     
     combined_stats = results.get('combined_stats', {})
+    dna_combined_stats = combined_stats.get('dna', {})
+    aa_combined_stats = combined_stats.get('aa', {})
 
-    final_global_stats = combined_stats.get('final', {}).get('global', {})
-    wt_stats = final_global_stats.get('wt')
-    syn_wt_stats = final_global_stats.get('synonymous_wt')
-    if wt_stats is not None and 'avg' in wt_stats:
-        wt_score = wt_stats['avg']
-    elif syn_wt_stats is not None and 'avg' in syn_wt_stats:
-        wt_score = syn_wt_stats['avg']
-    else:
-        wt_score = None
-
-    def _build_colorbar_ticks(score_series: pd.Series) -> Tuple[Optional[List[float]], Optional[List[str]]]:
+    def _build_colorbar_ticks(
+        score_series: pd.Series,
+        track_stats: Dict[str, Any],
+        wt_score: Optional[float],
+    ) -> Tuple[Optional[List[float]], Optional[List[str]]]:
         series = pd.to_numeric(score_series, errors='coerce').dropna()
         if len(series) == 0:
             return None, None
@@ -846,14 +831,14 @@ def generate_batch_visualizations(
         pathogenic_tick = None
         if config_obj.pathogenic_control_type == 'nonsense':
             pathogenic_tick = (
-                combined_stats.get('final', {})
+                track_stats.get('final', {})
                 .get('global', {})
                 .get('nonsense', {})
                 .get('avg')
             )
         if pathogenic_tick is None:
             pathogenic_tick = (
-                combined_stats.get('zscore', {})
+                track_stats.get('zscore', {})
                 .get('global', {})
                 .get('non_avg_zscore')
             )
@@ -873,36 +858,48 @@ def generate_batch_visualizations(
 
     tick_values = None
     tick_labels = None
-    if score_col in results['normalized_scores'].columns:
-        tick_values, tick_labels = _build_colorbar_ticks(results['normalized_scores'][score_col])
+    dna_batch_data = results['normalized_scores']
+    dna_wt_score = _get_heatmap_wt_marker(dna_combined_stats)
+    if score_col in dna_batch_data.columns:
+        tick_values, tick_labels = _build_colorbar_ticks(
+            dna_batch_data[score_col],
+            dna_combined_stats,
+            dna_wt_score,
+        )
 
     # Create tiled heatmap
     tiled_heatmap_file = os.path.join(figures_dir, "tiled_heatmap.png")
     combined_aa_heatmap_file = os.path.join(figures_dir, "combined_aa_heatmap.png")
 
     try:
-        plot_tiled_heatmap(
-            batch_data=results['normalized_scores'],
-            score_col=score_col,
-            batch_config=config_obj,
-            experiments=results['experiments'],
-            wt_score=wt_score,
-            tick_values=tick_values,
-            tick_labels=tick_labels,
-            export=True,
-            output=tiled_heatmap_file,
-            export_matrix=True,
-            biophysical_properties=False
-        )
-        logger.info(f"Generated tiled heatmap: {tiled_heatmap_file}")
+        if not dna_batch_data.empty:
+            plot_tiled_heatmap(
+                batch_data=dna_batch_data,
+                score_col=score_col,
+                batch_config=config_obj,
+                experiments=results['experiments'],
+                wt_score=dna_wt_score,
+                tick_values=tick_values,
+                tick_labels=tick_labels,
+                export=True,
+                output=tiled_heatmap_file,
+                export_matrix=True,
+                biophysical_properties=False
+            )
+            logger.info(f"Generated tiled heatmap: {tiled_heatmap_file}")
 
-        # Also export a combined AA heatmap artifact for batch outputs.
+        # Also export a combined AA heatmap for cross-tile outputs.
         aa_batch_data = results['normalized_aa_scores']
         if not aa_batch_data.empty:
             aa_tick_values = tick_values
             aa_tick_labels = tick_labels
+            aa_wt_score = _get_heatmap_wt_marker(aa_combined_stats)
             if score_col in aa_batch_data.columns:
-                aa_tick_values, aa_tick_labels = _build_colorbar_ticks(aa_batch_data[score_col])
+                aa_tick_values, aa_tick_labels = _build_colorbar_ticks(
+                    aa_batch_data[score_col],
+                    aa_combined_stats,
+                    aa_wt_score,
+                )
             aa_experiments = [
                 SimpleNamespace(
                     tile=exp.tile,
@@ -921,7 +918,7 @@ def generate_batch_visualizations(
                 score_col=score_col,
                 batch_config=config_obj,
                 experiments=aa_experiments,
-                wt_score=wt_score,
+                wt_score=aa_wt_score,
                 tick_values=aa_tick_values,
                 tick_labels=aa_tick_labels,
                 export=True,
@@ -957,18 +954,19 @@ def save_batch_results(
     
     # Save normalized scores
     scores_dir = os.path.join(output_dir, 'scores')
-    scores_file = os.path.join(scores_dir, "batch_scores.csv")
+    scores_file = os.path.join(scores_dir, "batch_dna_scores.csv")
     
-    normalized_scores = results['normalized_scores'].copy()
-    normalized_scores.to_csv(scores_file, index=False)
-    logger.info(f"Saved batch scores to {scores_file}")
+    dna_batch_data = results['normalized_scores'].copy()
+    if not dna_batch_data.empty:
+        dna_batch_data.to_csv(scores_file, index=False)
+        logger.info(f"Saved batch DNA scores to {scores_file}")
 
-    aa_scores = results.get('normalized_aa_scores')
-    if aa_scores is None:
-        aa_scores = pd.DataFrame()
-    if not aa_scores.empty:
+    aa_batch_data = results.get('normalized_aa_scores')
+    if aa_batch_data is None:
+        aa_batch_data = pd.DataFrame()
+    if not aa_batch_data.empty:
         aa_scores_file = os.path.join(scores_dir, "batch_aa_scores.csv")
-        aa_scores.to_csv(aa_scores_file, index=False)
+        aa_batch_data.to_csv(aa_scores_file, index=False)
         logger.info(f"Saved batch AA scores to {aa_scores_file}")
     
     # Save combined statistics
