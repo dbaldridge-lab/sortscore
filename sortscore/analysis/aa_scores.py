@@ -20,6 +20,14 @@ def _get_score_column_from_avg_method(avg_method: str) -> str:
     return f"avgscore_{avg_method.replace('-', '_')}"
 
 
+def _get_count_columns(scores_df: pd.DataFrame) -> List[str]:
+    """Return raw count columns that should be preserved in AA score outputs."""
+    return [
+        col for col in scores_df.columns
+        if col.startswith('count.r') and 'b' in col
+    ]
+
+
 def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: str, analysis_logger) -> None:
     """
     Process and save amino acid scores from variant data.
@@ -149,6 +157,7 @@ def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: 
         Aggregated AA scores with codon and replicate statistics
     """
     # DNA->AA aggregation case: aggregate synonymous variants
+    count_columns = _get_count_columns(scores_df_drop_nan)
     columns_to_average = ['avgscore', 'avgscore_rep_weighted'] + rep_score_columns
     
     # Calculate standard deviation and count of codon-level scores before AA aggregation
@@ -157,6 +166,14 @@ def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: 
     
     # Calculate mean scores for aggregation
     aa_scores = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[columns_to_average].mean().reset_index()
+
+    if count_columns:
+        aa_count_sums = (
+            scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[count_columns]
+            .sum()
+            .reset_index()
+        )
+        aa_scores = aa_scores.merge(aa_count_sums, on=['aa_seq_diff', 'annotate_aa'], how='left')
     
     # Merge the standard deviation and count of codon scores
     aa_scores = aa_scores.merge(aa_scores_std, on=['aa_seq_diff', 'annotate_aa'], how='left')
@@ -184,7 +201,8 @@ def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns:
         AA scores with replicate statistics only
     """
     # AA-only case: no aggregation needed, just copy the data
-    columns_to_include = ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted'] + rep_score_columns
+    count_columns = _get_count_columns(scores_df_drop_nan)
+    columns_to_include = ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted'] + rep_score_columns + count_columns
     
     aa_scores = scores_df_drop_nan[columns_to_include].copy()
     

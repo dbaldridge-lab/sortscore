@@ -24,6 +24,8 @@ def test_build_aa_scores_table_retains_synonymous_no_diff_rows():
             "annotate_aa": ["synonymous", "synonymous", "missense_aa"],
             "avgscore": [10.0, 14.0, 30.0],
             "avgscore_rep_weighted": [11.0, 15.0, 31.0],
+            "count.r1b1": [100.0, 150.0, 300.0],
+            "count.r1b2": [50.0, 75.0, 125.0],
         }
     )
 
@@ -32,6 +34,8 @@ def test_build_aa_scores_table_retains_synonymous_no_diff_rows():
     # The two synonymous input rows should collapse into one retained no-diff AA row.
     syn_row = assert_synonymous_no_diff_group_retained(aa_scores)
     assert syn_row["avgscore_rep_weighted"] == 13.0
+    assert syn_row["count.r1b1"] == 250.0
+    assert syn_row["count.r1b2"] == 125.0
 
 
 def test_aggregate_aa_data_retains_synonymous_no_diff_rows():
@@ -47,3 +51,22 @@ def test_aggregate_aa_data_retains_synonymous_no_diff_rows():
 
     # AA aggregation should keep the synonymous no-diff group instead of dropping it.
     assert_synonymous_no_diff_group_retained(aa_data)
+
+
+def test_build_aa_scores_table_preserves_count_columns_for_aa_only_scores():
+    scores_df = pd.DataFrame(
+        {
+            "aa_seq_diff": ["A.2.S"],
+            "annotate_aa": ["missense_aa"],
+            "avgscore": [30.0],
+            "avgscore_rep_weighted": [31.0],
+            "count.r1b1": [300.0],
+            "count.r1b2": [125.0],
+        }
+    )
+
+    aa_scores = build_aa_scores_table(scores_df, "avgscore")
+    row = aa_scores.iloc[0]
+
+    assert row["count.r1b1"] == 300.0
+    assert row["count.r1b2"] == 125.0

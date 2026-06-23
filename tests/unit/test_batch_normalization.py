@@ -45,6 +45,29 @@ def test_save_batch_results_preserves_decimal_score_precision(tmp_path):
         assert saved_scores.loc[0, col] == expected
 
 
+def test_save_batch_results_preserves_count_columns_in_batch_aa_scores(tmp_path):
+    output_dir = Path(tmp_path) / "normalized" / "zscore_2pole"
+    aa_scores = pd.DataFrame(
+        {
+            "aa_seq_diff": ["p.Gly1Ala"],
+            "annotate_aa": ["G1A"],
+            "avgscore": [3.875],
+            "avgscore_rep_weighted": [3.625],
+            "count.r1b1": [100.0],
+            "count.r1b2": [50.0],
+        }
+    )
+    results = {
+        "normalized_scores": pd.DataFrame({"avgscore": [3.875]}),
+        "normalized_aa_scores": aa_scores,
+        "combined_stats": {"example": 1},
+    }
+
+    save_batch_results(results, str(output_dir))
+
+    saved_aa_scores = pd.read_csv(output_dir / "scores" / "batch_aa_scores.csv")
+    assert saved_aa_scores.loc[0, "count.r1b1"] == 100.0
+    assert saved_aa_scores.loc[0, "count.r1b2"] == 50.0
 def test_build_aa_scores_table_preserves_decimal_stats_for_codon_aggregation():
     scores_df = pd.DataFrame(
         {
