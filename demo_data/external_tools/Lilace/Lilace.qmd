@@ -272,14 +272,15 @@ scores |>
 Optional diagnostic plots from Lilace.
 
 ```{r}
-#| label: plots
+#| label: effect size heatmap
 lilace::lilace_score_density(
   scores,
   savedir = working_dir_path,
   score.col = "effect",
   name = "score_histogram",
   hist = TRUE,
-  scale.free = TRUE
+  scale.free = TRUE,
+  savepdf = FALSE
 )
 
 heatmap_scores <- scores |>
@@ -292,6 +293,24 @@ lilace::lilace_score_heatmap(
   heatmap_scores,
   savedir = working_dir_path,
   score.col = "effect",
-  name = "score_heatmap"
+  name = "score_heatmap",
+  x.text = 9,
+  y.text = 10,
+  seq.text = 3,
+  savepdf = FALSE
+)
+```
+
+```{r}
+#| label: discovery heatmap
+lilace::lilace_score_heatmap(
+  heatmap_scores,
+  savedir = working_dir_path,
+  score.col = "discovery05",
+  name = "discovery05_heatmap",
+  x.text = 9,
+  y.text = 10,
+  seq.text = 3,
+  savepdf = FALSE
 )
 ```
