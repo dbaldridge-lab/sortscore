@@ -82,7 +82,7 @@ This is the default method that creates a standardized scale making cross-experi
 
 **Result**: Synonymous variants center around 0 with unit variance across all experiments.
 
-### 2-Pole Normalization
+### `linear_range` Normalization
 **When to use**:
 - When you need to preserve relative score ranges
 - Compatibility with published normalization approaches
@@ -99,7 +99,7 @@ Where:
 - `A` = global synonymous median
 - `C` = global pathogenic median
 
-### Z-score Centering Normalization
+### `zscore_onepole` Normalization
 **When to use**:
 - When pathogenic controls are unavailable
 - When you want z-score standardization without pathogenic anchoring

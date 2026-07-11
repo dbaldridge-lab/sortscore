@@ -198,14 +198,14 @@ The system generates unified tiled heatmaps that properly map each tile's positi
   2. Z-score transformation: `norm2 = (norm1 - syn_mean) / syn_std_dev`  
   3. Pathogenic control normalization: `final = norm2 * (global_pathogenic / experiment_pathogenic)`
 
-**2. 2-pole normalization**
+**2. `linear_range` normalization**
 - Uses synonymous and pathogenic variants as reference points
 - Formula: `(b/(a-c))*(A-C)` where:
   - `b` = individual variant score
   - `a` = experiment synonymous median, `c` = experiment pathogenic median
   - `A` = global synonymous median, `C` = global pathogenic median
 
-**3. Z-score centering normalization** 
+**3. `zscore_onepole` normalization**
 - WT-only normalization
 - Process:
   1. WT normalization: `norm1 = raw_score * (global_reference / experiment_reference)`
