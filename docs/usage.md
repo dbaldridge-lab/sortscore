@@ -32,7 +32,7 @@ The experiment setup CSV must contain the following required columns:
 - `Replicate`: Technical replicate number. Set to 1 if your experiment doesn't have technical replicates.
 - `Bin`: Bin number. Label from 1 up to the number of tubes that cells were sorted into. The order does not matter, so long as MFI is mapped to the correct bin in this file.
 - `Read Counts (CSV)`: Path to the variant count file for this replicate/bin.
-- `MFI`: Median fluorescence value for this replicate/bin.
+- `MFI`: Median fluorescence value for this replicate/bin. Ordinal values can be input in cases where experimentally derived bin weights are not available.
 
 Optional setup columns:
 - `Tile`: Used for normalization across experiments in tiled/batch workflows. Not required for standard single-experiment scoring.
