@@ -5,8 +5,6 @@
 "minread_threshold": 0,
 "mutagenesis_type": "codon",
 "batch_normalization_method": "zscore_2pole",
-"pathogenic_control_type": "nonsense",
-"pathogenic_variants": null,
 "combined_output_dir": "_test_outputs/multitile_output",
 "experiments": [
     {

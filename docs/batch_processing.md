@@ -48,8 +48,6 @@ Example batch config options are shown below. The `experiments` list is required
         }
     ],
     "batch_normalization_method": "zscore_2pole",
-    "pathogenic_control_type": "nonsense",
-    "pathogenic_variants": ["E501K"],
     "combined_output_dir": "/path/to/combined_results"
 }
 ```
@@ -60,8 +58,6 @@ Example batch config options are shown below. The `experiments` list is required
 |-----------|------|---------|-------------|
 | `experiments` | list | required | Tile entries for normalization. Each entry must include `tile` (int), `output_dir`, `wt_seq`, `min_pos`, and `max_pos`. |
 | `batch_normalization_method` | string | `"zscore_2pole"` | Normalization method: `"zscore_2pole"`, `"linear_range"`, or `"zscore_onepole"` |
-| `pathogenic_control_type` | string | `"nonsense"` | Type of pathogenic control: `"nonsense"` or `"custom"` |
-| `pathogenic_variants` | list | `null` | Custom pathogenic variants (required when `pathogenic_control_type` is `"custom"`) |
 | `combined_output_dir` | string | `"./normalized"` | Output directory for combined results |
 
 CLI override:
@@ -116,34 +112,7 @@ Where:
 
 
 ## Pathogenic Controls
-
-### Nonsense Variants (Default)
-
-Uses stop codon variants (`*`) as pathogenic controls.
-
-```json
-{
-    "pathogenic_control_type": "nonsense"
-}
-```
-
-**Requirements**: Your experiments must include stop codon variants in the data.
-
-### Custom Pathogenic Variants
-
-Specify your own list of pathogenic control variants.
-
-```json
-{
-    "pathogenic_control_type": "custom",
-    "pathogenic_variants": ["R98C", "P171X", "W93Q"]
-}
-```
-
-**Use cases**:
-- Known deleterious mutations
-- Disease-associated variants
-- Experimental controls
+**Requirements**: Your experiments must currently include nonsense variants (denoted as *) for normalization methods requiring pathogenic controls.
 
 ## Output Files
 Batch processing generates:

@@ -184,8 +184,6 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 |---------------------------|-----------|--------------------------------------------------------------------------|
 | experiments               | list      | Required list of experiment entries. Each entry includes `tile`, `output_dir`, `wt_seq`, `min_pos`, `max_pos`. |
 | batch_normalization_method| str       | "zscore_2pole" (default), "linear_range", or "zscore_onepole"                |
-| pathogenic_control_type   | str       | "nonsense" (default) or "custom"                                       |
-| pathogenic_variants       | list      | Custom pathogenic variants (required when using "custom")              |
 | combined_output_dir       | str       | Directory for final combined results                                     |
 
 ### Batch Normalization Methods
@@ -212,7 +210,7 @@ The system generates unified tiled heatmaps that properly map each tile's positi
   2. Z-score transformation: `final = (norm1 - syn_mean) / syn_std_dev`
 - For DNA variants: uses `wt_dna` scores as reference (fallback to synonymous)
 - For AA variants: uses synonymous variants as reference
-- Use when pathogenic controls are unavailable
+- Use when pathogenic controls are unavailable (only stop codons are currently supported as pathogenic controls)
 
 ### Batch Processing Workflow
 
