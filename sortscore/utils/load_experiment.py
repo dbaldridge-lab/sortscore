@@ -385,20 +385,24 @@ class ExperimentConfig:
         if not self.counts:
             raise ValueError("No counts loaded. Call load_counts() first.")
         
-        # Get all unique variants and collect additional columns from first available DataFrame
+        # Get all unique variants and coalesce additional columns across every DataFrame.
         all_variants = set()
         additional_columns = {}
-        first_df = None
         
         for rep in self.counts:
             for bin_ in self.counts[rep]:
-                all_variants.update(self.counts[rep][bin_]['variant_seq'])
-                if first_df is None:
-                    first_df = self.counts[rep][bin_]
-                    # Get any additional columns beyond variant_seq and count
-                    for col in first_df.columns:
-                        if col not in ['variant_seq', 'count']:
-                            additional_columns[col] = first_df.set_index('variant_seq')[col].to_dict()
+                count_df = self.counts[rep][bin_]
+                all_variants.update(count_df['variant_seq'])
+
+                for col in count_df.columns:
+                    if col in ['variant_seq', 'count']:
+                        continue
+
+                    # Build a variant-to-value lookup for each metadata column.
+                    col_data = additional_columns.setdefault(col, {})
+                    for variant_seq, value in zip(count_df['variant_seq'], count_df[col]):
+                        # Keep the first value found for this variant.
+                        col_data.setdefault(variant_seq, value)
         
         all_variants = sorted(all_variants)
         df = pd.DataFrame({'variant_seq': all_variants})
