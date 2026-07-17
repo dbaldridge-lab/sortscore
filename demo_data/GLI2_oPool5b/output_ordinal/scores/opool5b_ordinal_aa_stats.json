@@ -1,0 +1,30 @@
+{
+  "overall": {
+    "avg": 2.67,
+    "median": 2.83,
+    "min": 1.0,
+    "max": 4.0,
+    "std": 0.46
+  },
+  "synonymous_wt": {
+    "avg": 2.87,
+    "median": 3.0,
+    "min": 2.0,
+    "max": 3.0,
+    "std": 0.23
+  },
+  "nonsense": {
+    "avg": 1.62,
+    "median": 1.67,
+    "min": 1.0,
+    "max": 2.0,
+    "std": 0.38
+  },
+  "missense": {
+    "avg": 2.71,
+    "median": 3.0,
+    "min": 1.67,
+    "max": 4.0,
+    "std": 0.4
+  }
+}

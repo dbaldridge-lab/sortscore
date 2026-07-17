@@ -314,3 +314,42 @@ lilace::lilace_score_heatmap(
   savepdf = FALSE
 )
 ```
+## Compare sortscore and Lilace Scores
+
+```{r}
+#| label: sortscore comparison
+#| fig-width: 8
+library(ggplot2)
+
+corr <- cor.test(x=scores$sortscore_score, y=scores$effect, method='spearman', exact=FALSE)
+
+# Add n and correlation to the plot
+complete_scores <- scores[complete.cases(scores$sortscore_score, scores$effect),]
+
+label <- sprintf(
+  "Spearman's \u03c1 = %.2f\nn = %d",
+  unname(corr$estimate),
+  nrow(complete_scores)
+)
+
+scatterplot <- ggplot(scores) +
+  aes(x = sortscore_score, y = effect, color = type) +
+  geom_smooth(method=lm, se = FALSE, color = 'black', weight = 3) +
+  geom_point(size = 1.5) +
+  annotate(
+      "text",
+      x = Inf,
+      y = -Inf,
+      label = label,
+      hjust = 1.1,
+      vjust = -0.5
+      ) +
+  labs(
+    title = "sortscore and Lilace scoring shows strong concordance (GLI2 DMS positions 518-550)",
+    x = "Sortscore score",
+    y = "Lilace Effect",
+    color = "Type"
+    )
+  print(scatterplot)
+
+```

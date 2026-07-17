@@ -1,0 +1,125 @@
+---
+title: "Sortscore MFI VS Ordinal Weights"
+format: docx
+editor: visual
+---
+
+This notebook compares outputs scores produced using sortscore after changing bin weights from median MFI (AFU) to ordinal values. 
+
+```{r}
+#| label: setup
+
+aa_scores <- readr::read_csv(
+  "output/scores/demo_aa_scores.csv",
+  show_col_types = FALSE
+)
+dna_scores <- readr::read_csv(
+  "output/scores/demo_dna_scores.csv",
+  show_col_types = FALSE
+)
+aa_scores_ordinal <- readr::read_csv(
+  "output_ordinal/scores/opool5b_ordinal_aa_scores.csv",
+  show_col_types = FALSE
+)
+dna_scores_ordinal <- readr::read_csv(
+  "output_ordinal/scores/opool5b_ordinal_dna_scores.csv",
+  show_col_types = FALSE
+)
+
+
+```
+
+```{r}
+#| label: AA scores: ordinal vs MFI weighted comparison
+#| fig-width: 8
+library(ggplot2)
+
+complete_rows <- complete.cases(
+  aa_scores$avgscore_rep_weighted,
+  aa_scores_ordinal$avgscore_rep_weighted
+)
+
+aa_corr <- cor.test(
+  x = aa_scores$avgscore_rep_weighted[complete_rows],
+  y = aa_scores_ordinal$avgscore_rep_weighted[complete_rows],
+  method = "spearman",
+  exact = FALSE
+)
+
+label <- sprintf(
+  "Spearman's \u03c1 = %.2f\nn = %d",
+  unname(aa_corr$estimate),
+  sum(complete_rows)
+)
+
+scatterplot <- ggplot() +
+  aes(
+    x = aa_scores$avgscore_rep_weighted,
+    y = aa_scores_ordinal$avgscore_rep_weighted
+  ) +
+  geom_smooth(method = lm, se = FALSE, color = "red", linewidth = 1) +
+  geom_point(size = 1.5) +
+  annotate(
+      "text",
+      x = Inf,
+      y = -Inf,
+      label = label,
+      hjust = 1.1,
+      vjust = -0.5
+      ) +
+  labs(
+    title = "AA scores using MFI and ordinal bin weights",
+    x = "MFI Weighted",
+    y = "Ordinal Weighted"
+    )
+
+print(scatterplot)
+
+```
+
+```{r}
+#| label: DNA scores: ordinal vs MFI weighted comparison
+#| fig-width: 8
+
+dna_complete_rows <- complete.cases(
+  dna_scores$avgscore_rep_weighted,
+  dna_scores_ordinal$avgscore_rep_weighted
+)
+
+dna_corr <- cor.test(
+  x = dna_scores$avgscore_rep_weighted[dna_complete_rows],
+  y = dna_scores_ordinal$avgscore_rep_weighted[dna_complete_rows],
+  method = "spearman",
+  exact = FALSE
+)
+
+dna_label <- sprintf(
+  "Spearman's \u03c1 = %.2f\nn = %d",
+  unname(dna_corr$estimate),
+  sum(dna_complete_rows)
+)
+
+dna_scatterplot <- ggplot() +
+  aes(
+    x = dna_scores$avgscore_rep_weighted,
+    y = dna_scores_ordinal$avgscore_rep_weighted
+  ) +
+  geom_smooth(method = lm, se = FALSE, color = "red", linewidth = 1) +
+  geom_point(size = 1.5) +
+  annotate(
+    "text",
+    x = Inf,
+    y = -Inf,
+    label = dna_label,
+    hjust = 1.1,
+    vjust = -0.5
+  ) +
+  labs(
+    title = "DNA scores using MFI and ordinal bin weights",
+    x = "MFI Weighted",
+    y = "Ordinal Bin Weighted"
+  )
+
+print(dna_scatterplot)
+
+```
