@@ -47,7 +47,7 @@ The entry point for running the Sort-seq scoring workflow is the `sortscore` com
 |------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `experiment_name`      | str   | Name/ID of the experiment or submission. |
 | `experiment_setup_file`| str   | Path to the experiment setup CSV file (see below). |
-| `wt_seq`               | str   | Wild-type reference sequence for the region analyzed. Use **DNA** sequence when `mutagenesis_type` is `codon` or `snv`; use **protein** sequence when `mutagenesis_type` is `aa`. |
+| `wt_seq`               | str   | Wild-type reference sequence for the region analyzed. Use a **DNA** sequence when `mutagenesis_type` is `codon`; use a **protein** sequence when `mutagenesis_type` is `aa`. |
 
 Additional optional fields can be used to customize the analysis. These can be selected by providing a JSON configuration with the `-c` option, or through CLI flags. If a parameter is provided both in the CLI and the config file, the CLI value takes precedence.
 
@@ -59,8 +59,8 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
 | `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
 | `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
-| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. |
-| `mutagenesis_type`     | str   | Mutagenesis type: `aa`, `codon`, or `snv`. **Default:** `aa`. Set this in config or CLI when running DNA-based analysis (`codon`/`snv`). |
+| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. **Default:** `None` (CV filtering is disabled). |
+| `mutagenesis_type`     | str   | Mutagenesis type: `aa` or `codon`. **Default:** `aa`. Set this to `codon` in the config or CLI when running DNA-based analysis. |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
 | `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. If set in config JSON, relative paths are resolved from the config file directory. If set via `--output-dir`, relative paths are resolved from the current working directory. |
 | `mutagenesis_variants` | list  | Custom list of variants for heatmap y-axis. **Default:** `all 20 AAs plus stop codon`. |
@@ -75,7 +75,7 @@ Path resolution summary:
 - `output_dir` in config JSON: relative to the config file location.
 
 `wt_seq` format requirement by mutagenesis type:
-- `mutagenesis_type: codon` or `snv` -> provide DNA `wt_seq`
+- `mutagenesis_type: codon` -> provide DNA `wt_seq`
 - `mutagenesis_type: aa` -> provide protein `wt_seq`
 
 ### Basic Usage
@@ -227,7 +227,6 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 `sortscore` uses `mutagenesis_type` to determine analysis mode:
 - `aa` (default)
 - `codon`
-- `snv` (not yet implemented; see open issues)
 
 Set it either in your config JSON (`"mutagenesis_type": "codon"`) or on the CLI with `--mutagenesis-type codon`.
 
