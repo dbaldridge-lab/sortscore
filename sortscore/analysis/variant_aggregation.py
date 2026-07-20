@@ -10,6 +10,27 @@ Examples
 """
 import pandas as pd
 
+
+_AA_GROUP_COLUMNS = {'aa_seq_diff', 'annotate_aa'}
+_AA_FIRST_COLUMNS = {
+    'aa_seq',
+    'batch',
+}
+_AA_SUM_COLUMNS = {'n_codons', 'n_measurements'}
+_AA_DROPPED_COLUMNS = {
+    'variant_seq',
+    'codon_diff',
+    'dna_seq_diff',
+    'annotate_dna',
+    'SD_codon',
+    'SD_rep',
+    'CV_rep',
+    'CV_codon',
+    'SEM',
+    'CI_lower',
+    'CI_upper',
+}
+
 def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
     """
     Aggregate DNA-level scores to amino acid level by averaging synonymous variants.
@@ -63,8 +84,6 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     --------
     >>> aggregated = aggregate_synonymous_variants(annotated_scores)
     """
-    import numpy as np
-    
     if 'aa_seq_diff' not in scores_df.columns or 'annotate_aa' not in scores_df.columns:
         raise ValueError("DataFrame must contain 'aa_seq_diff' and 'annotate_aa' columns")
     
@@ -73,21 +92,24 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     agg_dict = {}
     
     for col in scores_df.columns:
-        if col in ['aa_seq_diff', 'annotate_aa']:
-            continue  # These are grouping columns
-        elif col in ['avgscore', 'avgscore_rep_weighted'] or col.endswith('.score'):
-            agg_dict[col] = 'mean'  # Average the scores
-        elif col in ['n_codons', 'n_measurements']:
-            agg_dict[col] = 'sum'  # Sum the counts for proper variance calculation
-        elif col in ['SD_codon', 'SD_rep', 'CV_rep', 'CV_codon', 'SEM', 'CI_lower', 'CI_upper']:
-            # Statistics need to be recalculated with proper codon variance, drop for now
+        if col in _AA_GROUP_COLUMNS:
+            continue
+        if col.startswith('avgscore') or col.startswith('score.r') or (
+            col.startswith('Rep') and col.endswith('.score')
+        ):
+            agg_dict[col] = 'mean'
+        elif col.startswith('count.r') or col.startswith('norm.count.r') or (
+            col.startswith('Rep') and col.endswith('.sum')
+        ):
+            agg_dict[col] = 'sum'
+        elif col in _AA_SUM_COLUMNS:
+            agg_dict[col] = 'sum'
+        elif col in _AA_FIRST_COLUMNS:
+            agg_dict[col] = 'first'
+        elif col.startswith('prop.r') or col in _AA_DROPPED_COLUMNS:
             continue
         else:
-            # For other numeric columns, use mean
-            if scores_df[col].dtype.kind in 'biufc':  # numeric types
-                agg_dict[col] = 'mean'
-            else:
-                agg_dict[col] = 'first'  # For non-numeric, take first value
+            raise ValueError(f"No AA aggregation rule defined for column '{col}'.")
     
     aggregated_df = scores_df.groupby(['aa_seq_diff', 'annotate_aa'], dropna=False).agg(agg_dict).reset_index()
     
