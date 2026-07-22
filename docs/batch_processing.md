@@ -72,7 +72,7 @@ CLI override:
 This is the default method that creates a standardized scale making cross-experiment comparisons meaningful.
 
 **Mathematical Steps:**
-1. WT Normalization
+1. Synonymous-Reference Alignment
 2. Z-score Transform
 3. Pathogenic Normalization
 
@@ -101,12 +101,11 @@ Where:
 - When you want z-score standardization without pathogenic anchoring
 
 **Mathematical Steps:**
-1. WT Normalization
+1. Synonymous-Reference Alignment
 2. Z-score Transform
 
 **Reference Selection**:
-- For DNA variants: Uses `wt_dna` scores as reference (falls back to synonymous if unavailable)
-- For AA variants: Uses synonymous variants as reference
+- Uses synonymous variants as the reference for both DNA and AA inputs
 
 **Result**: Creates standardized scale centered on synonymous variants with unit variance.
 

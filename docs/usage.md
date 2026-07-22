@@ -192,7 +192,7 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 - Creates standardized scale where synonymous variants center around 0 with unit variance
 - Enables meaningful cross-experiment comparisons
 - Process:
-  1. WT normalization: `norm1 = raw_score * (global_wt / experiment_wt)`
+  1. Synonymous-reference alignment: `norm1 = raw_score * (global_synonymous / experiment_synonymous)`
   2. Z-score transformation: `norm2 = (norm1 - syn_mean) / syn_std_dev`  
   3. Pathogenic control normalization: `final = norm2 * (global_pathogenic / experiment_pathogenic)`
 
@@ -204,12 +204,11 @@ The system generates unified tiled heatmaps that properly map each tile's positi
   - `A` = global synonymous median, `C` = global pathogenic median
 
 **3. `zscore_onepole` normalization**
-- WT-only normalization
+- Synonymous-only normalization
 - Process:
-  1. WT normalization: `norm1 = raw_score * (global_reference / experiment_reference)`
+  1. Synonymous-reference alignment: `norm1 = raw_score * (global_synonymous / experiment_synonymous)`
   2. Z-score transformation: `final = (norm1 - syn_mean) / syn_std_dev`
-- For DNA variants: uses `wt_dna` scores as reference (fallback to synonymous)
-- For AA variants: uses synonymous variants as reference
+- Uses synonymous variants as the reference for both DNA and AA inputs
 - Use when pathogenic controls are unavailable (only stop codons are currently supported as pathogenic controls)
 
 ### Batch Processing Workflow

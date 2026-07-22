@@ -177,14 +177,14 @@ def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
     scores_df = annotate_scores_dataframe(
         pd.DataFrame(
             {
-                "variant_seq": ["AAA", "AAG", "TAA"],
-                "avgscore": [10.0, 12.0, 2.0],
-                "avgscore_rep_weighted": [10.0, 12.0, 2.0],
-                "Rep1.score": [10.0, 12.0, 2.0],
-                "Rep2.score": [10.0, 12.0, 2.0],
+                "variant_seq": ["CTA", "CTC", "CTG", "TAA"],
+                "avgscore": [10.0, 11.0, 12.0, 2.0],
+                "avgscore_rep_weighted": [10.0, 11.0, 12.0, 2.0],
+                "Rep1.score": [10.0, 11.0, 12.0, 2.0],
+                "Rep2.score": [10.0, 11.0, 12.0, 2.0],
             }
         ),
-        "AAA",
+        "CTA",
         mutagenesis_type="codon",
     )
 
@@ -202,7 +202,7 @@ def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
                     "avg_method": "simple-avg",
                     "min_pos": 1,
                     "max_pos": 3,
-                    "wt_seq": "AAA",
+                    "wt_seq": "CTA",
                     "mutagenesis_type": "codon",
                 }
             ],
@@ -241,7 +241,7 @@ def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypat
             "dna": {
                 "final": {
                     "global": {
-                        "wt": {"avg": 1.5},
+                        "synonymous_wt": {"avg": 1.5},
                         "nonsense": {"avg": 2.5},
                     }
                 }
@@ -261,4 +261,4 @@ def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypat
     assert len(calls) == 1
     assert calls[0]["wt_score"] == 1.5
     assert calls[0]["tick_values"] == [1.0, 1.5, 2.5, 3.0]
-    assert calls[0]["tick_labels"] == ["1.0", "WT Avg", "(-) Control Avg", "3.0"]
+    assert calls[0]["tick_labels"] == ["1.0", "Synonymous Avg", "(-) Control Avg", "3.0"]

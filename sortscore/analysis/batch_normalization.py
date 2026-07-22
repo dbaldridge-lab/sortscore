@@ -5,7 +5,7 @@ This module combines multiple experiments to enable cross-experiment comparisons
 
 It supports two normalization approaches:
 1. **Z-score scaled 2-pole normalization** (default):
-   - Step 1: WT normalization to global reference
+   - Step 1: Synonymous-variant normalization to global reference
    - Step 2: Z-score transformation using synonymous distribution  
    - Step 3: Pathogenic control normalization
    Creates standardized scale where synonymous variants center around 0 with unit 
@@ -98,13 +98,10 @@ def _build_final_batch_stats(normalized_scores: pd.DataFrame) -> Dict[str, Any]:
     return final_stats
 
 
-def _get_heatmap_wt_marker(track_stats: Dict[str, Any]) -> Optional[float]:
-    """Return the WT reference score for one normalized score track."""
+def _get_heatmap_reference_marker(track_stats: Dict[str, Any]) -> Optional[float]:
+    """Return the synonymous reference score for one normalized score track."""
     final_global_stats = track_stats.get('final', {}).get('global', {})
-    wt_stats = final_global_stats.get('wt')
     syn_wt_stats = final_global_stats.get('synonymous_wt')
-    if wt_stats is not None and 'avg' in wt_stats:
-        return wt_stats['avg']
     if syn_wt_stats is not None and 'avg' in syn_wt_stats:
         return syn_wt_stats['avg']
     return None
@@ -363,12 +360,6 @@ def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[s
     if 'annotate_aa' not in scores_df.columns:
         raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
-    # WT DNA score (if available)
-    if 'annotate_dna' in scores_df.columns:
-        wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
-        if len(wt_subset) > 0:
-            stats['wt_dna_score'] = float(wt_subset[score_col].mean())
-    
     # Synonymous median
     syn_subset = scores_df[scores_df['annotate_aa'] == 'synonymous']
     if len(syn_subset) > 0:
@@ -438,8 +429,13 @@ def apply_linear_range_normalization(
                 if len(path_subset) > 0:
                     path_scores.extend(path_subset['avgscore'].dropna().tolist())
     
-    A = np.median(syn_scores) if syn_scores else np.nan
-    C = np.median(path_scores) if path_scores else np.nan
+    if not syn_scores:
+        raise ValueError("No synonymous variants found for normalization.")
+    if not path_scores:
+        raise ValueError("No pathogenic variants found for normalization.")
+
+    A = np.median(syn_scores)
+    C = np.median(path_scores)
     
     # Calculate normalization factors for each experiment
     normalization_factors = {}
@@ -447,15 +443,11 @@ def apply_linear_range_normalization(
         a_i = stats.get('syn_median', np.nan)
         c_i = stats.get('non_avg', np.nan)
         
-        if not (np.isnan(a_i) or np.isnan(c_i) or np.isnan(A) or np.isnan(C)):
-            if (a_i - c_i) != 0:
-                normalization_factors[exp_name] = (A - C) / (a_i - c_i)
-            else:
-                logger.warning(f"Zero denominator for {exp_name}, skipping normalization")
-                normalization_factors[exp_name] = 1.0
-        else:
-            logger.warning(f"Missing values for {exp_name}, using factor 1.0")
-            normalization_factors[exp_name] = 1.0
+        if np.isnan(a_i) or np.isnan(c_i):
+            raise ValueError(f"Missing normalization values for {exp_name}.")
+        if (a_i - c_i) == 0:
+            raise ValueError(f"Zero normalization denominator for {exp_name}.")
+        normalization_factors[exp_name] = (A - C) / (a_i - c_i)
     
     # Apply normalization to scores
     normalized_scores = _coerce_score_columns_to_float(combined_scores)
@@ -524,27 +516,28 @@ def apply_zscore_2pole_normalization(
     if 'annotate_aa' not in combined_scores.columns:
         raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
-    # Calculate global WT average
-    wt_scores = []
-    for batch_name, batch_df in combined_scores.groupby('batch'):
-        if 'annotate_dna' in batch_df.columns:
-            wt_subset = batch_df[batch_df['annotate_dna'] == 'wt_dna']
-            if len(wt_subset) > 0:
-                wt_scores.extend(wt_subset['avgscore'].dropna().tolist())
-    
-    A = np.mean(wt_scores) if wt_scores else np.nan
-    
-    # Calculate WT normalization factors
+    # Use synonymous variants as the alignment reference for every input type.
+    reference_scores = []
+    for _, batch_df in combined_scores.groupby('batch'):
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
+
+    if not reference_scores:
+        raise ValueError("No synonymous variants found for normalization.")
+
+    A = np.median(reference_scores)
+
+    # Calculate initial alignment factors.
     wt_normalization_factors = {}
     for exp_name, stats in all_stats.items():
-        a_i = stats.get('wt_dna_score', np.nan)
+        a_i = stats.get('syn_median', np.nan)
         if not np.isnan(a_i) and a_i != 0 and not np.isnan(A):
             wt_normalization_factors[exp_name] = A / a_i
         else:
-            logger.warning(f"Invalid WT score for {exp_name}, using factor 1.0")
-            wt_normalization_factors[exp_name] = 1.0
+            raise ValueError(f"Invalid synonymous reference score for {exp_name}.")
     
-    # Apply WT normalization
+    # Apply initial reference alignment.
     wt_normalized_scores = _coerce_score_columns_to_float(combined_scores)
     score_columns = _score_columns(wt_normalized_scores)
     
@@ -566,9 +559,14 @@ def apply_zscore_2pole_normalization(
         if len(syn_subset) > 0:
             syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
-    syn_mean = np.mean(syn_scores) if syn_scores else 0.0
-    syn_median = float(np.median(syn_scores)) if syn_scores else np.nan
-    syn_std = np.std(syn_scores, ddof=1) if len(syn_scores) > 1 else 1.0
+    if len(syn_scores) < 2:
+        raise ValueError("At least two synonymous scores are required for z-score normalization.")
+
+    syn_mean = np.mean(syn_scores)
+    syn_median = float(np.median(syn_scores))
+    syn_std = np.std(syn_scores, ddof=1)
+    if not np.isfinite(syn_std) or syn_std == 0:
+        raise ValueError("Synonymous scores must have a finite, non-zero standard deviation.")
     
     # Apply Z-score transformation
     zscore_normalized_scores = wt_normalized_scores.copy()
@@ -596,7 +594,9 @@ def apply_zscore_2pole_normalization(
         if 'non_avg_zscore' in stats:
             path_zscore_scores.append(stats['non_avg_zscore'])
     
-    C = np.mean(path_zscore_scores) if path_zscore_scores else 0.0
+    if not path_zscore_scores:
+        raise ValueError("No pathogenic reference scores found for normalization.")
+    C = np.mean(path_zscore_scores)
     
     # Calculate pathogenic normalization factors
     path_normalization_factors = {}
@@ -605,8 +605,7 @@ def apply_zscore_2pole_normalization(
         if not np.isnan(c_i) and c_i != 0:
             path_normalization_factors[exp_name] = C / c_i
         else:
-            logger.warning(f"Invalid pathogenic score for {exp_name}, using factor 1.0")
-            path_normalization_factors[exp_name] = 1.0
+            raise ValueError(f"Invalid pathogenic reference score for {exp_name}.")
     
     # Apply pathogenic normalization
     final_scores = zscore_normalized_scores.copy()
@@ -623,10 +622,13 @@ def apply_zscore_2pole_normalization(
     
     combined_stats = _build_normalization_stats(
         raw_tile_values={
-            batch_name: {'wt_dna_score': stats.get('wt_dna_score')}
+            batch_name: {'syn_median': stats.get('syn_median')}
             for batch_name, stats in all_stats.items()
         },
-        raw_global_values={'wt_dna_score': A},
+        raw_global_values={
+            'reference_type': 'synonymous',
+            'reference_median': A,
+        },
         wt_stage_global_values={
             'syn_avg': syn_mean,
             'syn_median': syn_median,
@@ -649,11 +651,11 @@ def apply_zscore_onepole_normalization(
     experiments: List[Any]
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    Apply z-score centering normalization method using only WT/synonymous variants.
+    Apply z-score centering normalization using synonymous variants.
     
     This method is useful when pathogenic controls are not available. It performs
-    WT normalization followed by z-score transformation using synonymous variants.
-    For DNA variants, uses wt_dna scores; for AA variants, uses synonymous variants.
+    Synonymous-reference alignment followed by a z-score transformation using
+    synonymous variants. The same reference is used for DNA and AA inputs.
     
     Parameters
     ----------
@@ -662,62 +664,43 @@ def apply_zscore_onepole_normalization(
     all_stats : Dict[str, Dict[str, float]]
         Statistics from individual experiments
     experiments : List[Any]
-        List of experiment config objects to determine variant types
+        List of experiment config objects (retained for API compatibility)
         
     Returns
     -------
     Tuple[pd.DataFrame, Dict[str, Any]]
         Normalized scores DataFrame and combined statistics
     """
-    logger.info("Applying z-score centering normalization (WT-only)")
-    
-    # Determine variant type from experiment configs
-    mutagenesis_types = [exp.mutagenesis_type for exp in experiments]
-    if len(set(mutagenesis_types)) > 1:
-        raise ValueError(f"All experiments must have the same mutagenesis_type. Found: {set(mutagenesis_types)}")
-    mutagenesis_type = mutagenesis_types[0]
+    logger.info("Applying z-score centering normalization (synonymous reference)")
+
     if 'annotate_aa' not in combined_scores.columns:
         raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
     # Calculate global reference scores for normalization
     reference_scores = []
-    reference_type = None
-    
-    if mutagenesis_type in {'codon', 'snv'}:
-        # For DNA variants, prefer wt_dna if available.
-        for batch_name, batch_df in combined_scores.groupby('batch'):
-            if 'annotate_dna' in batch_df.columns:
-                wt_subset = batch_df[batch_df['annotate_dna'] == 'wt_dna']
-                if len(wt_subset) > 0:
-                    reference_scores.extend(wt_subset['avgscore'].dropna().tolist())
-                    reference_type = 'wt_dna'
-
-    if not reference_scores:
-        for batch_name, batch_df in combined_scores.groupby('batch'):
-            syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
-            if len(syn_subset) > 0:
-                reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
-                reference_type = 'synonymous'
+    for _, batch_df in combined_scores.groupby('batch'):
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
     if not reference_scores:
-        raise ValueError("No reference variants found for normalization. Need either wt_dna or synonymous variants.")
+        raise ValueError("No synonymous variants found for normalization.")
     
-    global_reference_avg = np.mean(reference_scores)
-    logger.info(f"Using {reference_type} variants as reference with global mean: {global_reference_avg:.3f}")
+    global_reference_median = np.median(reference_scores)
+    logger.info(
+        "Using synonymous variants as reference with global median: "
+        f"{global_reference_median:.3f}"
+    )
     
     # Calculate normalization factors based on variant type
     normalization_factors = {}
     for exp_name, stats in all_stats.items():
-        if reference_type == 'wt_dna':
-            exp_reference_score = stats.get('wt_dna_score', np.nan)
-        else:  # synonymous
-            exp_reference_score = stats.get('syn_median', np.nan)
+        exp_reference_score = stats.get('syn_median', np.nan)
         
-        if not np.isnan(exp_reference_score) and exp_reference_score != 0 and not np.isnan(global_reference_avg):
-            normalization_factors[exp_name] = global_reference_avg / exp_reference_score
+        if not np.isnan(exp_reference_score) and exp_reference_score != 0 and not np.isnan(global_reference_median):
+            normalization_factors[exp_name] = global_reference_median / exp_reference_score
         else:
-            logger.warning(f"Invalid {reference_type} score for {exp_name}, using factor 1.0")
-            normalization_factors[exp_name] = 1.0
+            raise ValueError(f"Invalid synonymous reference score for {exp_name}.")
     
     # Apply reference normalization
     reference_normalized_scores = _coerce_score_columns_to_float(combined_scores)
@@ -741,13 +724,14 @@ def apply_zscore_onepole_normalization(
         if len(syn_subset) > 0:
             syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
     
-    if not syn_scores:
-        logger.warning("No synonymous variants found for z-score transformation, using all variants")
-        syn_scores = reference_normalized_scores['avgscore'].dropna().tolist()
-    
-    syn_mean = np.mean(syn_scores) if syn_scores else 0.0
-    syn_median = float(np.median(syn_scores)) if syn_scores else np.nan
-    syn_std = np.std(syn_scores, ddof=1) if len(syn_scores) > 1 else 1.0
+    if len(syn_scores) < 2:
+        raise ValueError("At least two synonymous scores are required for z-score normalization.")
+
+    syn_mean = np.mean(syn_scores)
+    syn_median = float(np.median(syn_scores))
+    syn_std = np.std(syn_scores, ddof=1)
+    if not np.isfinite(syn_std) or syn_std == 0:
+        raise ValueError("Synonymous scores must have a finite, non-zero standard deviation.")
     
     # Apply z-score transformation (final normalization)
     final_scores = reference_normalized_scores.copy()
@@ -757,16 +741,12 @@ def apply_zscore_onepole_normalization(
     
     combined_stats = _build_normalization_stats(
         raw_tile_values={
-            batch_name: (
-                {'wt_dna_score': stats.get('wt_dna_score')}
-                if reference_type == 'wt_dna'
-                else {'syn_median': stats.get('syn_median')}
-            )
+            batch_name: {'syn_median': stats.get('syn_median')}
             for batch_name, stats in all_stats.items()
         },
         raw_global_values={
-            'reference_type': reference_type,
-            'reference_avg': global_reference_avg,
+            'reference_type': 'synonymous',
+            'reference_median': global_reference_median,
         },
         wt_stage_global_values={
             'syn_avg': syn_mean,
@@ -819,7 +799,7 @@ def generate_batch_visualizations(
     def _build_colorbar_ticks(
         score_series: pd.Series,
         track_stats: Dict[str, Any],
-        wt_score: Optional[float],
+        reference_score: Optional[float],
     ) -> Tuple[Optional[List[float]], Optional[List[str]]]:
         series = pd.to_numeric(score_series, errors='coerce').dropna()
         if len(series) == 0:
@@ -844,8 +824,8 @@ def generate_batch_visualizations(
             )
 
         ticks = [(data_min, f'{data_min:.1f}')]
-        if wt_score is not None and pd.notna(wt_score):
-            ticks.append((float(wt_score), 'WT Avg'))
+        if reference_score is not None and pd.notna(reference_score):
+            ticks.append((float(reference_score), 'Synonymous Avg'))
         if pathogenic_tick is not None and pd.notna(pathogenic_tick):
             ticks.append((float(pathogenic_tick), '(-) Control Avg'))
         ticks.append((data_max, f'{data_max:.1f}'))
@@ -859,12 +839,12 @@ def generate_batch_visualizations(
     tick_values = None
     tick_labels = None
     dna_batch_data = results['normalized_scores']
-    dna_wt_score = _get_heatmap_wt_marker(dna_combined_stats)
+    dna_reference_score = _get_heatmap_reference_marker(dna_combined_stats)
     if score_col in dna_batch_data.columns:
         tick_values, tick_labels = _build_colorbar_ticks(
             dna_batch_data[score_col],
             dna_combined_stats,
-            dna_wt_score,
+            dna_reference_score,
         )
 
     # Create tiled heatmap
@@ -878,7 +858,7 @@ def generate_batch_visualizations(
                 score_col=score_col,
                 batch_config=config_obj,
                 experiments=results['experiments'],
-                wt_score=dna_wt_score,
+                wt_score=dna_reference_score,
                 tick_values=tick_values,
                 tick_labels=tick_labels,
                 export=True,
@@ -893,12 +873,12 @@ def generate_batch_visualizations(
         if not aa_batch_data.empty:
             aa_tick_values = tick_values
             aa_tick_labels = tick_labels
-            aa_wt_score = _get_heatmap_wt_marker(aa_combined_stats)
+            aa_reference_score = _get_heatmap_reference_marker(aa_combined_stats)
             if score_col in aa_batch_data.columns:
                 aa_tick_values, aa_tick_labels = _build_colorbar_ticks(
                     aa_batch_data[score_col],
                     aa_combined_stats,
-                    aa_wt_score,
+                    aa_reference_score,
                 )
             aa_experiments = [
                 SimpleNamespace(
@@ -918,7 +898,7 @@ def generate_batch_visualizations(
                 score_col=score_col,
                 batch_config=config_obj,
                 experiments=aa_experiments,
-                wt_score=aa_wt_score,
+                wt_score=aa_reference_score,
                 tick_values=aa_tick_values,
                 tick_labels=aa_tick_labels,
                 export=True,

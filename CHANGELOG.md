@@ -12,10 +12,14 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 - 
 
 ### Changed
-- 
+- Use synonymous-variant medians as the batch normalization reference for both DNA and amino-acid inputs instead of wild-type DNA scores.
+- Label batch heatmap reference markers as synonymous averages.
+- Include synonymous reference statistics for amino-acid-only score tables.
 
 ### Fixed
-- 
+- Use the global synonymous median when calculating per-experiment normalization factors.
+- Raise explicit errors for missing or invalid normalization references instead of silently applying identity factors or fallback statistics.
+- Sum count columns when aggregating synonymous variants instead of averaging them.
 
 ## [0.2.0] - 2026-06-15
 

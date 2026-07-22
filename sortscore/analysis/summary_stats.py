@@ -63,7 +63,7 @@ def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str
     if overall_summary is not None:
         stats['overall'] = overall_summary
 
-    # Add annotation-based stats if available
+    # Add WT-like reference stats if available.
     if 'annotate_dna' in scores_df.columns:
         wt_subset = scores_df[scores_df['annotate_dna'] == 'wt_dna']
         wt_summary = _summarize_subset(wt_subset, score_col)
@@ -73,6 +73,11 @@ def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str
 
         if wt_summary is not None:
             stats['wt'] = wt_summary
+        if synonymous_wt_summary is not None:
+            stats['synonymous_wt'] = synonymous_wt_summary
+    elif 'annotate_aa' in scores_df.columns:
+        synonymous_wt_subset = scores_df[scores_df['annotate_aa'] == 'synonymous']
+        synonymous_wt_summary = _summarize_subset(synonymous_wt_subset, score_col)
         if synonymous_wt_summary is not None:
             stats['synonymous_wt'] = synonymous_wt_summary
 
