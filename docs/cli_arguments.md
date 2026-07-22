@@ -15,7 +15,7 @@ sortscore score [options]
 | `--output-dir` | `-o` | str | Output directory. Relative values are resolved from the current working directory. | `.` |
 | `--bins-required` | - | int | Minimum number of bins required | 1 |
 | `--reps-required` | - | int | Minimum number of replicates required | 1 |
-| `--avg-method` | - | str | Averaging method: `rep-weighted` or `simple-avg` | rep-weighted |
+| `--avg-method` | - | str | Method used to calculate the output `score` column: `rep-weighted` or `simple-avg` | rep-weighted |
 | `--minread-threshold` | - | int | Minimum read threshold | 0 |
 | `--max-cv` | - | float | Maximum coefficient of variation allowed | None |
 | `--mutagenesis-type` | - | str | Mutagenesis type: `aa` or `codon` | aa |

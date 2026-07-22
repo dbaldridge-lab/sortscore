@@ -15,15 +15,6 @@ from sortscore.analysis.variant_aggregation import aggregate_aa_data
 from sortscore.utils.load_experiment import ExperimentConfig
 from sortscore.visualization.heatmaps import plot_heatmap
 
-
-def _score_column_name(experiment: ExperimentConfig) -> str:
-    """Return the appropriate score column name based on avg_method."""
-    if experiment.avg_method == 'simple-avg':
-        return 'avgscore'
-    suffix = experiment.avg_method.replace('-', '_')
-    return f'avgscore_{suffix}'
-
-
 def _build_aa_heatmap_config(experiment: ExperimentConfig) -> SimpleNamespace:
     """Create a lightweight config object tailored for AA heatmaps."""
     # AA heatmaps always use AA coordinates and an AA wild-type sequence.
@@ -103,7 +94,7 @@ def generate_heatmap_visualizations(
     logger = logging.getLogger(__name__)
     logger.info("Generating visualizations...")
 
-    score_col = _score_column_name(experiment)
+    score_col = 'score'
     figures_dir = os.path.join(output_dir, 'figures')
     os.makedirs(figures_dir, exist_ok=True)
 

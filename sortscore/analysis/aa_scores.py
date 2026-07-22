@@ -14,10 +14,10 @@ from sortscore.analysis.statistics import calculate_codon_and_replicate_variance
 
 
 def _get_score_column_from_avg_method(avg_method: str) -> str:
-    """Return the score column name for a given averaging method."""
-    if avg_method == 'simple-avg':
-        return 'avgscore'
-    return f"avgscore_{avg_method.replace('-', '_')}"
+    """Return the canonical output column for a configured averaging method."""
+    if avg_method not in {'simple-avg', 'rep-weighted'}:
+        raise ValueError(f"Unknown averaging method: {avg_method}")
+    return 'score'
 
 
 def _get_count_columns(scores_df: pd.DataFrame) -> List[str]:
@@ -158,7 +158,7 @@ def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: 
     """
     # DNA->AA aggregation case: aggregate synonymous variants
     count_columns = _get_count_columns(scores_df_drop_nan)
-    columns_to_average = ['avgscore', 'avgscore_rep_weighted'] + rep_score_columns
+    columns_to_average = [score_col] + rep_score_columns
     
     # Calculate standard deviation and count of codon-level scores before AA aggregation
     aa_scores_std = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa'])[score_col].agg(['std', 'count']).reset_index()
@@ -202,7 +202,7 @@ def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns:
     """
     # AA-only case: no aggregation needed, just copy the data
     count_columns = _get_count_columns(scores_df_drop_nan)
-    columns_to_include = ['aa_seq_diff', 'annotate_aa', 'avgscore', 'avgscore_rep_weighted'] + rep_score_columns + count_columns
+    columns_to_include = ['aa_seq_diff', 'annotate_aa', 'score'] + rep_score_columns + count_columns
     
     aa_scores = scores_df_drop_nan[columns_to_include].copy()
     

@@ -26,13 +26,13 @@ def _assert_aa_regression_subset(output_path, fixture_path):
     assert output_path.exists(), f"Missing AA scores output file: {output_path}"
     expected_df = pd.read_csv(fixture_path)
     actual_df = pd.read_csv(output_path)
-    actual_subset = actual_df[["aa_seq_diff", "avgscore", "avgscore_rep_weighted"]]
+    actual_subset = actual_df[["aa_seq_diff", "score"]]
     merged = expected_df.merge(actual_subset, on="aa_seq_diff", how="left", suffixes=("_expected", "_actual"))
 
-    missing_variants = merged[merged["avgscore_actual"].isna()]["aa_seq_diff"].tolist()
+    missing_variants = merged[merged["score_actual"].isna()]["aa_seq_diff"].tolist()
     assert not missing_variants, f"Missing example variants in output: {missing_variants}"
 
-    for column in ["avgscore", "avgscore_rep_weighted"]:
+    for column in ["score"]:
         expected_col = f"{column}_expected"
         actual_col = f"{column}_actual"
         mismatch = merged[merged[expected_col].round(3) != merged[actual_col].round(3)][

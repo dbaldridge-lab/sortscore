@@ -67,6 +67,8 @@ CLI override:
 
 ## Normalization Methods
 
+Batch normalization reads and writes the canonical aggregate column named `score`.
+
 ### Z-score 2-Pole Normalization (Default)
 
 This is the default method that creates a standardized scale making cross-experiment comparisons meaningful.

@@ -50,7 +50,7 @@ def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str
         
     Examples
     --------
-    >>> stats = calculate_summary_stats(scores_df, 'avgscore')
+    >>> stats = calculate_summary_stats(scores_df, 'score')
     >>> print(stats['overall'])
     """
     stats: Dict[str, Any] = {}
@@ -142,7 +142,7 @@ def save_summary_stats(
         
     Examples
     --------
-    >>> stats = calculate_summary_stats(scores_df, 'avgscore')
+    >>> stats = calculate_summary_stats(scores_df, 'score')
     >>> stats_file = save_summary_stats(stats, experiment, 'output/scores', logger)
     """
     stats_file = os.path.join(scores_dir, f"{experiment.experiment_name}_{stats_basename}.json")

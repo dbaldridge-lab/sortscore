@@ -98,9 +98,9 @@ def calculate_activity_scores(
     merged = filter_variants(merged, min_reads, bins_required, reps_required)
 
     if method == 'simple-avg':
-        merged['avgscore'] = simple_average(merged)
+        merged['score'] = simple_average(merged)
     elif method == 'rep-weighted':
-        merged['avgscore_rep_weighted'] = rep_weighted_average(merged, read_count)
+        merged['score'] = rep_weighted_average(merged, read_count)
     else:
         logger.error(f"Unknown averaging method: {method}")
         raise ValueError(f"Unknown averaging method: {method}")
@@ -152,7 +152,8 @@ def calculate_full_activity_scores(
     Returns
     -------
     scores_df : pd.DataFrame
-        DataFrame with all replicate/bin scores, averages, and annotations.
+        DataFrame with replicate/bin scores, one configured aggregate ``score``,
+        and annotations.
 
     Examples
     --------
@@ -213,7 +214,7 @@ def calculate_full_activity_scores(
         rep_score_col = f'Rep{rep}.score'
         df[rep_score_col] = df[score_cols].sum(axis=1, min_count=min_bins)
 
-    # Average scores (simple, rep-weighted)
+    # Calculate the configured aggregate score.
     rep_score_cols = [f'Rep{rep}.score' for rep in counts]
     # Only keep rows with at least min_reps non-NaN replicate scores
     valid = df[rep_score_cols].notna().sum(axis=1) >= min_reps
@@ -224,19 +225,23 @@ def calculate_full_activity_scores(
         valid = valid & cv_valid
     
     df_valid = df[valid].copy()
-    # Simple average
-    df_valid['avgscore'] = df_valid[rep_score_cols].mean(axis=1)
-    # Replicate-weighted average
-    total_weight = sum(df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
-    rep_weighted_score = sum(df_valid[f'Rep{rep}.score'].fillna(0) * df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
-    df_valid['avgscore_rep_weighted'] = rep_weighted_score / total_weight
+    if avg_method == 'simple-avg':
+        df_valid['score'] = df_valid[rep_score_cols].mean(axis=1)
+    elif avg_method == 'rep-weighted':
+        total_weight = sum(df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
+        rep_weighted_score = sum(
+            df_valid[f'Rep{rep}.score'].fillna(0) * df_valid[f'Rep{rep}.sum'].fillna(0)
+            for rep in counts
+        )
+        df_valid['score'] = rep_weighted_score / total_weight.replace(0, np.nan)
+    else:
+        raise ValueError(f"Unknown averaging method: {avg_method}")
 
     # Optionally group by synonymous/codon group for AA-level scores
     if groupby_cols is not None:
         group = df_valid.groupby(groupby_cols)
         df_aa = group[[
-            'avgscore',
-            'avgscore_rep_weighted',
+            'score',
             *rep_score_cols
         ]].mean().reset_index()
         return df_valid, df_aa

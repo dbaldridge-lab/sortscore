@@ -33,7 +33,7 @@ def test_annotate_scores_dataframe_supports_codon_mutagenesis_type():
     scores_df = pd.DataFrame(
         {
             "variant_seq": [wt_dna, missense, synonymous],
-            "avgscore": [1.0, 2.0, 1.5],
+            "score": [1.0, 2.0, 1.5],
         }
     )
 

@@ -6,7 +6,7 @@ This module provides functions for aggregating and transforming variant score da
 Examples
 --------
 >>> from sortscore.analysis.data_processing import aggregate_aa_data
->>> aa_data = aggregate_aa_data(scores_df, 'avgscore_rep_weighted')
+>>> aa_data = aggregate_aa_data(scores_df, 'score')
 """
 import pandas as pd
 
@@ -49,7 +49,7 @@ def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
         
     Examples
     --------
-    >>> aa_data = aggregate_aa_data(dna_scores, 'avgscore_rep_weighted')
+    >>> aa_data = aggregate_aa_data(dna_scores, 'score')
     """
     if 'aa_seq_diff' not in scores_df.columns:
         raise ValueError("scores_df must contain 'aa_seq_diff' column for AA aggregation")
@@ -68,7 +68,7 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     Aggregate synonymous variants by averaging their scores.
     
     Groups variants by their AA sequence difference and variant annotation type 'synonymous',
-    then averages individual replicate scores and recalculates avgscores.
+    then averages individual replicate scores and the aggregate score.
     
     Parameters
     ----------
@@ -94,7 +94,7 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     for col in scores_df.columns:
         if col in _AA_GROUP_COLUMNS:
             continue
-        if col.startswith('avgscore') or col.startswith('score.r') or (
+        if col == 'score' or col.startswith('score.r') or (
             col.startswith('Rep') and col.endswith('.score')
         ):
             agg_dict[col] = 'mean'

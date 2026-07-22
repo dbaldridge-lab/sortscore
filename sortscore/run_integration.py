@@ -52,7 +52,7 @@ def main() -> None:
     )
     lilace_parser.add_argument(
         "--score-column",
-        default="avgscore",
+        default="score",
         help="Optional sortscore score column to preserve as metadata",
     )
     lilace_parser.set_defaults(handler=_build_lilace_input)

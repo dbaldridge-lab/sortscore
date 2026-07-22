@@ -12,6 +12,8 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 - 
 
 ### Changed
+- Emit a single aggregate `score` column selected by `avg_method`, and use that
+  canonical name throughout batch normalization and downstream outputs.
 - Use synonymous-variant medians as the batch normalization reference for both DNA and amino-acid inputs instead of wild-type DNA scores.
 - Label batch heatmap reference markers as synonymous averages.
 - Include synonymous reference statistics for amino-acid-only score tables.
@@ -54,7 +56,7 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 - Simplify summary stats output to focus on the scored file and expose normalization inputs directly in batch stats.
 
 ### Fixed
-- Preserved decimal precision in batch score exports, including `score.r#b#`, replicate score columns, and `avgscore`.
+- Preserved decimal precision in batch score exports, including `score.r#b#`, replicate score columns, and the aggregate score.
 - Preserved decimal precision in AA score statistics exports, including `SD_codon`, `SD_rep`, `SEM`, and confidence interval columns.
 - Stopped rounding scores before plotting and corrected global pathogenic heatmap tick handling.
 

@@ -18,7 +18,7 @@ def test_score_table_to_lilace_csv_returns_expected_columns(tmp_path):
                 "count.r1b2": 20,
                 "count.r1b3": 30,
                 "count.r1b4": 40,
-                "avgscore": 1.5,
+                "score": 1.5,
             }
         ]
     ).to_csv(input_path, index=False)
@@ -27,8 +27,8 @@ def test_score_table_to_lilace_csv_returns_expected_columns(tmp_path):
         input_path,
         output_path,
         batch="tile4",
-        metadata_columns={"sortscore_score": "avgscore"},
-        metadata_constants={"sortscore_score_column": "avgscore"},
+        metadata_columns={"sortscore_score": "score"},
+        metadata_constants={"sortscore_score_column": "score"},
     )
 
     result = pd.read_csv(output_path)

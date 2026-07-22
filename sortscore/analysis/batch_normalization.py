@@ -26,18 +26,12 @@ from typing import Dict, List, Tuple, Optional, Any, cast
 
 logger = logging.getLogger(__name__)
 
-from sortscore.analysis.aa_scores import _get_score_column_from_avg_method
 from sortscore.analysis.summary_stats import calculate_summary_stats
-def _ensure_avgscore_column(scores_df: pd.DataFrame) -> pd.DataFrame:
-    """Ensure a canonical `avgscore` column exists for normalization steps."""
-    if 'avgscore' in scores_df.columns:
-        return scores_df
-    for col in ('avgscore_rep_weighted', 'avgscore_simple_avg'):
-        if col in scores_df.columns:
-            out = scores_df.copy()
-            out['avgscore'] = out[col]
-            return out
-    raise ValueError("Scores file missing required score column ('avgscore' or known avgscore_* variants)")
+def _require_score_column(scores_df: pd.DataFrame) -> pd.DataFrame:
+    """Validate that a scored table has the canonical aggregate score column."""
+    if 'score' not in scores_df.columns:
+        raise ValueError("Scores file missing required 'score' column")
+    return scores_df
 
 
 def _score_columns(scores_df: pd.DataFrame) -> List[str]:
@@ -88,12 +82,12 @@ def _build_stage_section(
 def _build_final_batch_stats(normalized_scores: pd.DataFrame) -> Dict[str, Any]:
     """Create final stats for global and per-tile normalized outputs."""
     final_stats: Dict[str, Any] = {
-        'global': calculate_summary_stats(normalized_scores, 'avgscore'),
+        'global': calculate_summary_stats(normalized_scores, 'score'),
     }
     for batch_name, batch_df in normalized_scores.groupby('batch'):
         final_stats[cast(str, batch_name)] = calculate_summary_stats(
             batch_df,
-            'avgscore',
+            'score',
         )
     return final_stats
 
@@ -163,9 +157,9 @@ def _load_score_tables_from_output_dir(output_dir: str) -> Dict[str, pd.DataFram
 
     score_tables: Dict[str, pd.DataFrame] = {}
     if dna_files:
-        score_tables['dna'] = _ensure_avgscore_column(pd.read_csv(dna_files[-1]))
+        score_tables['dna'] = _require_score_column(pd.read_csv(dna_files[-1]))
     if aa_files:
-        score_tables['aa'] = _ensure_avgscore_column(pd.read_csv(aa_files[-1]))
+        score_tables['aa'] = _require_score_column(pd.read_csv(aa_files[-1]))
     return score_tables
 
 
@@ -260,7 +254,7 @@ def run_batch_analysis(batch_config: Dict[str, Any]) -> Dict[str, Any]:
             min_pos, max_pos = _get_position_range_from_config(cfg, idx - 1)
             for track_name, scores_df in score_tables.items():
                 all_scores[track_name][batch_name] = scores_df
-                all_stats[track_name][batch_name] = extract_experiment_stats(scores_df, avg_method)
+                all_stats[track_name][batch_name] = extract_experiment_stats(scores_df)
             experiments.append(
                 SimpleNamespace(
                     tile=tile,
@@ -334,7 +328,7 @@ def combine_raw_scores(all_scores: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     return combined_scores
 
 
-def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[str, float]:
+def extract_experiment_stats(scores_df: pd.DataFrame) -> Dict[str, float]:
     """
     Extract key statistics from experiment scores.
     
@@ -342,21 +336,14 @@ def extract_experiment_stats(scores_df: pd.DataFrame, avg_method: str) -> Dict[s
     ----------
     scores_df : pd.DataFrame
         Scores DataFrame for single experiment
-    avg_method : str
-        Averaging method used for scores
-        
     Returns
     -------
     Dict[str, float]
         Dictionary of key statistics
     """
     stats = {}
-    score_col_suffix = avg_method.replace('-', '_')
-    score_col = f'avgscore_{score_col_suffix}'
-    
-    if score_col not in scores_df.columns:
-        logger.warning(f"Score column {score_col} not found, using 'avgscore'")
-        score_col = 'avgscore'
+    score_col = 'score'
+    _require_score_column(scores_df)
     if 'annotate_aa' not in scores_df.columns:
         raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
     
@@ -420,14 +407,14 @@ def apply_linear_range_normalization(
         # Synonymous scores
         syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
         if len(syn_subset) > 0:
-            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+            syn_scores.extend(syn_subset['score'].dropna().tolist())
         
         # Pathogenic scores
         if pathogenic_control_type == 'nonsense':
             if 'annotate_aa' in batch_df.columns:
                 path_subset = batch_df[batch_df['annotate_aa'] == 'nonsense']
                 if len(path_subset) > 0:
-                    path_scores.extend(path_subset['avgscore'].dropna().tolist())
+                    path_scores.extend(path_subset['score'].dropna().tolist())
     
     if not syn_scores:
         raise ValueError("No synonymous variants found for normalization.")
@@ -521,7 +508,7 @@ def apply_zscore_2pole_normalization(
     for _, batch_df in combined_scores.groupby('batch'):
         syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
         if len(syn_subset) > 0:
-            reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
+            reference_scores.extend(syn_subset['score'].dropna().tolist())
 
     if not reference_scores:
         raise ValueError("No synonymous variants found for normalization.")
@@ -557,7 +544,7 @@ def apply_zscore_2pole_normalization(
     for batch_name, batch_df in wt_normalized_scores.groupby('batch'):
         syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
         if len(syn_subset) > 0:
-            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+            syn_scores.extend(syn_subset['score'].dropna().tolist())
     
     if len(syn_scores) < 2:
         raise ValueError("At least two synonymous scores are required for z-score normalization.")
@@ -584,7 +571,7 @@ def apply_zscore_2pole_normalization(
             if 'annotate_aa' in batch_df.columns:
                 path_subset = batch_df[batch_df['annotate_aa'] == 'nonsense']
                 if len(path_subset) > 0:
-                    stats['non_avg_zscore'] = float(path_subset['avgscore'].mean())
+                    stats['non_avg_zscore'] = float(path_subset['score'].mean())
         
         zscore_stats[batch_name] = stats
     
@@ -681,7 +668,7 @@ def apply_zscore_onepole_normalization(
     for _, batch_df in combined_scores.groupby('batch'):
         syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
         if len(syn_subset) > 0:
-            reference_scores.extend(syn_subset['avgscore'].dropna().tolist())
+            reference_scores.extend(syn_subset['score'].dropna().tolist())
     
     if not reference_scores:
         raise ValueError("No synonymous variants found for normalization.")
@@ -722,7 +709,7 @@ def apply_zscore_onepole_normalization(
     for batch_name, batch_df in reference_normalized_scores.groupby('batch'):
         syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
         if len(syn_subset) > 0:
-            syn_scores.extend(syn_subset['avgscore'].dropna().tolist())
+            syn_scores.extend(syn_subset['score'].dropna().tolist())
     
     if len(syn_scores) < 2:
         raise ValueError("At least two synonymous scores are required for z-score normalization.")
@@ -790,7 +777,7 @@ def generate_batch_visualizations(
     config_obj = BatchConfig(**batch_config)
     
     # Determine score column to visualize
-    score_col = 'avgscore'  # Default, could be made configurable
+    score_col = 'score'
     
     combined_stats = results.get('combined_stats', {})
     dna_combined_stats = combined_stats.get('dna', {})

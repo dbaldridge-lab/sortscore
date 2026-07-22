@@ -57,7 +57,7 @@ Additional optional fields can be used to customize the analysis. These can be s
 |------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
 | `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
-| `avg_method`           | str   | Method for averaging scores (e.g., `rep-weighted`, `simple-avg`). **Default:** `rep-weighted`. |
+| `avg_method`           | str   | Method used to calculate the canonical `score` column (`rep-weighted` or `simple-avg`). **Default:** `rep-weighted`. |
 | `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
 | `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. **Default:** `None` (CV filtering is disabled). |
 | `mutagenesis_type`     | str   | Mutagenesis type: `aa` or `codon`. **Default:** `aa`. Set this to `codon` in the config or CLI when running DNA-based analysis. |
@@ -220,6 +220,8 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 5. Statistics Recalculation: Final statistics computed from normalized data
 6. Visualization: Combined tiled heatmaps generated with position mapping
 7. Output: Combined results saved, individual files cleaned up (if requested)
+
+Scoring outputs and normalized batch outputs use one canonical aggregate column named `score`.
 
 ### Mutagenesis Type Selection
 

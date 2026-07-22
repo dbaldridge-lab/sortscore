@@ -22,8 +22,7 @@ def test_save_batch_results_preserves_decimal_score_precision(tmp_path):
             "score.r1b1": [1.25],
             "score.r1b2": [2.75],
             "Rep1.score": [4.125],
-            "avgscore": [3.875],
-            "avgscore_rep_weighted": [3.625],
+            "score": [3.625],
         }
     )
     results = {
@@ -39,8 +38,7 @@ def test_save_batch_results_preserves_decimal_score_precision(tmp_path):
         "score.r1b1": 1.25,
         "score.r1b2": 2.75,
         "Rep1.score": 4.125,
-        "avgscore": 3.875,
-        "avgscore_rep_weighted": 3.625,
+        "score": 3.625,
     }.items():
         assert saved_scores.loc[0, col] == expected
 
@@ -51,14 +49,13 @@ def test_save_batch_results_preserves_count_columns_in_batch_aa_scores(tmp_path)
         {
             "aa_seq_diff": ["p.Gly1Ala"],
             "annotate_aa": ["G1A"],
-            "avgscore": [3.875],
-            "avgscore_rep_weighted": [3.625],
+            "score": [3.625],
             "count.r1b1": [100.0],
             "count.r1b2": [50.0],
         }
     )
     results = {
-        "normalized_scores": pd.DataFrame({"avgscore": [3.875]}),
+        "normalized_scores": pd.DataFrame({"score": [3.625]}),
         "normalized_aa_scores": aa_scores,
         "combined_stats": {"example": 1},
     }
@@ -73,14 +70,13 @@ def test_build_aa_scores_table_preserves_decimal_stats_for_codon_aggregation():
         {
             "aa_seq_diff": ["A.1.B", "A.1.B"],
             "annotate_aa": ["missense_aa", "missense_aa"],
-            "avgscore": [10.0, 13.0],
-            "avgscore_rep_weighted": [10.5, 13.5],
+            "score": [10.0, 13.0],
             "Rep1.score": [9.0, 12.0],
             "Rep2.score": [12.0, 15.0],
         }
     )
 
-    aa_scores = build_aa_scores_table(scores_df, "avgscore")
+    aa_scores = build_aa_scores_table(scores_df, "score")
     row = aa_scores.iloc[0]
 
     assert row["SD_codon"] == pytest.approx(2.1213203435596424)
@@ -95,14 +91,13 @@ def test_build_aa_scores_table_preserves_decimal_stats_for_aa_only_scores():
         {
             "aa_seq_diff": ["A.1.B"],
             "annotate_aa": ["missense_aa"],
-            "avgscore": [10.5],
-            "avgscore_rep_weighted": [10.25],
+            "score": [10.5],
             "Rep1.score": [9.0],
             "Rep2.score": [12.0],
         }
     )
 
-    aa_scores = build_aa_scores_table(scores_df, "avgscore")
+    aa_scores = build_aa_scores_table(scores_df, "score")
     row = aa_scores.iloc[0]
 
     assert row["SD_rep"] == pytest.approx(2.1213203435596424)
@@ -118,11 +113,11 @@ def test_build_normalization_stats_returns_nested_stage_and_final_sections():
             "aa_seq_diff": ["=", "Q.2.*", "A.2.=", "A.3.S"],
             "annotate_aa": ["synonymous", "nonsense", "synonymous", "missense_aa"],
             "annotate_dna": ["wt_dna", "missense_dna", "synonymous", "missense_dna"],
-            "avgscore": [10.0, 2.0, 12.0, 20.0],
+            "score": [10.0, 2.0, 12.0, 20.0],
         }
     )
     final_scores = raw_scores.copy()
-    final_scores["avgscore"] = [0.0, -2.0, 1.0, 3.0]
+    final_scores["score"] = [0.0, -2.0, 1.0, 3.0]
 
     stats = _build_normalization_stats(
         raw_tile_values={
@@ -178,8 +173,7 @@ def test_run_batch_analysis_loads_batch_config_entries(tmp_path):
         pd.DataFrame(
             {
                 "variant_seq": ["CTA", "CTC", "CTG", "TAA"],
-                "avgscore": [10.0, 11.0, 12.0, 2.0],
-                "avgscore_rep_weighted": [10.0, 11.0, 12.0, 2.0],
+                "score": [10.0, 11.0, 12.0, 2.0],
                 "Rep1.score": [10.0, 11.0, 12.0, 2.0],
                 "Rep2.score": [10.0, 11.0, 12.0, 2.0],
             }
@@ -232,7 +226,7 @@ def test_generate_batch_visualizations_uses_structured_stats_for_ticks(monkeypat
         "normalized_scores": pd.DataFrame(
             {
                 "batch": ["tile1", "tile1"],
-                "avgscore": [1.0, 3.0],
+                "score": [1.0, 3.0],
                 "annotate_aa": ["synonymous", "nonsense"],
             }
         ),

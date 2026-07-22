@@ -9,14 +9,13 @@ def test_calculate_summary_stats_returns_flat_sections():
             "aa_seq_diff": ["=", "A.2.S", "Q.3.*"],
             "annotate_aa": ["synonymous", "missense_aa", "nonsense"],
             "annotate_dna": ["synonymous", "missense_dna", "missense_dna"],
-            "avgscore": [10.0, 20.0, 5.0],
-            "avgscore_rep_weighted": [11.0, 21.0, 6.0],
+            "score": [10.0, 20.0, 5.0],
         }
     )
 
     stats = calculate_summary_stats(
         scores_df,
-        "avgscore",
+        "score",
     )
 
     assert stats["overall"] == {"avg": 11.67, "median": 10.0, "min": 5.0, "max": 20.0, "std": 7.64}

@@ -19,7 +19,7 @@ def test_sortscore_cli_integrate_lilace_writes_input_file(tmp_path, isolated_run
                 "count.r1b2": 20,
                 "count.r1b3": 30,
                 "count.r1b4": 40,
-                "avgscore": 1.5,
+                "score": 1.5,
             },
         ]
     ).to_csv(input_path, index=False)

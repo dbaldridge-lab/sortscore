@@ -7,7 +7,7 @@ including biophysical properties panels and codon-level analysis features.
 Examples
 --------
 >>> from sortscore.visualization.heatmaps import plot_heatmap
->>> plot_heatmap(data, 'avgscore', experiment_config)
+>>> plot_heatmap(data, 'score', experiment_config)
 """
 
 import logging
@@ -516,7 +516,7 @@ def plot_tiled_heatmap(
     
     >>> plot_tiled_heatmap(
     ...     batch_data=normalized_scores,
-    ...     score_col='avgscore',
+    ...     score_col='score',
     ...     batch_config=config,
     ...     experiments=experiment_list,
     ...     export=True,
