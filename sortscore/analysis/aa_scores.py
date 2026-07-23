@@ -36,7 +36,6 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
     - Filtering out NaN values
     - Checking if codon aggregation is needed
     - Calculating appropriate statistics (with/without codon variance)
-    - Rounding score columns
     - Saving to CSV file
     - Logging output
     

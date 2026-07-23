@@ -1,13 +1,7 @@
 """
 Normalization utilities for Sort-seq variant analysis.
 
-This module provides functions to normalize variant counts per million reads and apply minimum read thresholds, as in the original notebook.
-
-Examples
---------
->>> from sortscore.analysis.normalization import normalize_counts_per_million, apply_minread_threshold
->>> df_norm = normalize_counts_per_million(df, read_count)
->>> df_norm = apply_minread_threshold(df_norm, minread_threshold)
+This module provides functions to normalize variant counts per million reads and apply minimum read thresholds.
 """
 import pandas as pd
 import numpy as np

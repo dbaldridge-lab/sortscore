@@ -67,38 +67,6 @@ def calculate_replicate_statistics(df: pd.DataFrame, rep_score_columns: List[str
     return df_result
 
 
-def round_score_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Round score columns to integers for cleaner output.
-    
-    Identifies columns containing 'score' in the name and rounds floating-point
-    values to integers using pandas nullable integer type.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing score columns to round
-        
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with score columns rounded to integers
-        
-    Examples
-    --------
-    >>> df_rounded = round_score_columns(df)
-    """
-    df_result = df.copy()
-    
-    # Find and round score columns
-    score_columns = [col for col in df_result.columns if 'score' in col.lower()]
-    for col in score_columns:
-        if df_result[col].dtype in ['float64', 'float32']:
-            df_result[col] = df_result[col].round().astype('Int64')
-    
-    return df_result
-
-
 def get_replicate_score_columns(df: pd.DataFrame) -> List[str]:
     """
     Identify replicate score columns in a DataFrame.

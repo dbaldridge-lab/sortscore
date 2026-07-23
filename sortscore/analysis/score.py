@@ -60,7 +60,7 @@ def calculate_activity_scores(
     method: str = 'rep-weighted',
     min_reads: int = 0,
     bins_required: int = 1,
-    reps_required: int = 3,
+    reps_required: int = 1,
     read_count: Optional[List[int]] = None
 ) -> pd.DataFrame:
     """
@@ -112,8 +112,8 @@ def calculate_full_activity_scores(
     counts: Dict[int, Dict[int, pd.DataFrame]],
     mfi: Dict[int, Dict[int, float]],
     merged_df: pd.DataFrame,
-    min_bins: int = 3,
-    min_reps: int = 3,
+    min_bins: int = 1,
+    min_reps: int = 1,
     minread_threshold: float = 0.0,
     avg_method: str = 'rep-weighted',
     groupby_cols: Optional[list] = None,
@@ -130,9 +130,9 @@ def calculate_full_activity_scores(
         Nested dict of DataFrames: counts[rep][bin] = DataFrame with columns ['variant_seq', 'count'] (or similar).
     mfi : dict
         Nested dict of MFI values: mfi[rep][bin] = float.
-    min_bins : int, default 3
+    min_bins : int, default 1
         Minimum number of bins a variant must appear in per replicate to be scored.
-    min_reps : int, default 3
+    min_reps : int, default 1
         Minimum number of replicates a variant must appear in to be scored.
     minread_threshold : float, default 0.0
         Minimum normalized reads per million required to keep a value.
