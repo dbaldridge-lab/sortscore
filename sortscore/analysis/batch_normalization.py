@@ -357,14 +357,49 @@ def extract_experiment_stats(scores_df: pd.DataFrame) -> Dict[str, float]:
         nonsense_subset = scores_df[scores_df['annotate_aa'] == 'nonsense']
         if len(nonsense_subset) > 0:
             stats['non_avg'] = float(nonsense_subset[score_col].mean())
+            stats['non_median'] = float(nonsense_subset[score_col].median())
     
     # Missense average
     if 'annotate_aa' in scores_df.columns:
         missense_subset = scores_df[scores_df['annotate_aa'] == 'missense_aa']
         if len(missense_subset) > 0:
             stats['missense_avg'] = float(missense_subset[score_col].mean())
+            stats['missense_median'] = float(missense_subset[score_col].median())
     
     return stats
+
+
+def _calculate_synonymous_alignment_factors(
+    combined_scores: pd.DataFrame,
+    all_stats: Dict[str, Dict[str, float]],
+) -> Tuple[float, Dict[str, float]]:
+    """Return global synonymous median and per-batch alignment factors."""
+    if 'annotate_aa' not in combined_scores.columns:
+        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
+
+    reference_scores = []
+    for _, batch_df in combined_scores.groupby('batch'):
+        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
+        if len(syn_subset) > 0:
+            reference_scores.extend(syn_subset['score'].dropna().tolist())
+
+    if not reference_scores:
+        raise ValueError("No synonymous variants found for normalization.")
+
+    global_reference_median = float(np.median(reference_scores))
+    normalization_factors = {}
+    for exp_name, stats in all_stats.items():
+        exp_reference_score = stats.get('syn_median', np.nan)
+        if (
+            not np.isnan(exp_reference_score)
+            and exp_reference_score != 0
+            and not np.isnan(global_reference_median)
+        ):
+            normalization_factors[exp_name] = global_reference_median / exp_reference_score
+        else:
+            raise ValueError(f"Invalid synonymous reference score for {exp_name}.")
+
+    return global_reference_median, normalization_factors
 
 
 def apply_linear_range_normalization(
@@ -428,7 +463,7 @@ def apply_linear_range_normalization(
     normalization_factors = {}
     for exp_name, stats in all_stats.items():
         a_i = stats.get('syn_median', np.nan)
-        c_i = stats.get('non_avg', np.nan)
+        c_i = stats.get('non_median', np.nan)
         
         if np.isnan(a_i) or np.isnan(c_i):
             raise ValueError(f"Missing normalization values for {exp_name}.")
@@ -455,7 +490,7 @@ def apply_linear_range_normalization(
         raw_tile_values={
             batch_name: {
                 'syn_median': stats.get('syn_median'),
-                'non_avg': stats.get('non_avg'),
+                'non_median': stats.get('non_median'),
             }
             for batch_name, stats in all_stats.items()
         },
@@ -500,29 +535,10 @@ def apply_zscore_2pole_normalization(
         Normalized scores DataFrame and combined statistics
     """
     logger.info("Applying z-score scaled 2-pole normalization")
-    if 'annotate_aa' not in combined_scores.columns:
-        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
-    
-    # Use synonymous variants as the alignment reference for every input type.
-    reference_scores = []
-    for _, batch_df in combined_scores.groupby('batch'):
-        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
-        if len(syn_subset) > 0:
-            reference_scores.extend(syn_subset['score'].dropna().tolist())
-
-    if not reference_scores:
-        raise ValueError("No synonymous variants found for normalization.")
-
-    A = np.median(reference_scores)
-
-    # Calculate initial alignment factors.
-    wt_normalization_factors = {}
-    for exp_name, stats in all_stats.items():
-        a_i = stats.get('syn_median', np.nan)
-        if not np.isnan(a_i) and a_i != 0 and not np.isnan(A):
-            wt_normalization_factors[exp_name] = A / a_i
-        else:
-            raise ValueError(f"Invalid synonymous reference score for {exp_name}.")
+    A, wt_normalization_factors = _calculate_synonymous_alignment_factors(
+        combined_scores,
+        all_stats,
+    )
     
     # Apply initial reference alignment.
     wt_normalized_scores = _coerce_score_columns_to_float(combined_scores)
@@ -659,35 +675,14 @@ def apply_zscore_onepole_normalization(
         Normalized scores DataFrame and combined statistics
     """
     logger.info("Applying z-score centering normalization (synonymous reference)")
-
-    if 'annotate_aa' not in combined_scores.columns:
-        raise ValueError("scores_df must contain 'annotate_aa' for synonymous reference selection")
-    
-    # Calculate global reference scores for normalization
-    reference_scores = []
-    for _, batch_df in combined_scores.groupby('batch'):
-        syn_subset = batch_df[batch_df['annotate_aa'] == 'synonymous']
-        if len(syn_subset) > 0:
-            reference_scores.extend(syn_subset['score'].dropna().tolist())
-    
-    if not reference_scores:
-        raise ValueError("No synonymous variants found for normalization.")
-    
-    global_reference_median = np.median(reference_scores)
+    global_reference_median, normalization_factors = _calculate_synonymous_alignment_factors(
+        combined_scores,
+        all_stats,
+    )
     logger.info(
         "Using synonymous variants as reference with global median: "
         f"{global_reference_median:.3f}"
     )
-    
-    # Calculate normalization factors based on variant type
-    normalization_factors = {}
-    for exp_name, stats in all_stats.items():
-        exp_reference_score = stats.get('syn_median', np.nan)
-        
-        if not np.isnan(exp_reference_score) and exp_reference_score != 0 and not np.isnan(global_reference_median):
-            normalization_factors[exp_name] = global_reference_median / exp_reference_score
-        else:
-            raise ValueError(f"Invalid synonymous reference score for {exp_name}.")
     
     # Apply reference normalization
     reference_normalized_scores = _coerce_score_columns_to_float(combined_scores)
@@ -741,7 +736,7 @@ def apply_zscore_onepole_normalization(
             'syn_std': syn_std,
         },
         final_scores=final_scores,
-        normalization_factors=normalization_factors,
+        wt_factors=normalization_factors,
     )
     
     logger.info("Z-score centering normalization complete")
