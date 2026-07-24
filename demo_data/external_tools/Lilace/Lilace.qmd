@@ -326,10 +326,11 @@ lilace::lilace_score_heatmap(
 #| fig-width: 8
 library(ggplot2)
 
-corr <- cor.test(x=scores$sortscore_score, y=scores$effect, method='spearman', exact=FALSE)
+scores_filtered <- scores[scores$type != "multiple_aa", ]
 
+corr <- cor.test(x=scores_filtered$sortscore_score, y=scores_filtered$effect, method='spearman', exact=FALSE)
 # Add n and correlation to the plot
-complete_scores <- scores[complete.cases(scores$sortscore_score, scores$effect),]
+complete_scores <- scores_filtered[complete.cases(scores_filtered$sortscore_score, scores_filtered$effect),]
 
 label <- sprintf(
   "Spearman's \u03c1 = %.2f\nn = %d",
