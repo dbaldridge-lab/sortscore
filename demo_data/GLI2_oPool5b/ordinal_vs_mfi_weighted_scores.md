@@ -1,24 +1,21 @@
----
-title: "Sortscore MFI VS Ordinal Weights"
-format:
-  gfm:
-    toc: true
-execute:
-  echo: true
-  warning: false
-  message: false
-  eval: true
----
+# Sortscore MFI VS Ordinal Weights
 
-This notebook compares outputs scores produced using sortscore after changing bin weights from median MFI (AFU) to ordinal values.
+
+- [Setup](#setup)
+- [Score variants using ordinal values entered into the experimental
+  setup
+  file](#score-variants-using-ordinal-values-entered-into-the-experimental-setup-file)
+- [Figures](#figures)
+
+This notebook compares outputs scores produced using sortscore after
+changing bin weights from median MFI (AFU) to ordinal values.
 
 ## Setup
 
-Demo scores used for comparison were previously produced using demo_data/single_experiment_demo.ipynb.
+Demo scores used for comparison were previously produced using
+demo_data/single_experiment_demo.ipynb.
 
-```{r}
-#| label: setup
-
+``` r
 aa_scores <- readr::read_csv(
   "output/scores/demo_aa_scores.csv",
   show_col_types = FALSE
@@ -44,10 +41,19 @@ config_path <- "demo_data/GLI2_oPool5b/config_ordinal.json"
 
 ## Score variants using ordinal values entered into the experimental setup file
 
-```{r}
-#| message: true
+``` r
 library(here)
+```
+
+    here() starts at /Users/c.chitwood/code/sortscore
+
+``` r
 here::i_am("demo_data/GLI2_oPool5b/ordinal_vs_mfi_weighted_scores.qmd")
+```
+
+    here() starts at /Users/c.chitwood/code/sortscore
+
+``` r
 args <- c(
   "-m", "sortscore", "score",
   "-n", experiment_name,
@@ -66,9 +72,7 @@ system2(sortscore_python_path, args)
 
 ## Figures
 
-```{r}
-#| label: AA scores - ordinal vs MFI weighted comparison
-#| fig-width: 8
+``` r
 library(ggplot2)
 
 complete_rows <- complete.cases(
@@ -111,7 +115,11 @@ aa_scatterplot <- ggplot() +
     )
 
 print(aa_scatterplot)
+```
 
+![](ordinal_vs_mfi_weighted_scores_files/figure-commonmark/AA%20scores%20-%20ordinal%20vs%20MFI%20weighted%20comparison-1.png)
+
+``` r
 ggsave(
   filename = "aa_scatterplot.png",
   plot = aa_scatterplot,
@@ -119,14 +127,9 @@ ggsave(
   units = "in",
   dpi = 300
 )
-
-
 ```
 
-```{r}
-#| label: DNA scores - ordinal vs MFI weighted comparison
-#| fig-width: 8
-
+``` r
 dna_complete_rows <- complete.cases(
   dna_scores$score,
   dna_scores_ordinal$score
@@ -167,7 +170,11 @@ dna_scatterplot <- ggplot() +
   ) 
 
 print(dna_scatterplot)
+```
 
+![](ordinal_vs_mfi_weighted_scores_files/figure-commonmark/DNA%20scores%20-%20ordinal%20vs%20MFI%20weighted%20comparison-1.png)
+
+``` r
 ggsave(
   filename = "dna_scatterplot.png",
   plot = dna_scatterplot,
@@ -175,5 +182,4 @@ ggsave(
   units = "in",
   dpi = 300
 )
-
 ```
