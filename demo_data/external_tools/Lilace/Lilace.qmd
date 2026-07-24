@@ -18,6 +18,8 @@ Cite: Freudenberg, J., Rao, J., Howard, M. K., Macdonald, C., Greenwald, N. F., 
 
 Reference vignette: [Introduction to Lilace](https://pimentellab.com/lilace/articles/intro.html).
 
+To recreate this analysis, first run `demo_data/tiled_demo.ipynb` to generate the required input files.
+
 0. The `sortscore integrate` command is used to return a Lilace-ready counts table.
 1. Import scores and metadata from sortscore into Lilace's input format.
 2. Normalize according to cell sorting percentages, if needed.
@@ -246,12 +248,15 @@ lilace_obj <- lilace::lilace_fit_model(
 
 Read the exported scores table.
 
+The variant annotated as `multiple_aa` is a pathogenic control from the literature (identified by multiple synonymous edits in tiled data where the missense variant is not directly sequenced) and is excluded from this analysis.
+
 ```{r}
 #| label: read scores
 scores <- readr::read_tsv(
   file.path(working_dir_path, "lilace_output", "variant_scores.tsv"),
   show_col_types = FALSE
-)
+) |>
+  dplyr::filter(type != "multiple_aa")
 
 head(scores)
 ```

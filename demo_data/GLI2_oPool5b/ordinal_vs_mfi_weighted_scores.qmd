@@ -12,8 +12,11 @@ execute:
 
 This notebook compares outputs scores produced using sortscore after changing bin weights from median MFI (AFU) to ordinal values.
 
+<<<<<<< HEAD
 ## Setup
 
+=======
+>>>>>>> 4d75d668a275a4700455e81c8e9a3d49a5720f8b
 Demo scores used for comparison were previously produced using demo_data/single_experiment_demo.ipynb.
 
 ```{r}
@@ -111,6 +114,15 @@ aa_scatterplot <- ggplot() +
     )
 
 print(aa_scatterplot)
+
+ggsave(
+  filename = "aa_scatterplot.png",
+  plot = aa_scatterplot,
+  width = 6, height = 5,
+  units = "in",
+  dpi = 300
+)
+
 
 ggsave(
   filename = "aa_scatterplot.png",

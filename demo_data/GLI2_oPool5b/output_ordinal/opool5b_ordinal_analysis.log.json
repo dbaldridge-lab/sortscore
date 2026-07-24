@@ -1,6 +1,11 @@
 {
+<<<<<<< HEAD
   "analysis_id": "opool5b_ordinal_20260724_123018",
   "timestamp": "2026-07-24T12:30:19.850505",
+=======
+  "analysis_id": "opool5b_ordinal_20260723_160222",
+  "timestamp": "2026-07-23T16:02:24.505599",
+>>>>>>> 4d75d668a275a4700455e81c8e9a3d49a5720f8b
   "status": "completed",
   "request": {
     "config_file": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/config_ordinal.json",
@@ -23,9 +28,15 @@
     }
   },
   "execution": {
+<<<<<<< HEAD
     "start_time": "2026-07-24T12:30:18.010740",
     "end_time": "2026-07-24T12:30:19.850505",
     "duration_seconds": 1.84,
+=======
+    "start_time": "2026-07-23T16:02:22.601102",
+    "end_time": "2026-07-23T16:02:24.505599",
+    "duration_seconds": 1.9,
+>>>>>>> 4d75d668a275a4700455e81c8e9a3d49a5720f8b
     "variants_processed": 2081,
     "variants_filtered": 0,
     "errors": [],
