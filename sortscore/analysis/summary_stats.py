@@ -9,7 +9,6 @@ import os
 import logging
 import pandas as pd
 from typing import Dict, Any, Optional
-from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
 
 def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, Any]]:
     if score_col not in df.columns or df.empty:
@@ -27,7 +26,6 @@ def _summarize_subset(df: pd.DataFrame, score_col: str) -> Optional[Dict[str, An
     }
 
 
-# TODO: #47 Separate DNA-level and AA-level stats into different functions or modes
 def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str, Any]:
     """
     Calculate summary stats from variant scores.
@@ -81,18 +79,13 @@ def calculate_summary_stats(scores_df: pd.DataFrame, score_col: str) -> Dict[str
         if synonymous_wt_summary is not None:
             stats['synonymous_wt'] = synonymous_wt_summary
 
-    # Summarize AA-level categories from the file being described.
-    aa_scores: Optional[pd.DataFrame] = None
-    if 'dna_seq_diff' in scores_df.columns and 'aa_seq_diff' in scores_df.columns:
-        aa_scores = aggregate_synonymous_variants(scores_df)
-    elif 'annotate_aa' in scores_df.columns:
-        aa_scores = scores_df
-
-    if aa_scores is not None and score_col in aa_scores.columns:
-        nonsense_subset = aa_scores[aa_scores['annotate_aa'] == 'nonsense']
+    # Summarize categories from the rows in the file being described. DNA score
+    # tables must remain DNA-row summaries rather than implicit AA aggregation.
+    if 'annotate_aa' in scores_df.columns:
+        nonsense_subset = scores_df[scores_df['annotate_aa'] == 'nonsense']
         nonsense_summary = _summarize_subset(nonsense_subset, score_col)
 
-        missense_subset = aa_scores[aa_scores['annotate_aa'] == 'missense_aa']
+        missense_subset = scores_df[scores_df['annotate_aa'] == 'missense_aa']
         missense_summary = _summarize_subset(missense_subset, score_col)
 
         if nonsense_summary is not None:
