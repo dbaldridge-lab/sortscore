@@ -43,6 +43,7 @@ Batch Normalization Heatmap
 
 - [Single Experiment Scoring Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/single_experiment_demo.ipynb)
 - [Batch Normalization Notebook Demo](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/tiled_demo.ipynb)
+- [Comparison of Ordinal vs MFI weighted scores](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/ordinal_vs_mfi_weighted_scores.md)
 
 ## Example Config Files
 - [Example Config](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/config.json)
