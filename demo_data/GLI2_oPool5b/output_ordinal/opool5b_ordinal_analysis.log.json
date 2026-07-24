@@ -1,11 +1,11 @@
 {
-  "analysis_id": "opool5b_ordinal_20260716_033941",
-  "timestamp": "2026-07-16T03:39:45.289484",
+  "analysis_id": "opool5b_ordinal_20260723_160222",
+  "timestamp": "2026-07-23T16:02:24.505599",
   "status": "completed",
   "request": {
-    "config_file": "./demo_data/GLI2_oPool5b/config_ordinal.json",
+    "config_file": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/config_ordinal.json",
     "cli_args": {
-      "config": "./demo_data/GLI2_oPool5b/config_ordinal.json",
+      "config": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/config_ordinal.json",
       "batch": false,
       "pos_color": false,
       "fig_format": null
@@ -23,9 +23,9 @@
     }
   },
   "execution": {
-    "start_time": "2026-07-16T03:39:41.942308",
-    "end_time": "2026-07-16T03:39:45.289484",
-    "duration_seconds": 3.35,
+    "start_time": "2026-07-23T16:02:22.601102",
+    "end_time": "2026-07-23T16:02:24.505599",
+    "duration_seconds": 1.9,
     "variants_processed": 2081,
     "variants_filtered": 0,
     "errors": [],
@@ -35,8 +35,8 @@
     "dna_scores": {
       "file": "opool5b_ordinal_dna_scores.csv",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_dna_scores.csv",
-      "size_bytes": 1865306,
-      "checksum": "bed30717e827a78e",
+      "size_bytes": 2429296,
+      "checksum": "443947422ad44da3",
       "metadata": {
         "variant_count": 2081
       }
@@ -44,8 +44,8 @@
     "aa_scores": {
       "file": "opool5b_ordinal_aa_scores.csv",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_aa_scores.csv",
-      "size_bytes": 149246,
-      "checksum": "d35457c38baf4639",
+      "size_bytes": 189288,
+      "checksum": "f35f117768a21304",
       "metadata": {
         "variant_count": 695
       }
@@ -53,22 +53,22 @@
     "dna_statistics": {
       "file": "opool5b_ordinal_dna_stats.json",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_dna_stats.json",
-      "size_bytes": 523,
-      "checksum": "c225ddc76447231a",
+      "size_bytes": 555,
+      "checksum": "383c51c2c3571dbd",
       "metadata": {}
     },
     "aa_statistics": {
       "file": "opool5b_ordinal_aa_stats.json",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_aa_stats.json",
-      "size_bytes": 428,
-      "checksum": "316abda90878d344",
+      "size_bytes": 450,
+      "checksum": "a7d5fcdf790ef8fc",
       "metadata": {}
     }
   },
   "environment": {
     "sortscore_version": "0.1.0",
     "python_version": "3.12.4",
-    "working_directory": "/Users/c.chitwood/code/sortscore",
+    "working_directory": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b",
     "hostname": "C5000AL-7CXK247",
     "platform": "macOS-14.4.1-arm64-arm-64bit"
   }

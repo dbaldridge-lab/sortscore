@@ -4,7 +4,9 @@ format: docx
 editor: visual
 ---
 
-This notebook compares outputs scores produced using sortscore after changing bin weights from median MFI (AFU) to ordinal values. 
+This notebook compares outputs scores produced using sortscore after changing bin weights from median MFI (AFU) to ordinal values.
+
+Demo scores used for comparison were previously produced using demo_data/single_experiment_demo.ipynb.
 
 ```{r}
 #| label: setup
@@ -26,7 +28,32 @@ dna_scores_ordinal <- readr::read_csv(
   show_col_types = FALSE
 )
 
+sortscore_python <- "venv/bin/python" # path to an interpreter with sortscore installed
+experiment_name <- "opool5b_ordinal"
+experiment_setup_path <- "demo_data/GLI2_oPool5b/experiment_setup_ordinal.csv"
+config_path <- "demo_data/GLI2_oPool5b/config_ordinal.json"
+```
 
+## Score variants using ordinal values entered into the experimental setup file
+
+```{r}
+#| message: true
+library(here)
+here::i_am("demo_data/GLI2_oPool5b/ordinal_vs_mfi_weighted_scores.qmd")
+args <- c(
+  "-m", "sortscore", "score",
+  "-n", experiment_name,
+  "-e", here::here(experiment_setup_path),
+  "-c", here::here(config_path)
+)
+
+sortscore_python_path <- if (grepl("^(/|~)", sortscore_python)) {
+  path.expand(sortscore_python)
+} else {
+  here::here(sortscore_python)
+}
+
+system2(sortscore_python_path, args)
 ```
 
 ```{r}
@@ -35,13 +62,13 @@ dna_scores_ordinal <- readr::read_csv(
 library(ggplot2)
 
 complete_rows <- complete.cases(
-  aa_scores$avgscore_rep_weighted,
-  aa_scores_ordinal$avgscore_rep_weighted
+  aa_scores$score,
+  aa_scores_ordinal$score
 )
 
 aa_corr <- cor.test(
-  x = aa_scores$avgscore_rep_weighted[complete_rows],
-  y = aa_scores_ordinal$avgscore_rep_weighted[complete_rows],
+  x = aa_scores$score[complete_rows],
+  y = aa_scores_ordinal$score[complete_rows],
   method = "spearman",
   exact = FALSE
 )
@@ -52,10 +79,10 @@ label <- sprintf(
   sum(complete_rows)
 )
 
-scatterplot <- ggplot() +
+aa_scatterplot <- ggplot() +
   aes(
-    x = aa_scores$avgscore_rep_weighted,
-    y = aa_scores_ordinal$avgscore_rep_weighted
+    x = aa_scores$score,
+    y = aa_scores_ordinal$score
   ) +
   geom_smooth(method = lm, se = FALSE, color = "red", linewidth = 1) +
   geom_point(size = 1.5) +
@@ -75,6 +102,15 @@ scatterplot <- ggplot() +
 
 print(scatterplot)
 
+ggsave(
+  filename = "aa_scatterplot.png",
+  plot = aa_scatterplot,
+  width = 6, height = 5,
+  units = "in",
+  dpi = 300
+)
+
+
 ```
 
 ```{r}
@@ -82,13 +118,13 @@ print(scatterplot)
 #| fig-width: 8
 
 dna_complete_rows <- complete.cases(
-  dna_scores$avgscore_rep_weighted,
-  dna_scores_ordinal$avgscore_rep_weighted
+  dna_scores$score,
+  dna_scores_ordinal$score
 )
 
 dna_corr <- cor.test(
-  x = dna_scores$avgscore_rep_weighted[dna_complete_rows],
-  y = dna_scores_ordinal$avgscore_rep_weighted[dna_complete_rows],
+  x = dna_scores$score[dna_complete_rows],
+  y = dna_scores_ordinal$score[dna_complete_rows],
   method = "spearman",
   exact = FALSE
 )
@@ -101,8 +137,8 @@ dna_label <- sprintf(
 
 dna_scatterplot <- ggplot() +
   aes(
-    x = dna_scores$avgscore_rep_weighted,
-    y = dna_scores_ordinal$avgscore_rep_weighted
+    x = dna_scores$score,
+    y = dna_scores_ordinal$score
   ) +
   geom_smooth(method = lm, se = FALSE, color = "red", linewidth = 1) +
   geom_point(size = 1.5) +
@@ -118,8 +154,16 @@ dna_scatterplot <- ggplot() +
     title = "DNA scores using MFI and ordinal bin weights",
     x = "MFI Weighted",
     y = "Ordinal Bin Weighted"
-  )
+  ) 
 
 print(dna_scatterplot)
+
+ggsave(
+  filename = "dna_scatterplot.png",
+  plot = dna_scatterplot,
+  width = 6, height = 5,
+  units = "in",
+  dpi = 300
+)
 
 ```
