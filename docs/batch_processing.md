@@ -17,11 +17,14 @@ This workflow enables you to:
 ## Quick Start
 
 1. Run tiled scoring to generate tile outputs
-2. List 2 or more tiles in experimental_setup file
-3. Create a `batch_config.json` with an `experiments` list of tile output directories
-4. Run cross-tile normalization:
+   - List 2 or more tiles in experimental_setup file
+   - Or run each tile individually
    ```bash
    sortscore score -n my_experiment -e experiment_setup.csv -c experiment_config.json
+   ```
+2. Create a `batch_config.json` with an `experiments` list of tile output directories
+3. Run cross-tile normalization:
+   ```bash
    sortscore norm -c batch_config.json
    ```
 

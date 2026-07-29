@@ -73,7 +73,7 @@ def calculate_activity_scores(
     method : str, default 'rep-weighted'
         Averaging method ('simple-avg', 'rep-weighted').
     min_reads : int, default 0
-        Minimum normalized reads per bin for a variant to be scored.
+        Minimum normalized reads per million required for a bin value to be retained.
     bins_required : int, default 1
         Number of bins a variant must appear in to be scored.
     reps_required : int, default 3

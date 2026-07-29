@@ -24,7 +24,7 @@ def filter_variants(
     merged : pandas.DataFrame
         DataFrame with variant counts (wide format).
     min_reads : int
-        Minimum normalized reads per bin for a variant to be scored.
+        Minimum normalized reads per million required for a bin value to be retained.
     bins_required : int
         Number of bins a variant must appear in to be scored.
     reps_required : int

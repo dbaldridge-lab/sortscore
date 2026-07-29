@@ -16,7 +16,7 @@ sortscore score [options]
 | `--bins-required` | - | int | Minimum number of bins required | 1 |
 | `--reps-required` | - | int | Minimum number of replicates required | 1 |
 | `--avg-method` | - | str | Method used to calculate the output `score` column: `rep-weighted` or `simple-avg` | rep-weighted |
-| `--minread-threshold` | - | int | Minimum read threshold | 0 |
+| `--minread-threshold` | - | int | Minimum normalized reads per million required for a bin value to be retained | 0 |
 | `--max-cv` | - | float | Maximum coefficient of variation allowed | None |
 | `--mutagenesis-type` | - | str | Mutagenesis type: `aa` or `codon` | aa |
 | `--mutagenesis-variants` | - | str | Comma-separated list (e.g. `G,C,T,A`) | W,F,Y,P,M,I,L,V,A,G,C,S,T,Q,N,D,E,H,R,K,* |

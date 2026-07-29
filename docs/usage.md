@@ -58,7 +58,7 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
 | `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
 | `avg_method`           | str   | Method used to calculate the canonical `score` column (`rep-weighted` or `simple-avg`). **Default:** `rep-weighted`. |
-| `minread_threshold`    | int   | Minimum reads per bin for a variant to be scored. **Default:** `0`. |
+| `minread_threshold`    | int   | Minimum normalized reads per million required for a bin value to be retained. Values below this threshold are set to missing before scoring. **Default:** `0`. |
 | `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. **Default:** `None` (CV filtering is disabled). |
 | `mutagenesis_type`     | str   | Mutagenesis type: `aa` or `codon`. **Default:** `aa`. Set this to `codon` in the config or CLI when running DNA-based analysis. |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |

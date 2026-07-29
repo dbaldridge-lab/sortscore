@@ -66,7 +66,7 @@ def create_analysis_parser() -> argparse.ArgumentParser:
     parser.add_argument("-m", "--minread-threshold", 
                         type=int, 
                         required=False, 
-                        help="Minimum read threshold. If not provided, uses config value or default (0)."
+                        help="Minimum normalized reads per million required for a bin value to be retained. Defaults to 0."
                             )
     parser.add_argument("--max-cv", 
                         type=float, 
