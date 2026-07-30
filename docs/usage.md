@@ -32,10 +32,14 @@ The experiment setup CSV must contain the following required columns:
 - `Replicate`: Technical replicate number. Set to 1 if your experiment doesn't have technical replicates.
 - `Bin`: Bin number. Label from 1 up to the number of tubes that cells were sorted into. The order does not matter, so long as MFI is mapped to the correct bin in this file.
 - `Read Counts (CSV)`: Path to the variant count file for this replicate/bin.
-- `MFI`: Median fluorescence value for this replicate/bin. Ordinal values can be input in cases where experimentally derived bin weights are not available.
+- `MFI`: Bin weight for this replicate/bin. This is typically the bin median fluorescence intensity for FACS experiments, but any user-defined numeric weight can be used, including integer ordinal values when experimental fluorescence weights are unavailable.
+
+`sortscore` calculates the expected fluorescence score, `Sv`, as a weighted mean across bins: the proportion of variant reads in each bin is multiplied by the corresponding `MFI` weight and summed across bins. MFI-based weights preserve the actual, often unevenly spaced, fluorescence differences between bins and estimate the variant-carrying cell population's mean fluorescence. Ordinal weights assume evenly spaced ranks and produce a comparable non-parametric score without fluorescence units. Both approaches are proxies for variant function; in a demo dataset with unevenly spaced bins, ordinal-weighted scores were highly concordant with MFI-weighted scores ([ordinal_vs_mfi_weighted_scores.md](https://github.com/dbaldridge-lab/sortscore/blob/main/demo_data/GLI2_oPool5b/ordinal_vs_mfi_weighted_scores.md)).
 
 Optional setup columns:
 - `Tile`: Used for normalization across experiments in tiled/batch workflows. Not required for standard single-experiment scoring.
+- `Read Count`: Total sequencing reads for this replicate/bin before filtering. If provided, this value is used for read-depth normalization; otherwise, `sortscore` uses the summed variant counts in the count file.
+- `Proportion of Cells`: Fraction of sorted cells in this bin, such as the sorter gate proportion. If provided, normalized read counts are additionally divided by this value to account for cell distribution across bins.
 
 ## 3. Running the Scoring Workflow
 
