@@ -16,12 +16,13 @@ _AA_FIRST_COLUMNS = {
     'aa_seq',
     'batch',
 }
-_AA_SUM_COLUMNS = {'n_codons', 'n_measurements'}
 _AA_DROPPED_COLUMNS = {
     'variant_seq',
     'codon_diff',
     'dna_seq_diff',
     'annotate_dna',
+    'n_codons',
+    'n_measurements',
     'SD_codon',
     'SD_rep',
     'CV_rep',
@@ -63,6 +64,34 @@ def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:
     
     return aa_data
 
+
+def aggregate_aa_counts(counts_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate annotated DNA count rows into AA-level count rows.
+
+    This produces the AA-equivalent merged count input expected by the shared
+    scoring code. Score, proportion, and statistics columns are intentionally
+    not handled here; scoring happens after count aggregation.
+    """
+    required_columns = {'aa_seq_diff', 'annotate_aa'}
+    missing_columns = required_columns - set(counts_df.columns)
+    if missing_columns:
+        missing = ', '.join(sorted(missing_columns))
+        raise ValueError(f"DataFrame must contain AA count aggregation columns: {missing}")
+
+    count_columns = [
+        col for col in counts_df.columns
+        if col.startswith('count.r') and 'b' in col
+    ]
+    if not count_columns:
+        raise ValueError("DataFrame must contain count.r#b# columns for AA count aggregation")
+
+    agg_dict = {col: 'sum' for col in count_columns}
+    if 'aa_seq' in counts_df.columns:
+        agg_dict['aa_seq'] = 'first'
+
+    return counts_df.groupby(['aa_seq_diff', 'annotate_aa'], dropna=False).agg(agg_dict).reset_index()
+
 def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
     """
     Aggregate synonymous variants by averaging their scores.
@@ -101,8 +130,6 @@ def aggregate_synonymous_variants(scores_df: pd.DataFrame) -> pd.DataFrame:
         elif col.startswith('count.r') or col.startswith('norm.count.r') or (
             col.startswith('Rep') and col.endswith('.sum')
         ):
-            agg_dict[col] = 'sum'
-        elif col in _AA_SUM_COLUMNS:
             agg_dict[col] = 'sum'
         elif col in _AA_FIRST_COLUMNS:
             agg_dict[col] = 'first'

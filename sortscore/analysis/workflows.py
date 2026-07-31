@@ -10,7 +10,7 @@ import pandas as pd
 from typing import Optional, Tuple
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.annotation import annotate_scores_dataframe
-from sortscore.analysis.variant_aggregation import aggregate_synonymous_variants
+from sortscore.analysis.variant_aggregation import aggregate_aa_counts
 from sortscore.analysis.statistics import calculate_replicate_statistics, get_replicate_score_columns
 from sortscore.analysis.summary_stats import calculate_summary_stats, save_summary_stats
 from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, process_and_save_aa_scores
@@ -54,6 +54,30 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
     )
     
     return scores_df
+
+
+def calculate_aa_scores_from_dna_counts(experiment, merged_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate DNA count rows to AA count rows, then score with the shared scorer.
+    """
+    annotated_counts = annotate_scores_dataframe(
+        merged_df,
+        experiment.wt_seq,
+        experiment.mutagenesis_type,
+    )
+    aa_counts_df = aggregate_aa_counts(annotated_counts)
+    return calculate_full_activity_scores(
+        counts=experiment.counts,
+        mfi=experiment.mfi,
+        min_bins=experiment.bins_required,
+        min_reps=experiment.reps_required,
+        minread_threshold=experiment.minread_threshold,
+        avg_method=experiment.avg_method,
+        total_reads=experiment.total_reads,
+        cell_prop=experiment.cell_prop,
+        merged_df=aa_counts_df,
+        max_cv=experiment.max_cv,
+    )
 
 
 def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Optional[str]:
@@ -123,8 +147,7 @@ def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Option
     return dna_scores_file
 
 
-def process_aa_workflow(experiment, output_dir: str, analysis_logger,
-                       dna_scores_file: Optional[str] = None) -> str:
+def process_aa_workflow(experiment, output_dir: str, analysis_logger) -> str:
     """
     Process AA-level analysis workflow.
     
@@ -140,9 +163,6 @@ def process_aa_workflow(experiment, output_dir: str, analysis_logger,
         Output directory
     analysis_logger : AnalysisLogger
         Analysis logger
-    dna_scores_file : Optional[str]
-        Path to DNA scores file if available
-        
     Returns
     -------
     str
@@ -152,25 +172,14 @@ def process_aa_workflow(experiment, output_dir: str, analysis_logger,
     logging.info("Processing AA workflow...")
     scores_dir = os.path.join(output_dir, 'scores')
     
-    if dna_scores_file and os.path.exists(dna_scores_file):
-        # Load DNA scores and aggregate to AA level
-        logging.info(f"Loading DNA scores from {dna_scores_file} for AA aggregation")
-        dna_scores_df = pd.read_csv(dna_scores_file)
-        
-        if 'aa_seq_diff' not in dna_scores_df.columns:
-            raise ValueError("DNA scores file missing aa_seq_diff column needed for AA aggregation")
-        
-        # Aggregate to AA level
-        scores_df = aggregate_synonymous_variants(dna_scores_df)
-        logging.info(f"Aggregated to {len(scores_df)} unique AA variants from DNA data")
+    if experiment.mutagenesis_type != 'aa':
+        logging.info("Building AA scores from aggregated DNA count data")
+        merged_df = experiment.get_merged_counts()
+        scores_df = calculate_aa_scores_from_dna_counts(experiment, merged_df)
+        logging.info(f"Calculated AA scores for {len(scores_df)} variants from aggregated DNA counts.")
         
     else:
-        # Build AA table directly from counts (AA-only experiment or no DNA scores)
-        if experiment.mutagenesis_type == 'aa':
-            logging.info("Building AA scores directly from AA input data")
-        else:
-            logging.info("Building AA scores directly from DNA input data (no pre-existing DNA scores)")
-
+        logging.info("Building AA scores directly from AA input data")
         merged_df = experiment.get_merged_counts()
         scores_df = calculate_variant_scores(experiment, merged_df)
         logging.info(f"Calculated AA scores for {len(scores_df)} variants.")
@@ -225,6 +234,6 @@ def run_variant_analysis_workflow(experiment, output_dir: str, analysis_logger) 
     logging.info(f"Using mutagenesis_type: '{experiment.mutagenesis_type}'")
     
     dna_scores_file = process_dna_workflow(experiment, output_dir, analysis_logger)
-    aa_scores_file = process_aa_workflow(experiment, output_dir, analysis_logger, dna_scores_file)
+    aa_scores_file = process_aa_workflow(experiment, output_dir, analysis_logger)
     
     return dna_scores_file, aa_scores_file

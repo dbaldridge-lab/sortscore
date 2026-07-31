@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 
 from sortscore.analysis.aa_scores import build_aa_scores_table
-from sortscore.analysis.variant_aggregation import aggregate_aa_data, aggregate_synonymous_variants
+from sortscore.analysis.score import calculate_full_activity_scores
+from sortscore.analysis.variant_aggregation import aggregate_aa_counts, aggregate_aa_data, aggregate_synonymous_variants
 
 
 def assert_synonymous_no_diff_group_retained(df: pd.DataFrame, score_col: str = "score") -> None:
@@ -52,6 +53,52 @@ def test_aggregate_aa_data_retains_synonymous_no_diff_rows():
     assert_synonymous_no_diff_group_retained(aa_data)
 
 
+def test_aggregate_aa_counts_sums_counts_without_scores():
+    counts_df = pd.DataFrame(
+        {
+            "variant_seq": ["dna1", "dna2"],
+            "aa_seq_diff": ["A.13.*", "A.13.*"],
+            "annotate_aa": ["nonsense", "nonsense"],
+            "score": [175.0, 110.0],
+            "count.r1b1": [1.0, 90.0],
+            "count.r1b2": [3.0, 10.0],
+        }
+    )
+
+    aa_counts = aggregate_aa_counts(counts_df)
+    row = aa_counts.iloc[0]
+
+    assert row["count.r1b1"] == 91.0
+    assert row["count.r1b2"] == 13.0
+    assert "score" not in aa_counts.columns
+    assert "variant_seq" not in aa_counts.columns
+
+
+def test_aa_scores_are_calculated_after_count_aggregation():
+    dna_counts = pd.DataFrame(
+        {
+            "variant_seq": ["dna1", "dna2"],
+            "aa_seq_diff": ["A.13.*", "A.13.*"],
+            "annotate_aa": ["nonsense", "nonsense"],
+            "score": [175.0, 110.0],
+            "count.r1b1": [1.0, 90.0],
+            "count.r1b2": [3.0, 10.0],
+        }
+    )
+    aa_counts = aggregate_aa_counts(dna_counts)
+
+    aa_scores = calculate_full_activity_scores(
+        counts={1: {"1": pd.DataFrame({"count": [104.0]}), "2": pd.DataFrame({"count": [104.0]})}},
+        mfi={1: {"1": 100.0, "2": 200.0}},
+        merged_df=aa_counts,
+    )
+    row = aa_scores.iloc[0]
+
+    assert row["count.r1b1"] == 91.0
+    assert row["count.r1b2"] == 13.0
+    assert row["score"] != pytest.approx((175.0 + 110.0) / 2.0)
+
+
 def test_aggregate_synonymous_variants_uses_explicit_column_rules():
     scores_df = pd.DataFrame(
         {
@@ -63,6 +110,8 @@ def test_aggregate_synonymous_variants_uses_explicit_column_rules():
             "count.r1b2": [10.0, 20.0, 30.0],
             "norm.count.r1b1": [4.0, 5.0, 6.0],
             "Rep1.sum": [7.0, 8.0, 9.0],
+            "n_codons": [1, 1, 1],
+            "n_measurements": [3, 3, 3],
             "prop.r1b1": [0.1, 0.2, 0.3],
             "SD_rep": [1.0, 1.5, 2.0],
         }
@@ -77,6 +126,8 @@ def test_aggregate_synonymous_variants_uses_explicit_column_rules():
     assert row["count.r1b2"] == 60.0
     assert row["norm.count.r1b1"] == 15.0
     assert row["Rep1.sum"] == 24.0
+    assert "n_codons" not in aa_scores.columns
+    assert "n_measurements" not in aa_scores.columns
     assert "prop.r1b1" not in aa_scores.columns
     assert "SD_rep" not in aa_scores.columns
 
