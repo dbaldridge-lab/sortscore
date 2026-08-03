@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
-  "analysis_id": "opool5b_ordinal_20260724_123018",
-  "timestamp": "2026-07-24T12:30:19.850505",
-=======
-  "analysis_id": "opool5b_ordinal_20260723_160222",
-  "timestamp": "2026-07-23T16:02:24.505599",
->>>>>>> 4d75d668a275a4700455e81c8e9a3d49a5720f8b
+  "analysis_id": "opool5b_ordinal_20260731_091659",
+  "timestamp": "2026-07-31T09:17:01.225680",
   "status": "completed",
   "request": {
     "config_file": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/config_ordinal.json",
@@ -28,15 +23,9 @@
     }
   },
   "execution": {
-<<<<<<< HEAD
-    "start_time": "2026-07-24T12:30:18.010740",
-    "end_time": "2026-07-24T12:30:19.850505",
-    "duration_seconds": 1.84,
-=======
-    "start_time": "2026-07-23T16:02:22.601102",
-    "end_time": "2026-07-23T16:02:24.505599",
-    "duration_seconds": 1.9,
->>>>>>> 4d75d668a275a4700455e81c8e9a3d49a5720f8b
+    "start_time": "2026-07-31T09:16:59.207780",
+    "end_time": "2026-07-31T09:17:01.225680",
+    "duration_seconds": 2.02,
     "variants_processed": 2081,
     "variants_filtered": 0,
     "errors": [],
@@ -55,8 +44,8 @@
     "aa_scores": {
       "file": "opool5b_ordinal_aa_scores.csv",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_aa_scores.csv",
-      "size_bytes": 189288,
-      "checksum": "f35f117768a21304",
+      "size_bytes": 189454,
+      "checksum": "4555f360f9ee991f",
       "metadata": {
         "variant_count": 695
       }
@@ -64,15 +53,15 @@
     "dna_statistics": {
       "file": "opool5b_ordinal_dna_stats.json",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_dna_stats.json",
-      "size_bytes": 555,
-      "checksum": "383c51c2c3571dbd",
+      "size_bytes": 556,
+      "checksum": "66a7c3a8a438eb80",
       "metadata": {}
     },
     "aa_statistics": {
       "file": "opool5b_ordinal_aa_stats.json",
       "path": "/Users/c.chitwood/code/sortscore/demo_data/GLI2_oPool5b/output_ordinal/scores/opool5b_ordinal_aa_stats.json",
       "size_bytes": 450,
-      "checksum": "a7d5fcdf790ef8fc",
+      "checksum": "035bc2f47db225f3",
       "metadata": {}
     }
   },

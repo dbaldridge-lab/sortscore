@@ -351,7 +351,7 @@ scatterplot <- ggplot(scores) +
       vjust = -0.5
       ) +
   labs(
-    title = "sortscore and Lilace scoring shows strong concordance (GLI2 DMS positions 518-550)",
+    title = "sortscore and Lilace Score Comparison (GLI2 DMS positions 518-550)",
     x = "Sortscore score",
     y = "Lilace Effect",
     color = "Type"

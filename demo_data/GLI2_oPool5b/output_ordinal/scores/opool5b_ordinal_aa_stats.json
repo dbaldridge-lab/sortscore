@@ -1,30 +1,30 @@
 {
   "overall": {
-    "avg": 2.687,
+    "avg": 2.682,
     "median": 2.834,
-    "min": 1.31,
+    "min": 1.279,
     "max": 3.566,
-    "std": 0.49
+    "std": 0.51
   },
   "synonymous_wt": {
-    "avg": 2.921,
-    "median": 2.974,
+    "avg": 2.932,
+    "median": 2.941,
     "min": 2.27,
     "max": 3.28,
     "std": 0.24
   },
   "nonsense": {
-    "avg": 1.558,
-    "median": 1.582,
-    "min": 1.31,
-    "max": 1.724,
-    "std": 0.12
+    "avg": 1.54,
+    "median": 1.569,
+    "min": 1.279,
+    "max": 1.822,
+    "std": 0.13
   },
   "missense": {
-    "avg": 2.735,
-    "median": 2.848,
-    "min": 1.676,
+    "avg": 2.73,
+    "median": 2.844,
+    "min": 1.517,
     "max": 3.566,
-    "std": 0.43
+    "std": 0.46
   }
 }
