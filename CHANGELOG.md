@@ -8,8 +8,7 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 
 ## [Unreleased]
 
-### Added
-- 
+## [0.3.0] - 2026-08-10
 
 ### Changed
 - Emit a single aggregate `score` column selected by `avg_method`, and use that
@@ -17,6 +16,9 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 - Use synonymous-variant medians as the batch normalization reference for both DNA and amino-acid inputs instead of wild-type DNA scores.
 - Label batch heatmap reference markers as synonymous averages.
 - Include synonymous reference statistics for amino-acid-only score tables.
+
+### Removed
+- Removed the partially implemented confidence-interval/coefficient-of-variation scoring feature from mainline outputs. This includes the `--max-cv` CLI flag, `max_cv` config parameter, CV-based variant filtering, and CI/CV/SEM replicate-stat columns in score exports.
 
 ### Fixed
 - Use the global synonymous median when calculating per-experiment normalization factors.
@@ -106,7 +108,8 @@ with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for pa
 ### Fixed
 - 
 
-[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/dbaldridge-lab/sortscore/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0b3...0.1.0
 [0.1.0b1]: https://github.com/dbaldridge-lab/sortscore/compare/0.1.0a1...0.1.0b1

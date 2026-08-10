@@ -2,15 +2,12 @@
 Amino acid scores processing and export for Sort-seq analysis.
 
 This module provides functions for processing amino acid scores from DNA variant data,
-including aggregation of synonymous codons, statistical analysis, and file export.
+including aggregation of synonymous codons and file export.
 """
 import os
 import logging
 import pandas as pd
-import numpy as np
-from scipy import stats as scipy_stats
 from typing import List
-from sortscore.analysis.statistics import calculate_codon_and_replicate_variance
 
 
 def _get_score_column_from_avg_method(avg_method: str) -> str:
@@ -35,7 +32,6 @@ def process_and_save_aa_scores(scores_df: pd.DataFrame, experiment, scores_dir: 
     This function handles the complete AA scores workflow including:
     - Filtering out NaN values
     - Checking if codon aggregation is needed
-    - Calculating appropriate statistics (with/without codon variance)
     - Saving to CSV file
     - Logging output
     
@@ -109,8 +105,7 @@ def _check_codon_num(scores_df_drop_nan: pd.DataFrame, score_col: str,
     Check if codon aggregation is needed and process AA scores accordingly.
     
     This function checks if there are multiple codons per AA variant and processes
-    the data using either DNA->AA aggregation (with codon variance) or AA-only
-    statistics (replicate variance only).
+    the data using either DNA->AA aggregation or AA-only score export.
     
     Parameters
     ----------
@@ -124,7 +119,7 @@ def _check_codon_num(scores_df_drop_nan: pd.DataFrame, score_col: str,
     Returns
     -------
     pd.DataFrame
-        Processed AA scores with appropriate statistics
+        Processed AA scores
     """
     # Check if there are multiple codons per AA variant (DNA->AA case)
     aa_variant_counts = scores_df_drop_nan.groupby(['aa_seq_diff', 'annotate_aa']).size()
@@ -139,7 +134,7 @@ def _check_codon_num(scores_df_drop_nan: pd.DataFrame, score_col: str,
 def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: str, 
                                   rep_score_columns: List[str]) -> pd.DataFrame:
     """
-    Process DNA->AA aggregation case with codon variance decomposition.
+    Process DNA->AA aggregation case.
     
     Parameters
     ----------
@@ -153,7 +148,7 @@ def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: 
     Returns
     -------
     pd.DataFrame
-        Aggregated AA scores with codon and replicate statistics
+        Aggregated AA scores
     """
     # DNA->AA aggregation case: aggregate synonymous variants
     count_columns = _get_count_columns(scores_df_drop_nan)
@@ -174,18 +169,15 @@ def _process_dna_to_aa_aggregation(scores_df_drop_nan: pd.DataFrame, score_col: 
         )
         aa_scores = aa_scores.merge(aa_count_sums, on=['aa_seq_diff', 'annotate_aa'], how='left')
     
-    # Merge the standard deviation and count of codon scores
+    # Preserve codon-level score spread/counts for aggregated AA rows.
     aa_scores = aa_scores.merge(aa_scores_std, on=['aa_seq_diff', 'annotate_aa'], how='left')
-    
-    # Calculate statistics with codon and replicate variance decomposition
-    aa_scores = calculate_codon_and_replicate_variance(aa_scores, rep_score_columns)
-    
+
     return aa_scores
 
 
 def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns: List[str]) -> pd.DataFrame:
     """
-    Process AA-only case with simple replicate statistics.
+    Process AA-only case.
     
     Parameters
     ----------
@@ -197,35 +189,10 @@ def _process_aa_only_scores(scores_df_drop_nan: pd.DataFrame, rep_score_columns:
     Returns
     -------
     pd.DataFrame
-        AA scores with replicate statistics only
+        AA scores
     """
     # AA-only case: no aggregation needed, just copy the data
     count_columns = _get_count_columns(scores_df_drop_nan)
     columns_to_include = ['aa_seq_diff', 'annotate_aa', 'score'] + rep_score_columns + count_columns
     
-    aa_scores = scores_df_drop_nan[columns_to_include].copy()
-    
-    # Calculate simple replicate statistics (no codon variance)
-    if len(rep_score_columns) >= 2:
-        aa_rep_mean = aa_scores[rep_score_columns].mean(axis=1)
-        aa_rep_std = aa_scores[rep_score_columns].std(axis=1, ddof=1)
-        
-        # Calculate n_measurements (just number of non-empty replicates)
-        n_measurements = aa_scores[rep_score_columns].notna().sum(axis=1)
-        
-        # Calculate SEM using only replicate variance
-        sem = aa_rep_std / np.sqrt(n_measurements)
-        
-        # Calculate 95% CI using t-distribution
-        df_actual = n_measurements - 1
-        t_critical = scipy_stats.t.ppf(0.975, df_actual)
-        aa_margin_of_error = t_critical * sem
-        
-        aa_scores['SD_rep'] = aa_rep_std
-        aa_scores['CV_rep'] = (aa_rep_std / aa_rep_mean).round(3)
-        aa_scores['n_measurements'] = n_measurements.astype('Int64')
-        aa_scores['SEM'] = sem
-        aa_scores['CI_lower'] = aa_rep_mean - aa_margin_of_error
-        aa_scores['CI_upper'] = aa_rep_mean + aa_margin_of_error
-    
-    return aa_scores
+    return scores_df_drop_nan[columns_to_include].copy()

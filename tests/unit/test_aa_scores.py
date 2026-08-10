@@ -111,9 +111,8 @@ def test_aggregate_synonymous_variants_uses_explicit_column_rules():
             "norm.count.r1b1": [4.0, 5.0, 6.0],
             "Rep1.sum": [7.0, 8.0, 9.0],
             "n_codons": [1, 1, 1],
-            "n_measurements": [3, 3, 3],
             "prop.r1b1": [0.1, 0.2, 0.3],
-            "SD_rep": [1.0, 1.5, 2.0],
+            "SD_codon": [1.0, 1.5, 2.0],
         }
     )
 
@@ -127,9 +126,8 @@ def test_aggregate_synonymous_variants_uses_explicit_column_rules():
     assert row["norm.count.r1b1"] == 15.0
     assert row["Rep1.sum"] == 24.0
     assert "n_codons" not in aa_scores.columns
-    assert "n_measurements" not in aa_scores.columns
     assert "prop.r1b1" not in aa_scores.columns
-    assert "SD_rep" not in aa_scores.columns
+    assert "SD_codon" not in aa_scores.columns
 
 
 def test_aggregate_synonymous_variants_rejects_columns_without_rules():

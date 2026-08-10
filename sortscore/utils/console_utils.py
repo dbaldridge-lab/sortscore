@@ -68,11 +68,6 @@ def create_analysis_parser() -> argparse.ArgumentParser:
                         required=False, 
                         help="Minimum normalized reads per million required for a bin value to be retained. Defaults to 0."
                             )
-    parser.add_argument("--max-cv", 
-                        type=float, 
-                        required=False, 
-                        help="Maximum coefficient of variation allowed. If not provided, uses config value or default (None)."
-                            )
     parser.add_argument("-v", "--mutagenesis-variants",
                         type=str,
                         required=False,
@@ -180,8 +175,6 @@ def build_merged_analysis_config(
         merged["avg_method"] = args.avg_method
     if args.minread_threshold is not None:
         merged["minread_threshold"] = args.minread_threshold
-    if args.max_cv is not None:
-        merged["max_cv"] = args.max_cv
     if args.mutagenesis_variants is not None:
         if isinstance(args.mutagenesis_variants, str):
             merged["mutagenesis_variants"] = [v.strip() for v in args.mutagenesis_variants.split(",") if v.strip()]

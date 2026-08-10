@@ -65,7 +65,7 @@ def test_save_batch_results_preserves_count_columns_in_batch_aa_scores(tmp_path)
     saved_aa_scores = pd.read_csv(output_dir / "scores" / "batch_aa_scores.csv")
     assert saved_aa_scores.loc[0, "count.r1b1"] == 100.0
     assert saved_aa_scores.loc[0, "count.r1b2"] == 50.0
-def test_build_aa_scores_table_preserves_decimal_stats_for_codon_aggregation():
+def test_build_aa_scores_table_preserves_codon_spread_for_codon_aggregation():
     scores_df = pd.DataFrame(
         {
             "aa_seq_diff": ["A.1.B", "A.1.B"],
@@ -80,13 +80,14 @@ def test_build_aa_scores_table_preserves_decimal_stats_for_codon_aggregation():
     row = aa_scores.iloc[0]
 
     assert row["SD_codon"] == pytest.approx(2.1213203435596424)
-    assert row["SD_rep"] == pytest.approx(2.1213203435596424)
-    assert row["SEM"] == pytest.approx(1.5)
-    assert row["CI_lower"] == pytest.approx(7.226330542073606)
-    assert row["CI_upper"] == pytest.approx(16.773669457926394)
+    assert row["n_codons"] == 2
+    assert "SD_rep" not in aa_scores.columns
+    assert "SEM" not in aa_scores.columns
+    assert "CI_lower" not in aa_scores.columns
+    assert "CI_upper" not in aa_scores.columns
 
 
-def test_build_aa_scores_table_preserves_decimal_stats_for_aa_only_scores():
+def test_build_aa_scores_table_does_not_add_ci_cv_stats_for_aa_only_scores():
     scores_df = pd.DataFrame(
         {
             "aa_seq_diff": ["A.1.B"],
@@ -98,12 +99,10 @@ def test_build_aa_scores_table_preserves_decimal_stats_for_aa_only_scores():
     )
 
     aa_scores = build_aa_scores_table(scores_df, "score")
-    row = aa_scores.iloc[0]
-
-    assert row["SD_rep"] == pytest.approx(2.1213203435596424)
-    assert row["SEM"] == pytest.approx(1.5)
-    assert row["CI_lower"] == pytest.approx(-8.559307104263047)
-    assert row["CI_upper"] == pytest.approx(29.559307104263045)
+    assert "SD_rep" not in aa_scores.columns
+    assert "SEM" not in aa_scores.columns
+    assert "CI_lower" not in aa_scores.columns
+    assert "CI_upper" not in aa_scores.columns
 
 
 def test_build_normalization_stats_returns_nested_stage_and_final_sections():

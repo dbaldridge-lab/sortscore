@@ -22,14 +22,7 @@ _AA_DROPPED_COLUMNS = {
     'dna_seq_diff',
     'annotate_dna',
     'n_codons',
-    'n_measurements',
     'SD_codon',
-    'SD_rep',
-    'CV_rep',
-    'CV_codon',
-    'SEM',
-    'CI_lower',
-    'CI_upper',
 }
 
 def aggregate_aa_data(scores_df: pd.DataFrame, score_col: str) -> pd.DataFrame:

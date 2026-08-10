@@ -63,7 +63,6 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
 | `avg_method`           | str   | Method used to calculate the canonical `score` column (`rep-weighted` or `simple-avg`). **Default:** `rep-weighted`. |
 | `minread_threshold`    | int   | Minimum normalized reads per million required for a bin value to be retained. Values below this threshold are set to missing before scoring. **Default:** `0`. |
-| `max_cv`               | float | Maximum coefficient of variation (CV) allowed across replicates. Variants exceeding this are filtered out. **Default:** `None` (CV filtering is disabled). |
 | `mutagenesis_type`     | str   | Mutagenesis type: `aa` or `codon`. **Default:** `aa`. Set this to `codon` in the config or CLI when running DNA-based analysis. |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
 | `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. If set in config JSON, relative paths are resolved from the config file directory. If set via `--output-dir`, relative paths are resolved from the current working directory. |
@@ -218,10 +217,10 @@ The system generates unified tiled heatmaps that properly map each tile's positi
 ### Batch Processing Workflow
 
 1. Individual Analysis: Each experiment analyzed separately to generate raw scores
-2. Data Combination: Raw scores and statistics combined across experiments  
+2. Data Combination: Raw score tables combined across experiments
 3. Global Calculations: Reference values computed from combined data
 4. Normalization: Selected method applied to standardize scores
-5. Statistics Recalculation: Final statistics computed from normalized data
+5. Summary Statistics: Final summary statistics computed from normalized data
 6. Visualization: Combined tiled heatmaps generated with position mapping
 7. Output: Combined results saved, individual files cleaned up (if requested)
 
@@ -248,7 +247,7 @@ All positions are relative to the provided `wt_seq` unless otherwise specified:
 
 #### Amino Acid Analysis
 - **Input**: DNA sequences (aggregates synonymous variants) OR AA sequences (direct processing)
-- **Output**: AA substitution heatmap, AA-level statistics, AA scores file
+- **Output**: AA substitution heatmap, AA scores file, and summary statistics JSON
 - **Use for**: Deep mutational scanning, protein function studies
 
 #### Codon-Level Analysis  

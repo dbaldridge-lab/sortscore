@@ -131,7 +131,6 @@ class AnalysisLogger:
             'bins_required': experiment.bins_required,
             'reps_required': experiment.reps_required,
             'minread_threshold': experiment.minread_threshold,
-            'max_cv': experiment.max_cv,
             'min_pos': experiment.min_pos,
             'max_pos': experiment.max_pos
         }

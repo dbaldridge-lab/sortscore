@@ -94,8 +94,6 @@ PARAMS_TO_TEST = [
     ("avg_method", "rep-weighted"),
     ("minread_threshold", 0),
     ("minread_threshold", 10000),
-    ("max_cv", 0.0),
-    ("max_cv", 100.0),
     ("read_count", []),
     ("read_count", [10000] * 10),
     ("output_dir", "_test_outputs"),

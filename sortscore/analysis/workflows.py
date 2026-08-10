@@ -11,7 +11,6 @@ from typing import Optional, Tuple
 from sortscore.analysis.score import calculate_full_activity_scores
 from sortscore.analysis.annotation import annotate_scores_dataframe
 from sortscore.analysis.variant_aggregation import aggregate_aa_counts
-from sortscore.analysis.statistics import calculate_replicate_statistics, get_replicate_score_columns
 from sortscore.analysis.summary_stats import calculate_summary_stats, save_summary_stats
 from sortscore.analysis.aa_scores import _get_score_column_from_avg_method, process_and_save_aa_scores
 
@@ -43,7 +42,6 @@ def calculate_variant_scores(experiment, merged_df: pd.DataFrame) -> pd.DataFram
         total_reads=experiment.total_reads,
         cell_prop=experiment.cell_prop,
         merged_df=merged_df,
-        max_cv=experiment.max_cv
     )
     
     # Annotate sequences
@@ -76,7 +74,6 @@ def calculate_aa_scores_from_dna_counts(experiment, merged_df: pd.DataFrame) -> 
         total_reads=experiment.total_reads,
         cell_prop=experiment.cell_prop,
         merged_df=aa_counts_df,
-        max_cv=experiment.max_cv,
     )
 
 
@@ -114,13 +111,10 @@ def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Option
     
     # Prepare for saving
     scores_dir = os.path.join(output_dir, 'scores')
-    scores_df_with_stats = scores_df.copy()
-    rep_score_columns = get_replicate_score_columns(scores_df_with_stats)
-    scores_df_with_stats = calculate_replicate_statistics(scores_df_with_stats, rep_score_columns)
     
     # Save DNA scores
     dna_scores_file = os.path.join(scores_dir, f"{experiment.experiment_name}_dna_scores.csv")
-    scores_df_with_stats.to_csv(dna_scores_file, index=False)
+    scores_df.to_csv(dna_scores_file, index=False)
     logging.info(f"Saved DNA scores to {dna_scores_file}")
     
     # Log output
@@ -128,12 +122,12 @@ def process_dna_workflow(experiment, output_dir: str, analysis_logger) -> Option
         'dna_scores', 
         f"{experiment.experiment_name}_dna_scores.csv",
         dna_scores_file,
-        variant_count=len(scores_df_with_stats)
+        variant_count=len(scores_df)
     )
     
     # Calculate and save statistics on the final processed DNA data
     score_col = _get_score_column_from_avg_method(experiment.avg_method)
-    stats = calculate_summary_stats(scores_df_with_stats, score_col)
+    stats = calculate_summary_stats(scores_df, score_col)
     save_summary_stats(
         stats,
         experiment,

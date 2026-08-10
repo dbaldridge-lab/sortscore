@@ -12,7 +12,7 @@ import sys
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Optional, List
+from typing import Any, List
 
 
 def _resolve_count_file_path(
@@ -46,7 +46,7 @@ def _resolve_count_file_path(
         f"Invalid relative_path_base '{relative_path_base}'. Expected 'setup' or 'cwd'."
     )
 
-def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str, max_cv: Optional[float] = None) -> str:
+def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, date_str: str) -> str:
     """
     Generate a suffix for export filenames.
 
@@ -60,9 +60,6 @@ def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, dat
         Minimum reads per million.
     date_str : str
         Date string (YYYYMMDD).
-    max_cv : float, optional
-        Maximum coefficient of variation filter.
-
     Returns
     -------
     suffix : str
@@ -72,12 +69,8 @@ def make_export_suffix(experiment_name: str, b: int, minread_threshold: int, dat
     --------
     >>> make_export_suffix('test', 3, 0, '20250701')
     'test_3-bins_0-minreads_20250701'
-    >>> make_export_suffix('test', 3, 0, '20250701', 0.5)
-    'test_3-bins_0-minreads_0.5-cv_20250701'
     """
     base_suffix = f'{experiment_name}_{b}-bins_{minread_threshold}-minreads'
-    if max_cv is not None:
-        base_suffix += f'_{max_cv}-cv'
     return f'{base_suffix}_{date_str}'
 
 def ensure_output_subdirs(output_dir: str, subdirs: list[str] = ["scores", "figures"]) -> None:

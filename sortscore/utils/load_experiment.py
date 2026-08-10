@@ -104,7 +104,6 @@ class ExperimentConfig:
     bins_required: int = 1
     reps_required: int = 1  
     avg_method: str = 'rep-weighted'
-    max_cv: Optional[float] = None
     minread_threshold: int = 0
     mutagenesis_variants: Optional[list] = None
     biophysical_prop: bool = False  # Whether to show biophysical properties panel in heatmaps
@@ -187,7 +186,7 @@ class ExperimentConfig:
         # Optional fields (only add if present in JSON to preserve dataclass defaults)
         optional_fields = [
             'output_dir', 'bins_required', 'reps_required', 'avg_method',
-            'minread_threshold','max_cv',
+            'minread_threshold',
             'mutagenesis_type', 'mutagenesis_variants', 'biophysical_prop',
             'min_pos', 'max_pos', 'tile_id', 'relative_path_base'
         ]
@@ -201,7 +200,7 @@ class ExperimentConfig:
         # Other parameters
         handled_keys = {'experiment_name', 'experiment_setup_file', 'wt_seq', 
                        'output_dir', 'bins_required', 'reps_required', 'avg_method', 
-                       'minread_threshold', 'max_cv', 'mutagenesis_type',
+                       'minread_threshold', 'mutagenesis_type',
                        'mutagenesis_variants', 'biophysical_prop', 'tile_id', 'relative_path_base'}
         other_params = {k: v for k, v in data.items() if k not in handled_keys}
         if other_params:
