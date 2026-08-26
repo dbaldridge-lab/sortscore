@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/950084159.svg)](https://doi.org/10.5281/zenodo.22119031)
+
 # sortscore
 
 `sortscore` is a Python package for Sort-seq variant analysis, including scoring, normalization, and visualization.
