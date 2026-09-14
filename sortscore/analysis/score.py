@@ -112,7 +112,8 @@ def calculate_full_activity_scores(
     min_reps : int, default 1
         Minimum number of replicates a variant must appear in to be scored.
     minread_threshold : float, default 0.0
-        Minimum normalized reads per million required to keep a value.
+        Minimum normalized reads per million required for scoring. Filtering
+        sets normalized counts to missing; raw counts are preserved.
     avg_method : str, default 'rep-weighted'
         Averaging method: 'simple-avg' or 'rep-weighted'.
     groupby_cols : list, optional
@@ -157,7 +158,12 @@ def calculate_full_activity_scores(
                 cell_proportion = cell_prop[rep][bin]
                 if cell_proportion > 0:  # Avoid division by zero
                     df[norm_col] = df[norm_col] / cell_proportion
-            
+
+            # A zero raw count means the variant was not observed in this bin.
+            # Preserve the raw count for reporting, but exclude its normalized
+            # value so it cannot satisfy min_bins or contribute to a score.
+            df[norm_col] = df[norm_col].where(df[col] > 0, np.nan)
+
             # Apply minread threshold
             if minread_threshold > 0:
                 df[norm_col] = df[norm_col].where(df[norm_col] >= minread_threshold, np.nan)
@@ -193,28 +199,32 @@ def calculate_full_activity_scores(
 
     # Calculate the configured aggregate score.
     rep_score_cols = [f'Rep{rep}.score' for rep in counts]
-    # Only keep rows with at least min_reps non-NaN replicate scores
+    # Rows that fail min_reps are retained, but do not receive a final score.
     valid = df[rep_score_cols].notna().sum(axis=1) >= min_reps
 
-    df_valid = df[valid].copy()
     if avg_method == 'simple-avg':
-        df_valid['score'] = df_valid[rep_score_cols].mean(axis=1)
+        df['score'] = df[rep_score_cols].mean(axis=1)
     elif avg_method == 'rep-weighted':
-        total_weight = sum(df_valid[f'Rep{rep}.sum'].fillna(0) for rep in counts)
-        rep_weighted_score = sum(
-            df_valid[f'Rep{rep}.score'].fillna(0) * df_valid[f'Rep{rep}.sum'].fillna(0)
-            for rep in counts
-        )
-        df_valid['score'] = rep_weighted_score / total_weight.replace(0, np.nan)
+        rep_weights = []
+        rep_weighted_scores = []
+        for rep in counts:
+            rep_sum = df[f'Rep{rep}.sum']
+            rep_score = df[f'Rep{rep}.score']
+            rep_weights.append(rep_sum)
+            rep_weighted_scores.append(rep_score * rep_sum)
+        total_weight = pd.concat(rep_weights, axis=1).sum(axis=1, min_count=1)
+        rep_weighted_score = pd.concat(rep_weighted_scores, axis=1).sum(axis=1, min_count=1)
+        df['score'] = rep_weighted_score / total_weight.replace(0, np.nan)
     else:
         raise ValueError(f"Unknown averaging method: {avg_method}")
+    df['score'] = df['score'].where(valid, np.nan)
 
     # Optionally group by synonymous/codon group for AA-level scores
     if groupby_cols is not None:
-        group = df_valid.groupby(groupby_cols)
+        group = df.groupby(groupby_cols)
         df_aa = group[[
             'score',
             *rep_score_cols
         ]].mean().reset_index()
-        return df_valid, df_aa
-    return df_valid
+        return df, df_aa
+    return df

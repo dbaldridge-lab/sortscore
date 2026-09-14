@@ -62,7 +62,7 @@ Additional optional fields can be used to customize the analysis. These can be s
 | `bins_required`        | int   | Minimum number of bins per replicate a variant must appear in to be scored. **Default:** `1`. |
 | `reps_required`        | int   | Minimum number of replicates a variant must appear in to be scored. **Default:** `1`. |
 | `avg_method`           | str   | Method used to calculate the canonical `score` column (`rep-weighted` or `simple-avg`). **Default:** `rep-weighted`. |
-| `minread_threshold`    | int   | Minimum normalized reads per million required for a bin value to be retained. Values below this threshold are set to missing before scoring. **Default:** `0`. |
+| `minread_threshold`    | int   | Minimum normalized reads per million (RPM) required for a bin value to be retained for scoring. Raw counts are unchanged; normalized counts below the threshold are set to missing. **Default:** `0`. |
 | `mutagenesis_type`     | str   | Mutagenesis type: `aa` or `codon`. **Default:** `aa`. Set this to `codon` in the config or CLI when running DNA-based analysis. |
 | `read_count`           | list  | List of demultiplexed read counts for each sample/bin. |
 | `output_dir`           | str   | Directory where all results and figures will be saved. **Default:** `.`. If set in config JSON, relative paths are resolved from the config file directory. If set via `--output-dir`, relative paths are resolved from the current working directory. |
@@ -73,13 +73,21 @@ Additional optional fields can be used to customize the analysis. These can be s
 Note:
 Any relative file paths specified in the experiment setup file are resolved relative to the location of the setup file itself, not the current working directory.
 
-Path resolution summary:
-- `--output-dir` on CLI: relative to current working directory.
-- `output_dir` in config JSON: relative to the config file location.
+### Score filtering
 
-`wt_seq` format requirement by mutagenesis type:
-- `mutagenesis_type: codon` -> provide DNA `wt_seq`
-- `mutagenesis_type: aa` -> provide protein `wt_seq`
+Raw `count.r#b#` columns are retained unchanged in score outputs for traceability. A
+zero raw count means that the variant was not observed in that bin, so its
+corresponding `norm.count.r#b#` value is set to missing before scoring. When
+`minread_threshold` is greater than zero, normalized counts (RPM) below that threshold
+are also set to missing.
+
+Within each replicate, only non-missing normalized bin counts satisfy
+`bins_required`. A replicate that does not meet `bins_required` is assigned a
+missing replicate score. Only replicates with non-missing scores count toward
+`reps_required`; variants that do not meet `reps_required` are retained in the
+score table with a missing final `score`. Thus, with the default
+`minread_threshold` of `0`, every positive raw count is eligible, but zero-count
+bins never satisfy the bin requirement or contribute to a score.
 
 ### Basic Usage
 
@@ -90,7 +98,6 @@ sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/co
 # Module form (if `sortscore` is not on your PATH)
 python -m sortscore score -n EXPERIMENT_NAME -e path/to/experiment_setup.csv -c path/to/config.json
 ```
-
 
 ### CLI Arguments Reference
 
@@ -104,9 +111,6 @@ See [docs/cli_arguments.md](cli_arguments.md) for a complete list of command lin
 
 **Optional JSON config (fallback defaults):**
 - Provide `-c/--config` to set defaults like `wt_seq`, thresholds, and plotting options.
-
-**Export Options:**
-
 
 ### File Naming Conventions
 

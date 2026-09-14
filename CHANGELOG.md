@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 with [PEP 440](https://peps.python.org/pep-0440/) pre-release identifiers for package versions.
 
-## [Unreleased]
+## [0.3.1]
+
+### Fixed
+- Exclude zero-count bins from normalized scoring values so they cannot satisfy
+  `bins_required` or `reps_required`.
+- Variants that fail score eligibility are retained with missing score values instead of being dropped.
 
 ## [0.3.0] - 2026-08-10
 
