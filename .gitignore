@@ -67,3 +67,5 @@ docs/usage_files/
 
 # Previewing md files
 *.html
+*.Rproj*
+.Rhistory

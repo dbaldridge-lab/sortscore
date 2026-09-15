@@ -132,7 +132,7 @@ dplyr::glimpse(raw_counts)
     $ c_1                    <dbl> 36737, 46858, 38992, 45673, 66177, 67338, 23001…
     $ c_2                    <dbl> 16111, 24719, 25885, 123360, 149455, 127665, 63…
     $ c_3                    <dbl> 2979, 5568, 2625, 173779, 198722, 205987, 11855…
-    $ sortscore_score        <dbl> -3.8703863, -3.8703863, -3.8703863, -0.5436406,…
+    $ sortscore_score        <dbl> -3.71915339, -3.71915339, -3.71915339, -0.07744…
     $ sortscore_score_column <chr> "score", "score", "score", "score", "score", "s…
 
 ``` r
@@ -204,12 +204,12 @@ metadata_cols |>
     # A tibble: 6 × 5
       variant_id mutation_type position sortscore_score sortscore_score_column
       <chr>      <chr>            <dbl>           <dbl> <chr>                 
-    1 C.1.*      nonsense             1           -3.86 score                 
-    2 C.1.*      nonsense             1           -3.86 score                 
-    3 C.1.*      nonsense             1           -3.86 score                 
-    4 C.1.=      synonymous           1            1.53 score                 
-    5 C.1.=      synonymous           1            1.53 score                 
-    6 C.1.=      synonymous           1            1.53 score                 
+    1 C.1.*      nonsense             1           -3.87 score                 
+    2 C.1.*      nonsense             1           -3.87 score                 
+    3 C.1.*      nonsense             1           -3.87 score                 
+    4 C.1.=      synonymous           1            1.51 score                 
+    5 C.1.=      synonymous           1            1.51 score                 
+    6 C.1.=      synonymous           1            1.51 score                 
 
 Convert the counts table into a Lilace object.
 
@@ -229,12 +229,12 @@ head(lilace_obj$data)
     # A tibble: 6 × 15
       variant variant_id mutation_type position sortscore_score
       <chr>   <chr>      <chr>            <dbl>           <dbl>
-    1 C.1.*   C.1.*      nonsense             1           -3.86
-    2 C.1.*   C.1.*      nonsense             1           -3.86
-    3 C.1.*   C.1.*      nonsense             1           -3.86
-    4 C.1.=   C.1.=      synonymous           1            1.53
-    5 C.1.=   C.1.=      synonymous           1            1.53
-    6 C.1.=   C.1.=      synonymous           1            1.53
+    1 C.1.*   C.1.*      nonsense             1           -3.87
+    2 C.1.*   C.1.*      nonsense             1           -3.87
+    3 C.1.*   C.1.*      nonsense             1           -3.87
+    4 C.1.=   C.1.=      synonymous           1            1.51
+    5 C.1.=   C.1.=      synonymous           1            1.51
+    6 C.1.=   C.1.=      synonymous           1            1.51
     # ℹ 10 more variables: sortscore_score_column <chr>, type <chr>,
     #   position.1 <dbl>, rep <dbl>, c_0 <int>, c_1 <int>, c_2 <int>, c_3 <int>,
     #   n_counts <dbl>, total_counts <dbl>
@@ -325,25 +325,25 @@ lilace_obj <- lilace::lilace_fit_model(
     Chain 3 Iteration: 1250 / 2000 [ 62%]  (Sampling) 
     Chain 2 Iteration: 1750 / 2000 [ 87%]  (Sampling) 
     Chain 2 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    Chain 2 finished in 211.6 seconds.
+    Chain 2 finished in 230.1 seconds.
     Chain 3 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
     Chain 1 Iteration: 1250 / 2000 [ 62%]  (Sampling) 
     Chain 4 Iteration: 1250 / 2000 [ 62%]  (Sampling) 
     Chain 3 Iteration: 1750 / 2000 [ 87%]  (Sampling) 
     Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    Chain 3 finished in 262.7 seconds.
+    Chain 3 finished in 284.0 seconds.
     Chain 1 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
     Chain 4 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
     Chain 1 Iteration: 1750 / 2000 [ 87%]  (Sampling) 
     Chain 4 Iteration: 1750 / 2000 [ 87%]  (Sampling) 
     Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    Chain 1 finished in 369.5 seconds.
+    Chain 1 finished in 392.1 seconds.
     Chain 4 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    Chain 4 finished in 421.7 seconds.
+    Chain 4 finished in 444.8 seconds.
 
     All 4 chains finished successfully.
-    Mean chain execution time: 316.4 seconds.
-    Total execution time: 421.9 seconds.
+    Mean chain execution time: 337.8 seconds.
+    Total execution time: 444.9 seconds.
 
     Warning: 7 of 4000 (0.0%) transitions hit the maximum treedepth limit of 10.
     See https://mc-stan.org/misc/warnings for details.
@@ -375,12 +375,12 @@ head(scores)
     # A tibble: 6 × 13
       variant type        variant_id mutation_type position sortscore_score
       <chr>   <chr>       <chr>      <chr>            <dbl>           <dbl>
-    1 C.1.A   missense_aa C.1.A      missense_aa          1           -4.12
-    2 C.1.D   missense_aa C.1.D      missense_aa          1           -3.96
-    3 C.1.E   missense_aa C.1.E      missense_aa          1           -4.13
-    4 C.1.F   missense_aa C.1.F      missense_aa          1           -4.12
-    5 C.1.G   missense_aa C.1.G      missense_aa          1           -3.60
-    6 C.1.H   missense_aa C.1.H      missense_aa          1           -4.21
+    1 C.1.A   missense_aa C.1.A      missense_aa          1           -3.96
+    2 C.1.D   missense_aa C.1.D      missense_aa          1           -3.83
+    3 C.1.E   missense_aa C.1.E      missense_aa          1           -4.00
+    4 C.1.F   missense_aa C.1.F      missense_aa          1           -4.02
+    5 C.1.G   missense_aa C.1.G      missense_aa          1           -3.62
+    6 C.1.H   missense_aa C.1.H      missense_aa          1           -3.97
     # ℹ 7 more variables: sortscore_score_column <chr>, effect <dbl>,
     #   effect_se <dbl>, lfsr <dbl>, pos_mean <dbl>, pos_sd <dbl>,
     #   discovery05 <dbl>
@@ -512,7 +512,7 @@ scatterplot <- ggplot(scores) +
       vjust = -0.5
       ) +
   labs(
-    title = "sortscore and Lilace scoring shows strong concordance (GLI2 DMS positions 518-550)",
+    title = "sortscore and Lilace Score Comparison (GLI2 DMS positions 518-550)",
     x = "Sortscore score",
     y = "Lilace Effect",
     color = "Type"

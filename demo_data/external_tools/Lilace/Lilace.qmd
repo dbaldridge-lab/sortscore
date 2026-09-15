@@ -91,7 +91,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 }
 
 if (!requireNamespace("lilace", quietly = TRUE)) {
-  remotes::install_github("pimentellab/lilace")
+  remotes::install_local("/tmp/lilace", build = FALSE)
 }
 ```
 
