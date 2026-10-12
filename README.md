@@ -4,6 +4,9 @@
 
 `sortscore` is a Python package for Sort-seq variant analysis, including scoring, normalization, and visualization.
 
+Please cite if you use the package:
+Caitlyn Chitwood, Emily Orr, Dustin Baldridge, sortscore: Sort-seq MAVE scoring and visualization using Python, Bioinformatics, 2026;, btag664, https://doi.org/10.1093/bioinformatics/btag664
+
 ## Quick Start
 
 ```bash
